@@ -1,5 +1,6 @@
 from steg import encode, decode
 from Helpers import detect, get_limit
+import torch
 
 
 # m = [1, 0, 1]
@@ -14,11 +15,16 @@ c = 5
 
 # keys = [get_random_bytes(32), get_random_bytes(32), get_random_bytes(32)]
 delta = 0.0001
-ct = encode(keys, h, m, delta, c)
+ct, tokens = encode(keys, h, m, delta, c)
 print(ct)
-exit(0)
+print(tokens)
 print('-------------------')
 recovered_counters, decode_tokens = decode(keys, h, ct, None, c)
+
+print(tokens['input_ids'][0])
+print(decode_tokens['input_ids'][0])
+print(torch.equal(tokens['input_ids'], decode_tokens['input_ids']))
+# exit(0)
 
 print(ct)
 print(recovered_counters)

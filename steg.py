@@ -107,46 +107,48 @@ def decode(keys, h, ct, z, c):
   # initialize counters for each bit in m (seeing if the threshold is crossed for that bit)
   counters = [0 for _ in range(len(keys))]
 
+  #! need to add tokens for h to beginning of tokens?
   # tokenize stegotext
-  tokens = tokenizer(ct, return_tensors='pt')['input_ids'][0] # this makes it line up with h as a starting point
-  print(tokens)
-  text = ''
-  idx = 0
-  goal = ''.join(h)
-  while text != goal:
-    text += tokenizer.decode(tokens[idx])
-    idx = idx + 1
-  tokens = tokens[idx:]
+  tokens = tokenizer(ct, return_tensors='pt') # this makes it line up with h as a starting point
+#   print(tokens)
   # text needs to start at h (encode's text starts at h)
   # when making a back and forth system, one side will probably have to call this function with h -1
   # text = ''
+
+  h_text = ''.join(h)
+  h_tokens = tokenizer(h_text, return_tensors='pt')['input_ids'][0]
+#   print(h_tokens)
+
   # for each token in stegotext
-  for j in tqdm(range(len(tokens))):
+  for j in tqdm(range(len(h_tokens), len(tokens['input_ids'][0]))):
     # print('j: ', j)
     # text += tokenizer.decode(tokens[j])
     # test each key
     for i, key in enumerate(keys):
       # print('i: ', i)
-      r = PRF(key, s, text, c)
+    #   print(tokens[0:j])
+      partial_tokens = {'input_ids': tokens['input_ids'][:, 0:j], 'attention_mask': tokens['attention_mask'][:, 0:j]}
+    #   print(partial_tokens)
+      r = PRF_t(key, s, partial_tokens, c)
     #   print('i, s, text, c: ', i, s, text, c)
     #   print('j, i, r: ', j, i, r)
       # print('r: ', r)
-      current_token_index = tokens[j]
+      current_token_index = tokens['input_ids'][0][j].item()
       # print('current_token_index: ', current_token_index)
       # print('r[current_token_index]: ', r[current_token_index])
       # For testing I need something that says: this is the next token. Here's what went into the PRF for sampling it.
-      with open("./decode.log", "a") as myfile:
-        myfile.write('j: {j}\n'.format(j=j))
-        myfile.write('i: {i}\n'.format(i=i))
-        myfile.write('r: {r}\n'.format(r=r[:10]))
-        t = tokenizer.decode(tokens[j])
-        myfile.write('token: {t}\n'.format(t=t))
+    #   with open("./decode.log", "a") as myfile:
+    #     myfile.write('j: {j}\n'.format(j=j))
+    #     myfile.write('i: {i}\n'.format(i=i))
+    #     myfile.write('r: {r}\n'.format(r=r[:10]))
+    #     t = tokenizer.decode(tokens[j])
+    #     myfile.write('token: {t}\n'.format(t=t))
       if (r[current_token_index] == 1):
         counters[i] += 1
         # print('counters: ', counters)
-    text += tokenizer.decode(tokens[j])
+    # text += tokenizer.decode(tokens[j])
 
-  print(counters)
+#   print(counters)
 
   return counters, tokens
 
