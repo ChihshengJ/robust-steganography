@@ -1,3 +1,8 @@
+# make deterministic for testing
+from config_determinism import set_deterministic_behavior
+set_deterministic_behavior()
+
+# rest of needed imports
 from llm import tokenizer
 from steg import encode, decode
 from Helpers import detect, get_limit
@@ -35,6 +40,8 @@ def mismatch(enc_ids, dec_ids):
   for i in range(limit):
     if enc_ids[i] == dec_ids[i]:
       same += 1
+    else:
+        print('mismatch at index: ', i)
   print('num same: ', same)
   print('dec length: ', len(dec_ids))
 

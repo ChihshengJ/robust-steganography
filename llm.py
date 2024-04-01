@@ -67,6 +67,7 @@ def sample_token(probabilities):
   decoded_text = tokenizer.decode(index)
   return decoded_text
 
+#! Maybe we should be doing the merge list stuff before perturbing the distribution? Not sure if we can..
 def sample_token_id(probabilities, prev_token):
   # examine merge list corresponding to the previous token
   prev_token_text = tokenizer.decode(prev_token)
