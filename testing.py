@@ -1,118 +1,80 @@
 from llm import tokenizer
+from steg import encode, decode
+from Helpers import detect, get_limit
+import torch
 
-enc = [' Oy', '.', ' Weekly', ' rates', ' of', ' $', '125', ' a', ' day', ',', ' $', '25', ' off', ',', ' check', ' rates', ' here', '.', '\n', '\n', '\n', 'Since', ' the', ' ground', '-', 'breaking', ' there', ' has', ' been', ' a', ' rapid', ' growth', ' of', ' the', ' coffee', ' shops', ' across', ' the', ' city', '.', ' B', '.', ' Bl', 'aut', ' is', ' No', '1', ' for', ' coffee', ' shops', ' earning', ' $', '100', ',', '000', ' guaranteed', ' on', ' delivery', '.', ' The', ' variety', ' in', ' coffee', ' created', ' by', ' both', ' the', ' designers', ' and', ' cater', 'g', 'ories', ' is', ' definitely', ' something', ' to', ' take', ' another', ' look', ' at', '.', ' It', ' doubles', ' as', ' a', ' popular', ' tour', ' so', ' check', ' on', ' you', "'re", ' pump', ' up', '/', 'down', ' for', ' next', ' time', '.', ' You', ' can', ' make', ' use', ' of', ' the', ' Ar', 'tery', ' Jama', 'ican', ' seating', ' area', ' for', ' cash', ' only', '.', '\n\n', '\n', 'Note', ':', ' I', "'ve", ' not', ' had', ' sex', ' for', ' 15', ' days', '.', ' Pro', 'st', 'itutes', ' always', ' show', ' up', ' if', ' you', "'re", ' looking', ' for', ' dick', '.', '\n', '\n', '\n', 'If', ' you', ' do', ' catch', ' trouble', ' this', ' is', ' why', ' you', "'re", ' here', '.', ' Meet', ' us', ' at', ' the', ' team', ' workshop', ' 10', '19', ' Wem', 'un', ' St', ',', ' 19', 'th', ' b', 'ld', 'g', ' UNDER', ' 24', ' hour', ' internet', ' wifi', ' available', '.', '<|endoftext|>', 'This', ' month', ' we', ' got', ' a', ' chance', ' to', ' go', ' to', ' Des', ' Moines', ' to', ' participate', ' in', ' Tips', ' Over', ' Some', ' Brewing', "'s", ' Dragon', ' Hunt', ' booth', ' during', ' the', ' pub', ' crawl', ' last', ' night', '.', ' Okay', ',', ' it', ' just', ' occurs', ' to', ' me', ' that', ' I', ' might', ' write', ' some', ' check', ' TIM', 'ES', ' over', '.', '\n', '\n', '\n', 'Event', ' History', ' =', ' Ke', 'pt', ' Your', ' Mouth', ' working', ' the', ' Theme', ' Park', ' J', 'oms', 'bury', ' /', ' Ticket', ' W', 'SH', ' Check', ' =', ' 30', ',', '000', '.', ' No', ' big', ' deal', ',', ' it', ' turns', ' out', '.', ' A', ' few', ' wh', 'ack', ' ass', ' tickets', ' for', ' it', ',', ' and', ' thanks', ' crowd', 'sur', 'vey', '.', 'com', ' for', ' letting', ' us', ' taste', ' 2015', ' beers', ' on', ' tap', '.', ' (', 'Gu', 'ess', ' those', '?', ' No', ' glory', '.)', '<|endoftext|>', 'Contents', ' show', ']', '\n', '\n', '\n', 'History', '\n', '\n', '\n', 'Y', 'az', ' y', 'oy', 'o', ' (', 'Chinese', ':', ' �', 'z', 'â', ' j', '�', 'ng', ' X', '�', ' Non', 'stan', '…', ' Yan', '�', 'ner', 'g', '�', 'pa', ').', ' It', ' was', ' a', ' k', 'ung', ' fu', ' fury', ' training', ' characteristics', ':', ' fire', ',', ' blood', ',', ' sunlight', ',', ' lightning', ',', ' wave', ' form', ' with', ' pitch', ',', ' punching', ' momentum', ' with', ' energy', ' blast', ',', ' and', ' knock', 'down', ' style', ' with', ' insect', ' shape', ' energy', ' blast', '.', ' Its', ' vital', ' energy', ' blasts', ' made', ' it', ' a', ' popular', ' training', ' tool', ' for', ' training', ' within', ' dark', ' guild', 's', ' across', ' the', ' globe', ',', ' who', ' used', ' these', ' cat', '-', 'like', ' demons', ' nonetheless', '.[', '1', ']', ' Their', ' coloring', ' was', ' slightly', ' darker', ' than', ' those', ' of', ' their', ' human', ' counterparts', ' as', ' the', ' violet', ' and', ' red', ' around', ' them', ' resembled', ' poisonous', ' insects', '.[', '2', ']', '\n', '\n', '\n', 'Ab', 'ilities', '\n', '\n', '\n', 'Ability', ' Processor', '\n\n', '\n', 'Feature', ' Abilities', ' Ac', 'ute', ' H', 'oming', ' In', 'vis', 'ibility', '\n\n', '\n', 'Enhanced', ' Urban', ' Run', '\n', '\n', '\n', 'Adapt', 'able', ' Macro', 'be', ' Uniform', '\n\n', '\n', 'Bloom', ' Be', 'aman', '\n\n', '\n', 'Dark', ' Finger', '\n\n', '\n', 'Dual', ' Crown', '\n\n', '\n', 'Energy', ' transfer', '\n', '\n', '\n', 'Fe', 'ather', 'footed', '\n\n', '\n', 'Fire', ' control', '\n\n', '\n', 'Fly', ' Bite', '\n\n', '\n', 'Forward', ' bend', ' ice', ' stream', ' technique', '\n\n', '\n', 'F', 'ender', ' Combo', ' Ske', 'letal', ' GR', 'OUND', '\n\n', '\n', 'Fast', ' movement', ' muscles', '\n\n', '\n', 'G', ' Iron', ' Sword', ' w', '/', '90', ' degree', ' H', 'ip', ' Pierce', '\n\n', '\n', 'Go', '-', 'Yellow', ' Flash', ' technology', '\n\n', '\n', 'Ghost', ' Orb', ' Blade', ' ability', '\n\n', '\n', 'He', 'aling', ' Staff', '\n\n', '\n', 'Hum', 'iliate', ' Feed', '\n\n', '\n', 'K', 'ung', ' fu', '\n', '\n', '\n', 'K', 'ung', ' Fu', ' skill', '\n\n', '\n', 'L', ' Bone', ' can', 'e', ' arm', ' throw', '\n\n', '\n', 'L', 'ung', ' killing', ' move', '\n\n', '\n', 'Light', 'ening', ' Cro', 'tch', ' Breaker', ' energy', ' blast', '\n\n', '\n', 'Light', 'ning', ' sending', ' grab', ' but', ' not', ' strengthening', '\n\n', '\n', 'Tr', 'ings', ' technique', '\n\n', '\n', 'The', ' Mean', ' Stand', ' blade', ' and', ' lightning', ' energy', '\n\n', '\n', 'Met', 'eor', ' Sh', 'ower', 'ing', '-', ' easily', ' activated', '\n\n', '\n', 'Met', 'eor', ' Fuel', ',', ' stretching', ' cr', 'amp', '\n\n', '\n', 'Me', 'ile', "'s", ' blade', ' deflect', 's', ' background', ' frost', '\n\n', '\n', 'Wind', ' along', ' with', ' bite', '\n\n', '\n', 'Wind', ' attack', '\n\n', '\n', 'W', ' Sc', 'issors', ' skill', '\n\n', '\n', 'J', ' Club', ' thrust', 'ing', ' back', 'swing', '\n\n', '\n', 'Sh', 'ory', 'u', ' style', ' cancel', '\n\n', '\n', 'Sh', 'ory', 'u', ' chip', ' kick', ' effective', '\n\n', '\n', 'Water', ' Release', '\n\n', '\n', 'Roll', ' violent', ' one', ' handed', ' repetitive', ' Kung', ' Fu', ' style', '\n\n', '\n', 'Sw', 'earing', ' style', '\n\n', '\n', 'T', ' Ah', 'ash', 'ia', ' technique', ' Budd', 'h', 'awi', ' endless', ' x', 'iu', 'ogy', 'ak', 'udo', ' technique', ' martial', ' art', ' rogue', ' sword', ' land', ' swords', ' master', ' high', 'Gra', 'ze', ' extended', ' twist', ' arm', ' blood', '-', 'sw', 'earing', ' martial', ' art', '\n\n', '\n', 'Technical', ' Details', ' Like', ' all', ' teachers', ' of', ' Dark', 'force', ' Curse', ',', ' personality', ' separate', 'Y', 'az', ' y', 'oy', 'o', ' (', 'Chinese', ':', ' �', 'z', 'â', ' j', '�', 'ng', ' X', '�', ' Non', 'stan', '….', ' Yan', '�', 'nerg', '�', 'pa', ').', ' It', ' was', ' a', ' k', 'ung', ' fu', ' fury', ' training', ' characteristics', ':', ' fire', ',', ' blood', ',', ' sunlight', ',', ' lightning', ',', ' wave', ' form', ' with', ' pitch', ',', ' punching', ' momentum', ' with', ' energy', ' blast', ',', ' and', ' knock', 'down', ' style', ' with', ' insect', ' shape', ' energy', ' blast', '.', ' Its', ' vital', ' energy', ' blasts', ' made', ' it', ' a', ' popular', ' training', ' tool', ' for', ' training', ' within', ' dark', ' guild', 's', ' across', ' the', ' globe', ',', ' who', ' used', ' these', ' cat', '-', 'like', ' demons', ' nonetheless', ".'", 's', ' coloring', ' was', ' slightly', ' darker', ' than', ' those', ' of', ' their', ' human', ' counterparts', ' as', ' the', ' violet', ' and', ' red', ' around', ' them', ' resembled', ' poisonous', ' insects', ".'", 'The', ' coloring', "'", 'jas', 'mine', ' green', ' color', ' was', ' noted', ' as', ' the', ' same', ' as', ' that', ' of', ' l', 'iger', ' bo', "'s", ' knight', ' ar', 'chn', 'em', 'esis', ' he', 'ctic', ' ice', ' breathing', ' technique', 'ye', 'ow', 'ie', ' alien', ' bird', '(', 'don', 'es', 'qu', 'irling', ')', '\n\n', '\n', 'Out', 'fit', ' Fl', 'air', '<|endoftext|>', 'It', ' was', ' going', ' to', ' be', ' a', ' fun', ' twe', 'en', "'s", ' festival', ' within', ' an', ' event', ' that', ' would', ' once', ' again', ' be', ' an', ' unab', 'ashed', ' liberal', ' magical', ' crack', 'er', 'jack', ' fantasy', '.', ' Duke', ' dominated', ' the', ' girls', ' gatherings', ',', ' didn', "'t", ' respond', ' well', ' to', ' any', ' new', ' children', "'s", ' activities', '.', ' His', ' room', ' was', ' wired', ' to', ' floor', ' g', 'urn', 'e', 'ys', ';', ' he', "'d", ' gone', ' to', ' a', ' party', ' at', ' this', ' high', '-', 'rise', ' back', ' home', ' in', ' H', 'atter', 'as', ',', ' NC', '.', ' But', ' who', ' wore', ' early', '-', '50', "'s", '-', 'd', 'ady', ' white', ' sne', 'ogging', ' pants', ' made', ' quite', ' the', ' showing']
+token_match = 0
 
-dec_ids = [39447,    13, 18168,  3965,   286,   720, 11623,   257,  1110,    11,
-          720,  1495,   572,    11,  2198,  3965,   994,    13,   628,   198,
-         6385,   262,  2323,    12, 13395,   612,   468,   587,   257,  5801,
-         3349,   286,   262,  6891, 12437,  1973,   262,  1748,    13,   347,
-           13,  1086,  2306,   318,  1400,    16,   329,  6891, 12437, 13748,
-          720,  3064,    11,   830, 11462,   319,  7585,    13,   383,  4996,
-          287,  6891,  2727,   416,  1111,   262, 15441,   290, 20825,    70,
-         1749,   318,  4753,  1223,   284,  1011,  1194,   804,   379,    13,
-          632, 21938,   355,   257,  2968,  4205,   523,  2198,   319,   345,
-          821,  8901,   510,    14,  2902,   329,  1306,   640,    13,   921,
-          460,   787,   779,   286,   262,   943, 11471, 21661,  7490, 24800,
-         1989,   329,  5003,   691,    13,   628,   198,  6425,    25,   314,
-         1053,   407,   550,  1714,   329,  1315,  1528,    13,  1041,   301,
-        16845,  1464,   905,   510,   611,   345,   821,  2045,   329, 19317,
-           13,   628,   198,  1532,   345,   466,  4929,  5876,   428,   318,
-         1521,   345,   821,   994,    13, 21167,   514,   379,   262,  1074,
-        20243,  8949,    24, 45300,   403,   520,    11,   678,   400,   275,
-          335,    70, 35219,  1987,  1711,  5230, 43121,  1695,    13, 50256,
-         1212,  1227,   356,  1392,   257,  2863,   284,   467,   284,  2935,
-        36576,   284,  8277,   287, 27558,  3827,  2773, 19321,   338,  2851,
-        12937, 18600,  1141,   262,  2240, 27318,   938,  1755,    13, 16805,
-           11,   340,   655,  8833,   284,   502,   326,   314,  1244,  3551,
-          617,  2198, 31742,  1546,   625,    13,   628,   198,  9237,  7443,
-          796,  3873,   457,  3406, 44764,  1762,   262, 26729,  3250,   449,
-         3150, 10711,  1220, 24014,   370,  9693,  6822,   796,  1542,    11,
-          830,    13,  1400,  1263,  1730,    11,   340,  4962,   503,    13,
-          317,  1178,   348,   441,   840,  8587,   329,   340,    11,   290,
-         5176,  4315, 11793,  3304,    13,   785,   329,  9616,   514,  6938,
-         1853, 16800,   319,  9814,    13,   357,  8205,   408,   883,    30,
-         1400, 13476,  2014, 50256, 15842,   905,    60,   628,   198, 18122,
-          628,   198,    56,  1031,   331,   726,    78,   357, 23604,    25,
-        20543,    89, 22940,   474,  4210,   782,  1395,  4210,  8504, 14192,
-         1399, 10642,  4210, 25649,  4210,  8957,   737,   632,   373,   257,
-          479,  2150, 14035, 26206,  3047,  9695,    25,  2046,    11,  2910,
-           11, 19606,    11, 14357,    11,  6769,  1296,   351,  7078,    11,
-        29044, 12858,   351,  2568, 11975,    11,   290, 10643,  2902,  3918,
-          351, 12833,  5485,  2568, 11975,    13,  6363,  9204,  2568, 29895,
-          925,   340,   257,  2968,  3047,  2891,   329,  3047,  1626,  3223,
-        19806,    82,  1973,   262, 13342,    11,   508,   973,   777,  3797,
-           12,  2339, 17708, 19018,  3693,    16,    60,  5334, 33988,   373,
-         4622, 18646,   621,   883,   286,   511,  1692, 16054,   355,   262,
-        45725,   290,  2266,  1088,   606, 37657, 32199, 19435,  3693,    17,
-           60,   628,   198,  4826,  2410,   628,   198, 22453, 32893,   628,
-          198, 38816, 31447,  4013,  1133,   367,  3383,   554,  4703,  2247,
-          628,   198, 49026, 14665,  5660,   628,   198, 48003,   540,  4100,
-        25481, 35712,   628,   198, 38941,  1355, 10546,   628,   198, 17367,
-        39454,   628,   198, 36248, 12223,   628,   198, 28925,  4351,   628,
-          198, 14304,  1032, 43127,   628,   198, 13543,  1630,   628,   198,
-        33771, 44540,   628,   198, 39746, 19396,  4771,  4269,  8173,   628,
-          198,    37,  2194, 34257, 19460, 47293, 10863, 15919,   628,   198,
-        22968,  3356, 12749,   628,   198,    38,  7931, 11535,   266,    14,
-         3829,  4922, 29437, 23023,   628,   198,  5247,    12, 39499,  9973,
-         3037,   628,   198, 32001, 15839, 11671,  2694,   628,   198,  1544,
-         4272,  9983,   628,   198, 32661, 49826, 18272,   628,   198,    42,
-         2150, 14035,   628,   198,    42,  2150, 13333,  5032,   628,   198,
-           43, 21717, 33009,  3211,  3714,   628,   198,    43,  2150,  5170,
-         1445,   628,   198, 15047,  3101,  9325, 38664, 44478,  2568, 11975,
-          628,   198, 15047,   768,  7216,  5552,   475,   407, 24175,   628,
-          198,  2898,   654,  8173,   628,   198,   464, 22728,  5751, 11865,
-          290, 14357,  2568,   628,   198,  9171, 13492,   911,   789,   278,
-           12,  3538, 13906,   628,   198,  9171, 13492, 25483,    11, 20880,
-         1067,   696,   628,   198,  5308,   576,   338, 11865, 31685,    82,
-         4469, 21682,   628,   198,  8731,  1863,   351, 13197,   628,   198,
-         8731,  1368,   628,   198,    54,  1446, 32555,  5032,   628,   198,
-           41,  6289, 14613,   278,   736, 46737,   628,   198,  2484,   652,
-           84,  3918, 14241,   628,   198,  2484,   652,    84, 11594,  4829,
-         4050,   628,   198, 19184, 13868,   628,   198, 26869,  6590,   530,
-        10158, 28585, 44753, 13333,  3918,   628,   198, 10462,  6648,  3918,
-          628,   198,    51,  7900,  1077,   544,  8173, 20921, 23368, 13079,
-         2124, 16115,  9868,   461, 12003,  8173, 15618,  1242, 23586,  8429,
-         1956, 19735,  4958,  1029, 46971,  2736,  7083, 14528,  3211,  2910,
-           12,  2032,  6648, 15618,  1242,   628,   198, 45638, 14890,  4525,
-          477,  7799,   286,  3801,  3174, 19739,    11,  8806,  4553,    56,
-         1031,   331,   726,    78,   357, 23604,    25, 20543,    89, 22940,
-          474,  4210,   782,  1395,  4210,  8504, 14192, 11580, 10642,  4210,
-        25649,  4210,  8957,   737,   632,   373,   257,   479,  2150, 14035,
-        26206,  3047,  9695,    25,  2046,    11,  2910,    11, 19606,    11,
-        14357,    11,  6769,  1296,   351,  7078,    11, 29044, 12858,   351,
-         2568, 11975,    11,   290, 10643,  2902,  3918,   351, 12833,  5485,
-         2568, 11975,    13,  6363,  9204,  2568, 29895,   925,   340,   257,
-         2968,  3047,  2891,   329,  3047,  1626,  3223, 19806,    82,  1973,
-          262, 13342,    11,   508,   973,   777,  3797,    12,  2339, 17708,
-        19018,  2637,    82, 33988,   373,  4622, 18646,   621,   883,   286,
-          511,  1692, 16054,   355,   262, 45725,   290,  2266,  1088,   606,
-        37657, 32199, 19435,  2637,   464, 33988,     6, 28121,  3810,  4077,
-         3124,   373,  4367,   355,   262,   976,   355,   326,   286,   300,
-         8254,  1489,   338, 22062,   610,  1349,   368,  9339,   339, 11048,
-         4771, 12704,  8173,  5948,   322,   494,  8756,  6512,     7,    67,
-         1952,   421, 24297,     8,   628,   198,  7975, 11147,  1610,   958,
-        50256,  1026,   373,  1016,   284,   307,   257,  1257,  4184,   268,
-          338, 10876,  1626,   281,  1785,   326,   561,  1752,   757,   307,
-          281, 40986,  5263,  7270, 10883,  8469,   263, 19650,  8842,    13,
-        11083, 13354,   262,  4813, 37134,    11,  1422,   470,  3031,   880,
-          284,   597,   649,  1751,   338,  4568,    13,  2399,  2119,   373,
-        28217,   284,  4314,   308,   700,    68,   893,    26,   339,  1549,
-         3750,   284,   257,  2151,   379,   428,  1029,    12, 17163,   736,
-         1363,   287,   367,  1436,   292,    11,  8823,    13,   887,   508,
-        12408,  1903,    12,  1120,   338,    12,    67,  4597,  2330, 10505,
-        30853, 12581,   925,  2407,   262,  4478]
+# results:
+# [-0.4472135954999579, 1.073312629199899, 1.6099689437998486, 1.2521980673998823, 1.6994116628998401, -1.8782971010998233]
+# use 0.001 for now
+def find_delta(keys, h, m, c):
+  deltas = [0.00001, 0.0001, .001, .01, .1, .5]
+  delta_counters = [0 for _ in deltas]
+  # search for what delta works best
+  for _ in range(10):
+    for delta in deltas:
+      recovered_counters = test(keys, h, m, delta, c)
+      result = recovered_counters[0]
+      delta_counters[deltas.index(delta)] += result
+  avg_delta_counters = [x / 10 for x in delta_counters]
+  print(avg_delta_counters)
+  detection = [detect(get_limit(None) * 10, x) for x in delta_counters]
+  print(detection)
 
-# dec = [tokenizer.decode(t) for t in dec_ids]
+def mismatch(enc_ids, dec_ids):
+  enc = [tokenizer.decode(t) for t in enc_ids]
+  dec = [tokenizer.decode(t) for t in dec_ids]
+  print(enc)
+  print(dec)
 
-dec = [' Oy', '.', ' Weekly', ' rates', ' of', ' $', '125', ' a', ' day', ',', ' $', '25', ' off', ',', ' check', ' rates', ' here', '.', '\n\n', '\n', 'Since', ' the', ' ground', '-', 'breaking', ' there', ' has', ' been', ' a', ' rapid', ' growth', ' of', ' the', ' coffee', ' shops', ' across', ' the', ' city', '.', ' B', '.', ' Bl', 'aut', ' is', ' No', '1', ' for', ' coffee', ' shops', ' earning', ' $', '100', ',', '000', ' guaranteed', ' on', ' delivery', '.', ' The', ' variety', ' in', ' coffee', ' created', ' by', ' both', ' the', ' designers', ' and', ' cater', 'g', 'ories', ' is', ' definitely', ' something', ' to', ' take', ' another', ' look', ' at', '.', ' It', ' doubles', ' as', ' a', ' popular', ' tour', ' so', ' check', ' on', ' you', "'re", ' pump', ' up', '/', 'down', ' for', ' next', ' time', '.', ' You', ' can', ' make', ' use', ' of', ' the', ' Ar', 'tery', ' Jama', 'ican', ' seating', ' area', ' for', ' cash', ' only', '.', '\n\n', '\n', 'Note', ':', ' I', "'ve", ' not', ' had', ' sex', ' for', ' 15', ' days', '.', ' Pro', 'st', 'itutes', ' always', ' show', ' up', ' if', ' you', "'re", ' looking', ' for', ' dick', '.', '\n\n', '\n', 'If', ' you', ' do', ' catch', ' trouble', ' this', ' is', ' why', ' you', "'re", ' here', '.', ' Meet', ' us', ' at', ' the', ' team', ' workshop', ' 101', '9', ' Wem', 'un', ' St', ',', ' 19', 'th', ' b', 'ld', 'g', ' UNDER', ' 24', ' hour', ' internet', ' wifi', ' available', '.', '<|endoftext|>', 'This', ' month', ' we', ' got', ' a', ' chance', ' to', ' go', ' to', ' Des', ' Moines', ' to', ' participate', ' in', ' Tips', ' Over', ' Some', ' Brewing', "'s", ' Dragon', ' Hunt', ' booth', ' during', ' the', ' pub', ' crawl', ' last', ' night', '.', ' Okay', ',', ' it', ' just', ' occurs', ' to', ' me', ' that', ' I', ' might', ' write', ' some', ' check', ' TIM', 'ES', ' over', '.', '\n\n', '\n', 'Event', ' History', ' =', ' Ke', 'pt', ' Your', ' Mouth', ' working', ' the', ' Theme', ' Park', ' J', 'oms', 'bury', ' /', ' Ticket', ' W', 'SH', ' Check', ' =', ' 30', ',', '000', '.', ' No', ' big', ' deal', ',', ' it', ' turns', ' out', '.', ' A', ' few', ' wh', 'ack', ' ass', ' tickets', ' for', ' it', ',', ' and', ' thanks', ' crowd', 'sur', 'vey', '.', 'com', ' for', ' letting', ' us', ' taste', ' 2015', ' beers', ' on', ' tap', '.', ' (', 'Gu', 'ess', ' those', '?', ' No', ' glory', '.)', '<|endoftext|>', 'Contents', ' show', ']', '\n\n', '\n', 'History', '\n\n', '\n', 'Y', 'az', ' y', 'oy', 'o', ' (', 'Chinese', ':', ' �', 'z', 'â', ' j', '�', 'ng', ' X', '�', ' Non', 'stan', '…', ' Yan', '�', 'nerg', '�', 'pa', ').', ' It', ' was', ' a', ' k', 'ung', ' fu', ' fury', ' training', ' characteristics', ':', ' fire', ',', ' blood', ',', ' sunlight', ',', ' lightning', ',', ' wave', ' form', ' with', ' pitch', ',', ' punching', ' momentum', ' with', ' energy', ' blast', ',', ' and', ' knock', 'down', ' style', ' with', ' insect', ' shape', ' energy', ' blast', '.', ' Its', ' vital', ' energy', ' blasts', ' made', ' it', ' a', ' popular', ' training', ' tool', ' for', ' training', ' within', ' dark', ' guild', 's', ' across', ' the', ' globe', ',', ' who', ' used', ' these', ' cat', '-', 'like', ' demons', ' nonetheless', '.[', '1', ']', ' Their', ' coloring', ' was', ' slightly', ' darker', ' than', ' those', ' of', ' their', ' human', ' counterparts', ' as', ' the', ' violet', ' and', ' red', ' around', ' them', ' resembled', ' poisonous', ' insects', '.[', '2', ']', '\n\n', '\n', 'Ab', 'ilities', '\n\n', '\n', 'Ability', ' Processor', '\n\n', '\n', 'Feature', ' Abilities', ' Ac', 'ute', ' H', 'oming', ' In', 'vis', 'ibility', '\n\n', '\n', 'Enhanced', ' Urban', ' Run', '\n\n', '\n', 'Adapt', 'able', ' Mac', 'robe', ' Uniform', '\n\n', '\n', 'Bloom', ' Be', 'aman', '\n\n', '\n', 'Dark', ' Finger', '\n\n', '\n', 'Dual', ' Crown', '\n\n', '\n', 'Energy', ' transfer', '\n\n', '\n', 'Fe', 'ather', 'footed', '\n\n', '\n', 'Fire', ' control', '\n\n', '\n', 'Fly', ' Bite', '\n\n', '\n', 'Forward', ' bend', ' ice', ' stream', ' technique', '\n\n', '\n', 'F', 'ender', ' Combo', ' Ske', 'letal', ' GR', 'OUND', '\n\n', '\n', 'Fast', ' movement', ' muscles', '\n\n', '\n', 'G', ' Iron', ' Sword', ' w', '/', '90', ' degree', ' Hip', ' Pierce', '\n\n', '\n', 'Go', '-', 'Yellow', ' Flash', ' technology', '\n\n', '\n', 'Ghost', ' Orb', ' Blade', ' ability', '\n\n', '\n', 'He', 'aling', ' Staff', '\n\n', '\n', 'Hum', 'iliate', ' Feed', '\n\n', '\n', 'K', 'ung', ' fu', '\n\n', '\n', 'K', 'ung', ' Fu', ' skill', '\n\n', '\n', 'L', ' Bone', ' cane', ' arm', ' throw', '\n\n', '\n', 'L', 'ung', ' killing', ' move', '\n\n', '\n', 'Light', 'ening', ' Cro', 'tch', ' Breaker', ' energy', ' blast', '\n\n', '\n', 'Light', 'ning', ' sending', ' grab', ' but', ' not', ' strengthening', '\n\n', '\n', 'Tr', 'ings', ' technique', '\n\n', '\n', 'The', ' Mean', ' Stand', ' blade', ' and', ' lightning', ' energy', '\n\n', '\n', 'Met', 'eor', ' Sh', 'ower', 'ing', '-', ' easily', ' activated', '\n\n', '\n', 'Met', 'eor', ' Fuel', ',', ' stretching', ' cr', 'amp', '\n\n', '\n', 'Me', 'ile', "'s", ' blade', ' deflect', 's', ' background', ' frost', '\n\n', '\n', 'Wind', ' along', ' with', ' bite', '\n\n', '\n', 'Wind', ' attack', '\n\n', '\n', 'W', ' Sc', 'issors', ' skill', '\n\n', '\n', 'J', ' Club', ' thrust', 'ing', ' back', 'swing', '\n\n', '\n', 'Sh', 'ory', 'u', ' style', ' cancel', '\n\n', '\n', 'Sh', 'ory', 'u', ' chip', ' kick', ' effective', '\n\n', '\n', 'Water', ' Release', '\n\n', '\n', 'Roll', ' violent', ' one', ' handed', ' repetitive', ' Kung', ' Fu', ' style', '\n\n', '\n', 'Sw', 'earing', ' style', '\n\n', '\n', 'T', ' Ah', 'ash', 'ia', ' technique', ' Buddh', 'awi', ' endless', ' x', 'iu', 'ogy', 'ak', 'udo', ' technique', ' martial', ' art', ' rogue', ' sword', ' land', ' swords', ' master', ' high', 'Gra', 'ze', ' extended', ' twist', ' arm', ' blood', '-', 'sw', 'earing', ' martial', ' art', '\n\n', '\n', 'Technical', ' Details', ' Like', ' all', ' teachers', ' of', ' Dark', 'force', ' Curse', ',', ' personality', ' separate', 'Y', 'az', ' y', 'oy', 'o', ' (', 'Chinese', ':', ' �', 'z', 'â', ' j', '�', 'ng', ' X', '�', ' Non', 'stan', '….', ' Yan', '�', 'nerg', '�', 'pa', ').', ' It', ' was', ' a', ' k', 'ung', ' fu', ' fury', ' training', ' characteristics', ':', ' fire', ',', ' blood', ',', ' sunlight', ',', ' lightning', ',', ' wave', ' form', ' with', ' pitch', ',', ' punching', ' momentum', ' with', ' energy', ' blast', ',', ' and', ' knock', 'down', ' style', ' with', ' insect', ' shape', ' energy', ' blast', '.', ' Its', ' vital', ' energy', ' blasts', ' made', ' it', ' a', ' popular', ' training', ' tool', ' for', ' training', ' within', ' dark', ' guild', 's', ' across', ' the', ' globe', ',', ' who', ' used', ' these', ' cat', '-', 'like', ' demons', ' nonetheless', ".'", 's', ' coloring', ' was', ' slightly', ' darker', ' than', ' those', ' of', ' their', ' human', ' counterparts', ' as', ' the', ' violet', ' and', ' red', ' around', ' them', ' resembled', ' poisonous', ' insects', ".'", 'The', ' coloring', "'", 'jas', 'mine', ' green', ' color', ' was', ' noted', ' as', ' the', ' same', ' as', ' that', ' of', ' l', 'iger', ' bo', "'s", ' knight', ' ar', 'chn', 'em', 'esis', ' he', 'ctic', ' ice', ' breathing', ' technique', 'ye', 'ow', 'ie', ' alien', ' bird', '(', 'd', 'ones', 'qu', 'irling', ')', '\n\n', '\n', 'Out', 'fit', ' Fl', 'air', '<|endoftext|>', 'It', ' was', ' going', ' to', ' be', ' a', ' fun', ' twe', 'en', "'s", ' festival', ' within', ' an', ' event', ' that', ' would', ' once', ' again', ' be', ' an', ' unab', 'ashed', ' liberal', ' magical', ' crack', 'er', 'jack', ' fantasy', '.', ' Duke', ' dominated', ' the', ' girls', ' gatherings', ',', ' didn', "'t", ' respond', ' well', ' to', ' any', ' new', ' children', "'s", ' activities', '.', ' His', ' room', ' was', ' wired', ' to', ' floor', ' g', 'urn', 'e', 'ys', ';', ' he', "'d", ' gone', ' to', ' a', ' party', ' at', ' this', ' high', '-', 'rise', ' back', ' home', ' in', ' H', 'atter', 'as', ',', ' NC', '.', ' But', ' who', ' wore', ' early', '-', '50', "'s", '-', 'd', 'ady', ' white', ' sne', 'ogging', ' pants', ' made', ' quite', ' the', ' showing']
+  # compare how many indices are the same
+  same = 0
+  # smaller list index
+  limit = min(len(enc_ids), len(dec_ids))
+  for i in range(limit):
+    if enc_ids[i] == dec_ids[i]:
+      same += 1
+  print('num same: ', same)
+  print('dec length: ', len(dec_ids))
 
-# for idx in range(len(dec)):
-#     if (enc[idx] != dec[idx]):
-#         print('--------------')
-#         print(idx)
-#         print(enc[idx], dec[idx])
-#         exit(0)
-#     print(enc[idx], dec[idx])
+def test(keys, h, m, delta, c):
+  global token_match
+  ct, tokens = encode(keys, h, m, delta, c)
+  print('-------------------')
+  recovered_counters, decode_tokens = decode(keys, h, ct, None, c)
+  same = torch.equal(tokens['input_ids'], decode_tokens['input_ids'])
+  print('Tokens match: ', same)
+  if (same):
+    token_match += 1
+  if (not same):
+    mismatch(tokens['input_ids'][0], decode_tokens['input_ids'][0])
 
-for t in dec:
-    print(t)
+  print('-------------------')
+  print(ct)
+  print(recovered_counters)
+
+#   for i in range(len(recovered_counters)):
+#     print(detect(get_limit(None), recovered_counters[i]))
+  m_prime = [1 if detect(get_limit(None), x) else 0 for x in recovered_counters]
+  print('m_prime: ', m_prime)
+
+  return recovered_counters
+
+m = [1, 0, 1, 1, 0]
+l = len(m)
+keys = [b'\0' * 32, b'\1' * 32, b'\2' * 32, b'\3' * 32, b'\4' * 32]
+h = ['Hey! Want to get coffee? ', 'Would Friday work for you?']
+c = 3
+delta = 0.001
+
+# find_delta(keys, h, m, c)
+
+# delta = 0.01
+# test how many times encode and decode perfectly match
+# for _ in range(15):
+#   test(keys, h, m, delta, c)
+
+test(keys, h, m, delta, c)
+
+print('Token match: ', token_match)

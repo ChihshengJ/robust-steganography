@@ -52,6 +52,17 @@ def PRF(key, salt, n_gram, c):
   return truncate_to_vocab_size(prf(key, digest), vocab_size)
   # return ([1] * 25000) + ([0] * (vocab_size - 25000))
 
+# c is the number of tokens to use
+def PRF_t(key, salt, n_gram, c):
+  full_gram = n_gram["input_ids"].tolist()[0]
+  c_gram = full_gram[-c:]
+  salted_bytes = [salt] + c_gram
+  encoded_bytes = int_list_to_bytes(salted_bytes)
+
+  digest = nacl.hash.sha256(encoded_bytes) # 64 bytes
+  return truncate_to_vocab_size(prf(key, digest), vocab_size)
+  # return ([1] * 25000) + ([0] * (vocab_size - 25000))
+
 """
 Truncate the output of a PRF to the size of the vocabulary (1 bit per vocab word)
 """

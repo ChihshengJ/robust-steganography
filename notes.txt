@@ -1,0 +1,5 @@
+All prfs match succesffully when encode and decode tokens match
+
+still a problem with encode/decode mismatches
+
+Check if indexing into r is correct?

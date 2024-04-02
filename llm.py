@@ -39,6 +39,20 @@ def get_next_word_distribution(input_text, tokenizer, model):
 
   return probabilities
 
+def get_next_token_distribution(input, model):
+  # get output logits
+  output = model(**input)
+
+  logits = output.logits[0]
+
+  # Apply softmax to get probabilities
+  all_layers_probabilities = torch.softmax(logits, dim=-1)
+
+  # Get the probabilities from the last layer
+  probabilities = all_layers_probabilities[-1]
+
+  return probabilities
+
 def sample_token(probabilities):
   # Sample a token from the probability distribution
   index = torch.multinomial(probabilities, 1).item()
@@ -47,6 +61,12 @@ def sample_token(probabilities):
   # Decode the token IDs to text
   decoded_text = tokenizer.decode(index)
   return decoded_text
+
+def sample_token_id(probabilities):
+  # Sample a token from the probability distribution
+  index = torch.multinomial(probabilities, 1).item()
+  
+  return index
 
 """
 Generate the next word prediction given an input text using a language model.
