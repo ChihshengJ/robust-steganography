@@ -1,33 +1,21 @@
 -------------------
 Tokens match:  False
-['Hey', '!', ' Want', ' to', ' get', ' coffee', '?', ' Would', ' Friday', ' work', ' for', ' you', '?', ' We', ' have', ' seven', ' Starbucks', ' locations', '.', ' Just', ' call', ' them', ' at', ' 800', '.', '606', '.', '24', '21', ' to', ' ask', '."', '\n', '\n', 'The', ' result', ' for', ' when', ' the', ' Memories', ' have', ' at', ' last', ' tam', 'pered', ' with', ' Mr', '.', ' Benn', 'et', "'s", ' crisis', '-', 'free', '-', 'or', '-', 'two', ' willpower', '-', 'awareness', ' self', '-', 'administ', 'ration', ':', ' they', "'ve", ' just', ' struck', ' three', ' orders', ' in', ' a', ' row', '.', '\n', '\n', 'GD', ' Star', ' Rating', '\n', '\n', 'loading', '...', '<|endoftext|>', 'A', ' Val', 'ek', ' Dak', 'o', ' Kl', 'ub', '\n', '\n', 'The', ' po', 'ch', 'sel', 'k', 'ü', 'den', ' den', ' spect', 'ator', 'ier', ',', ' a', ' woven', ' mosaic', ' of', ' painted', ' sails']
-['Hey', '!', ' Want', ' to', ' get', ' coffee', '?', ' Would', ' Friday', ' work', ' for', ' you', '?', ' We', ' have', ' seven', ' Starbucks', ' locations', '.', ' Just', ' call', ' them', ' at', ' 800', '.', '606', '.', '24', '21', ' to', ' ask', '."', '\n', '\n', 'The', ' result', ' for', ' when', ' the', ' Memories', ' have', ' at', ' last', ' tam', 'pered', ' with', ' Mr', '.', ' Benn', 'et', "'s", ' crisis', '-', 'free', '-', 'or', '-', 'two', ' willpower', '-', 'awareness', ' self', '-', 'administ', 'ration', ':', ' they', "'ve", ' just', ' struck', ' three', ' orders', ' in', ' a', ' row', '.', '\n', '\n', 'GD', ' Star', ' Rating', '\n', '\n', 'loading', '...', '<|endoftext|>', 'A', ' Val', 'ek', ' Dak', 'o', ' Kl', 'ub', '\n', '\n', 'The', ' po', 'ch', 'sel', 'k', 'ü', 'den', ' den', ' spectator', 'ier', ',', ' a', ' woven', ' mosaic', ' of', ' painted', ' sails']
-mismatch at index:  103
-mismatch at index:  104
-mismatch at index:  105
-mismatch at index:  106
-mismatch at index:  107
-mismatch at index:  108
-mismatch at index:  109
-mismatch at index:  110
-mismatch at index:  111
-num same:  103
-dec length:  112
+['Hey', '!', ' Want', ' to', ' get', ' coffee', '?', ' Would', ' Friday', ' work', ' for', ' you', '?', '\n', '\n', 'Unfortunately', ',', ' no', '.', ' We', ' don', "'t", ' offer', ' minors', ' coffee', ' in', ' the', ' beginning', ' learned', ' classes', ' so', ' this', ' would', ' not', ' fit', ' our', ' pal', 'lete', '.', ' If', ' it', ' does', ' work', ',', ' though', ',', ' it', ' may', ' be', ' fun', ' to', ' listen', ' to', ' some', ' good', ' fast', ',', ' fun', ' music', ' from', ' Gib', 'by', ' Dark', '?', ' The', ' combination', ' of', ' people', ' he', ' grew', ' up', ' with', ' and', ' drugs', ' after', ' school', ' hinges', ' a', ' lot', ' on', ' whats', ' going', ' on', ' behind', ' that', ' door', '.', ' If', ' that', "'s", ' at', ' all', ' something', ' you', ' actually', ' want', ' to', ' get', ' into', ',', ' you', ' in', ' for', ' a', ' treat', '!', ' Check', ' out', ' the', ' picture', ' eleg', 'antly', ' below']
+['Hey', '!', ' Want', ' to', ' get', ' coffee', '?', ' Would', ' Friday', ' work', ' for', ' you', '?', '\n', '\n', 'Unfortunately', ',', ' no', '.', ' We', ' don', "'t", ' offer', ' minors', ' coffee', ' in', ' the', ' beginning', ' learned', ' classes', ' so', ' this', ' would', ' not', ' fit', ' our', ' pal', 'lete', '.', ' If', ' it', ' does', ' work', ',', ' though', ',', ' it', ' may', ' be', ' fun', ' to', ' listen', ' to', ' some', ' good', ' fast', ',', ' fun', ' music', ' from', ' Gib', 'by', ' Dark', '?', ' The', ' combination', ' of', ' people', ' he', ' grew', ' up', ' with', ' and', ' drugs', ' after', ' school', ' hinges', ' a', ' lot', ' on', ' whats', ' going', ' on', ' behind', ' that', ' door', '.', ' If', ' that', "'s", ' at', ' all', ' something', ' you', ' actually', ' want', ' to', ' get', ' into', ',', ' you', ' in', ' for', ' a', ' treat', '!', ' Check', ' out', ' the', ' picture', ' eleg', 'antly', ' below']
+mismatch at index:  63
+enc mismatch:  tensor(5633) ?
+dec mismatch:  tensor(30) ?
+num same:  112
+dec length:  113
 -------------------
-Hey! Want to get coffee? Would Friday work for you? We have seven Starbucks locations. Just call them at 800.606.2421 to ask."
+Hey! Want to get coffee? Would Friday work for you?
 
-The result for when the Memories have at last tampered with Mr. Bennet's crisis-free-or-two willpower-awareness self-administration: they've just struck three orders in a row.
-
-GD Star Rating
-
-loading...<|endoftext|>A Valek Dako Klub
-
-The pochselküden den spectatorier, a woven mosaic of painted sails
-[56, 63, 42, 52, 50]
-100 56
-100 63
-100 42
-100 52
-100 50
-m_prime:  [0, 1, 0, 0, 0]
+Unfortunately, no. We don't offer minors coffee in the beginning learned classes so this would not fit our pallete. If it does work, though, it may be fun to listen to some good fast, fun music from Gibby Dark? The combination of people he grew up with and drugs after school hinges a lot on whats going on behind that door. If that's at all something you actually want to get into, you in for a treat! Check out the picture elegantly below
+[53, 53, 48, 43, 46]
+100 53
+100 53
+100 48
+100 43
+100 46
+m_prime:  [0, 0, 0, 0, 0]
 Token match:  0

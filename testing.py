@@ -42,6 +42,8 @@ def mismatch(enc_ids, dec_ids):
       same += 1
     else:
         print('mismatch at index: ', i)
+        print('enc mismatch: ', enc_ids[i], tokenizer.decode(enc_ids[i]))
+        print('dec mismatch: ', dec_ids[i], tokenizer.decode(dec_ids[i]))
   print('num same: ', same)
   print('dec length: ', len(dec_ids))
 
