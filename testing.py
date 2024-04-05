@@ -5,6 +5,7 @@ set_deterministic_behavior()
 # rest of needed imports
 from llm import tokenizer
 from steg import encode, decode
+from prf import PRF_t
 from Helpers import detect, get_z, get_limit, generate_n_grams_with_counts, count_maintained_n_grams_with_frequency
 import torch
 
@@ -63,6 +64,26 @@ def test(keys, h, m, delta, c):
 
   return recovered_counters
 
+def count_perfect_matches(keys, h, m, delta, c, num):
+  # test how many times encode and decode perfectly match
+  for _ in range(num):
+    test(keys, h, m, delta, c)
+  print('Token match: ', token_match)
+
+def prf_bias():
+  key = b'\0' * 32
+  n_gram = {'input_ids': torch.tensor([[1, 2, 3, 4, 5, 6]])}
+  c = 3
+
+  summed_percentages = 0
+
+  for salt in range(100):
+    output = PRF_t(key, salt, n_gram, c)
+    percentage = sum(output) / len(output)
+    summed_percentages += percentage
+  
+  print(summed_percentages / 100)
+
 # m = [1, 0, 1, 1, 0]
 m = [1, 0, 1]
 l = len(m)
@@ -70,15 +91,7 @@ l = len(m)
 keys = [b'\0' * 32, b'\1' * 32, b'\2' * 32,]
 h = ['Hey! Want to get coffee? ', 'Would Friday work for you?']
 c = 3
-# delta = 0.001
-
-# find_delta([b'\0' * 32], h, [1], c)
-
 delta = 0.01
-# test how many times encode and decode perfectly match
-# for _ in range(15):
-#   test(keys, h, m, delta, c)
 
-test(keys, h, m, delta, c)
+prf_bias()
 
-print('Token match: ', token_match)
