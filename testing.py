@@ -1,13 +1,14 @@
 # make deterministic for testing
 from config_determinism import set_deterministic_behavior
-set_deterministic_behavior()
+# set_deterministic_behavior()
 
 # rest of needed imports
 from llm import tokenizer
 from steg import encode, decode
 from prf import PRF_t
-from Helpers import detect, get_z, get_limit, generate_n_grams_with_counts, count_maintained_n_grams_with_frequency
+from Helpers import detect, get_z, get_limit, generate_n_grams_with_counts, count_maintained_n_grams_with_frequency, sample_bit
 import torch
+import os
 
 token_match = 0
 
@@ -41,6 +42,13 @@ def mismatch(enc_ids, dec_ids, c):
   print('Maintained c-grams: ', maintained_c_grams)
 
 def test(keys, h, m, delta, c):
+  ct, tokens = encode(keys, h, m, delta, c)
+  recovered_counters, decode_tokens = decode(keys, h, ct, None, c)
+  m_prime = [1 if detect(get_limit(None), x) else 0 for x in recovered_counters]
+
+  return m_prime
+
+def test_with_logging(keys, h, m, delta, c):
   global token_match
   ct, tokens = encode(keys, h, m, delta, c)
   print('-------------------')
@@ -58,11 +66,34 @@ def test(keys, h, m, delta, c):
 
 #   for i in range(len(recovered_counters)):
 #     print(detect(get_limit(None), recovered_counters[i]))
+  print([get_z(get_limit(None), x) for x in recovered_counters])
   m_prime = [1 if detect(get_limit(None), x) else 0 for x in recovered_counters]
   print('m: ', m)
   print('m_prime: ', m_prime)
 
-  return recovered_counters
+  return m_prime
+
+def batch_test(message_length, num_tests):
+  print('Batch test')
+  print('Covertext Size: ', get_limit(None))
+  print('message_length: ', message_length)
+  print('num_tests: ', num_tests)
+  print('-------------------')
+  matches = 0
+  for _ in range(num_tests):
+    m = [sample_bit() for _ in range(message_length)]
+    keys = [os.urandom(32) for _ in range(message_length)]
+    h = ['Hey! Want to get coffee? ', 'Would Friday work for you?']
+    c = 3
+    delta = 0.01
+    m_prime = test(keys, h, m, delta, c)
+    print('m: ', m)
+    print('m_prime: ', m_prime)
+    print(m == m_prime)
+    print('-------------------')
+    if m == m_prime:
+      matches += 1
+  print('Matches: ', matches)
 
 def count_perfect_matches(keys, h, m, delta, c, num):
   # test how many times encode and decode perfectly match
@@ -93,5 +124,6 @@ h = ['Hey! Want to get coffee? ', 'Would Friday work for you?']
 c = 3
 delta = 0.01
 
-prf_bias()
+# test(keys, h, m, delta, c)
+batch_test(6, 20)
 

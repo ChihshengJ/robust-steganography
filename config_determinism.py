@@ -14,7 +14,7 @@ def set_deterministic_behavior():
 
     # Set seed and deterministic options for PyTorch
     # 5 causes a token mismatch where '?' has two different token IDs in encode vs decode. See 5.txt
-    torch.manual_seed(8)
+    torch.manual_seed(9)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 

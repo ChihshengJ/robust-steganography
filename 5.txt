@@ -1,0 +1,21 @@
+-------------------
+Tokens match:  False
+['Hey', '!', ' Want', ' to', ' get', ' coffee', '?', ' Would', ' Friday', ' work', ' for', ' you', '?', '\n', '\n', 'Unfortunately', ',', ' no', '.', ' We', ' don', "'t", ' offer', ' minors', ' coffee', ' in', ' the', ' beginning', ' learned', ' classes', ' so', ' this', ' would', ' not', ' fit', ' our', ' pal', 'lete', '.', ' If', ' it', ' does', ' work', ',', ' though', ',', ' it', ' may', ' be', ' fun', ' to', ' listen', ' to', ' some', ' good', ' fast', ',', ' fun', ' music', ' from', ' Gib', 'by', ' Dark', '?', ' The', ' combination', ' of', ' people', ' he', ' grew', ' up', ' with', ' and', ' drugs', ' after', ' school', ' hinges', ' a', ' lot', ' on', ' whats', ' going', ' on', ' behind', ' that', ' door', '.', ' If', ' that', "'s", ' at', ' all', ' something', ' you', ' actually', ' want', ' to', ' get', ' into', ',', ' you', ' in', ' for', ' a', ' treat', '!', ' Check', ' out', ' the', ' picture', ' eleg', 'antly', ' below']
+['Hey', '!', ' Want', ' to', ' get', ' coffee', '?', ' Would', ' Friday', ' work', ' for', ' you', '?', '\n', '\n', 'Unfortunately', ',', ' no', '.', ' We', ' don', "'t", ' offer', ' minors', ' coffee', ' in', ' the', ' beginning', ' learned', ' classes', ' so', ' this', ' would', ' not', ' fit', ' our', ' pal', 'lete', '.', ' If', ' it', ' does', ' work', ',', ' though', ',', ' it', ' may', ' be', ' fun', ' to', ' listen', ' to', ' some', ' good', ' fast', ',', ' fun', ' music', ' from', ' Gib', 'by', ' Dark', '?', ' The', ' combination', ' of', ' people', ' he', ' grew', ' up', ' with', ' and', ' drugs', ' after', ' school', ' hinges', ' a', ' lot', ' on', ' whats', ' going', ' on', ' behind', ' that', ' door', '.', ' If', ' that', "'s", ' at', ' all', ' something', ' you', ' actually', ' want', ' to', ' get', ' into', ',', ' you', ' in', ' for', ' a', ' treat', '!', ' Check', ' out', ' the', ' picture', ' eleg', 'antly', ' below']
+mismatch at index:  63
+enc mismatch:  tensor(5633) ?
+dec mismatch:  tensor(30) ?
+num same:  112
+dec length:  113
+-------------------
+Hey! Want to get coffee? Would Friday work for you?
+
+Unfortunately, no. We don't offer minors coffee in the beginning learned classes so this would not fit our pallete. If it does work, though, it may be fun to listen to some good fast, fun music from Gibby Dark? The combination of people he grew up with and drugs after school hinges a lot on whats going on behind that door. If that's at all something you actually want to get into, you in for a treat! Check out the picture elegantly below
+[53, 53, 48, 43, 46]
+100 53
+100 53
+100 48
+100 43
+100 46
+m_prime:  [0, 0, 0, 0, 0]
+Token match:  0

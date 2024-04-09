@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from collections import Counter
+from llm import tokenizer
 
 def get_limit(num_watermarks):
   #! temporary constant
@@ -13,6 +14,9 @@ def sample_key(keys):
   random_index = np.random.randint(len(keys))
   return keys[random_index]
 
+def sample_bit():
+  return np.random.randint(2)
+
 # T is the number of tokens generated
 # s_g is the number of green list tokens
 def detect(T, s_g):
@@ -24,6 +28,13 @@ def get_z(T, s_g):
   print (T, s_g)
   z = (2 * (s_g - T / 2)) / math.sqrt(T)
   return z
+
+def to_tokens(text):
+  tokens = tokenizer(text, return_tensors='pt')
+  return tokens
+
+def get_ids(tokens):
+   return [id.item() for id in tokens['input_ids'][0]]
 
 def generate_n_grams_with_counts(lst, n):
     """Generate n-grams from a list along with their counts."""

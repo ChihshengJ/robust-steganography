@@ -16,59 +16,58 @@ Implements the perturb function from our paper.
 p: distribution, r: prf output, delta: amount to adjust logits by
 Returns a perturbed distribution p' (p is updated in place to become p' and p is returned)
 """
-#! try just add and renormalize (no subtraction)
-#! try setting r[j] == 0 -> p[j] = 0 for testing to see if the watermark comes through (then renormalize)
-#! test bias of prf
 def perturb(p, r, delta):
-#   print('p: ', p)
-#   print('p sum: ', sum(p))
-  # print('in perturb')
-  #! check that this is right and that p can be updated in place. Also check that p' sums to 1
   N = vocab_size
 
-  # Set w to be the number of indices in [N] for which r_i = 1 and δ′ = δw/(N′ − w).
-  #! double check
+  # Set w to be the number of indices in [N] for which r_i = 1
   w = sum(r)
-  #! the formula says N_prime - w. Is this a typo? N_prime is never defined
-  delta_prime = (delta * w) / (N - w)
 
   # Build I: set of indices in [N] for which p_i ∈ [2δ, 1 − 2δ].
   I = set()
   for i, p_i in enumerate(p):
-    #! temp testing
-    # I.add(i)
-    if (p_i >= delta_prime and p_i <= 1 - delta):
+    if (p_i >= delta and p_i <= 1 - delta):
       I.add(i)
-    #! end temp testing
-    # if (p_i >= 2 * delta and p_i <= 1 - 2 * delta):
-    #   I.add(i)
 
-#   print('I: ', I)
+  num_inc = 0
 
   # Adjust probabilities
   for j in I:
-    # print('j: ', j)
-    # print('r[j]: ', r[j])
-    # print('p[j]: ', p[j])
     if (r[j] == 1):
+      num_inc += 1
       p[j] += delta
-    else:
-      p[j] -= delta_prime
-      #! temp testing
-      if (p[j] < 0):
-        print(I)
-        print(delta)
-        print(delta_prime)
-        print(j, p[j])
-        # p[j] = 0
-      #! end temp testing
-    # print('p_prime[j]: ', p[j])
+
+  for j in range(len(r)):
+    if (r[j] == 0):
+      p[j] = 0
+
   # the j not in I stay the same and since p was updated in place this has been handled
-#   print('p\': ', p)
+  # if len(I) > 0:
+  #   print(num_inc / len(I))
+
   p = p / sum(p)
-#   print('p\' sum: ', sum(p))
 
   return p
+
+def encode_zeros(h):
+  limit = get_limit(None)
+
+  # tokenize history
+  text = ''.join(h) #! what seperator should we use?
+  tokens = tokenizer(text, return_tensors='pt')
+
+  for j in tqdm(range(limit)):
+    # Apply the language model over previous tokens to get a probability distribution p over the tth token
+    p = get_next_token_distribution(tokens, model)
+    # sample next token
+    token = sample_token_id(p, tokens['input_ids'][0][-1].item())
+    token_tensor = torch.tensor([[token]])
+    tokens['input_ids'] = torch.cat((tokens['input_ids'], token_tensor), dim=1)
+    tokens['attention_mask'] = torch.cat((tokens['attention_mask'], torch.tensor([[1]])), dim=1)
+
+  text =[tokenizer.decode(t.item()) for t in tokens['input_ids'][0]]
+  text = ''.join(text)
+
+  return text, tokens
 
 """
 keys, history, message to be encoded, hardness parameter delta
@@ -76,6 +75,11 @@ keys, history, message to be encoded, hardness parameter delta
 def encode(keys, h, m, delta, c):
   # get keys that correspond to 1s in message
   watermarking_keys = get_keys_to_use(m, keys)
+
+  # if message is all 0s, can't sample watermarking key
+  if len(watermarking_keys) == 0:
+    return encode_zeros(h)
+
   # get loop limit that is large enough that in expectation, each watermarking key is used enough
   limit = get_limit(len(watermarking_keys))
   # Compute the salt s from the history h
