@@ -1,3 +1,11 @@
+import seaborn as sns
+import matplotlib.pylab as plt
+from scipy.spatial.distance import cdist
+from sentence_transformers import SentenceTransformer
+model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+
+
+
 originals = [
     "A basso porto (At the Lower Harbour) is an opera in three acts by the Italian composer Niccola Spinelli. The opera sets an Italian-language libretto by Eugene Checchi, based on Goffredo Cognetti's 1889 play O voto. It premiered to critical success at the Cologne Opera on April 18, 1894, sung in a German translation by Ludwig Hartmann and Otto Hess. This watercolour illustration depicts the set design by Riccardo Salvadori for act 1 of the opera's premiere. A basso porto is set in the slums of Naples, and Spinelli included mandolins and guitars in his orchestral score.",
 
@@ -169,3 +177,16 @@ paraphrases = [
 
     "And just a heads-up, avoid having cryptocurrency transactions with your bank if you're applying for a mortgage—they really scrutinize that and I had to answer a ton of questions! 😂😂😂",
 ]
+
+# compute embeddings
+original_embeddings = model.encode(originals)
+paraphrase_embeddings = model.encode(paraphrases)
+
+# compute similarities
+cosine_matrix = cdist(original_embeddings, paraphrase_embeddings, metric='cosine')
+euclidean_matrix = cdist(original_embeddings, paraphrase_embeddings, metric='euclidean')
+
+# plot similarities
+ax = sns.heatmap(cosine_matrix, linewidth=0.5)
+# ax = sns.heatmap(euclidean_matrix, linewidth=0.5)
+plt.show()
