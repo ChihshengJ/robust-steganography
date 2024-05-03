@@ -1,3 +1,8 @@
+#! try openai api and their embedding models
+#! correlation between length and similarity. Using paragraphs instead of sentences is better for salesforce model
+#! make plots comparing similarty and length
+#! try llm to vec (number 9 on leaderboard)
+#! try normalizing embedding vectors so that they are unit vectors
 import seaborn as sns
 import matplotlib.pylab as plt
 import numpy as np
@@ -293,6 +298,7 @@ model_names = [
     "voyage-2",
     "GritLM/GritLM-7B",
     "intfloat/e5-mistral-7b-instruct",
+    "McGill-NLP/LLM2Vec-Mistral-7B-Instruct-v2-mntp-supervised", # different code to get embeddings and load model
     ]
 
 compare_embeddings(originals, paraphrases, model_names)
