@@ -4,4 +4,7 @@ venv/
 # Ignore Jupyter notebook checkpoints
 .ipynb_checkpoints/
 
+# ignore environment files
+/embeddings/env.sh
+
 __pycache__/

@@ -1,0 +1,26 @@
+synonym attacks
+random reorder?
+within a certain levenshtein edit distance?
+ask chat gpt to rewrite them
+    
+    Paraphrasing and Simplification: Beyond using LLMs to rewrite the text, specifically target the paraphrasing and simplification of the text to see if the embedded messages can survive a simplification process that may remove what could be considered extraneous details or complex structures in sentences.
+
+    Noise Injection: Introduce spelling errors, grammatical errors, or other forms of noise into the text. This could simulate errors introduced by human error or by translation processes.
+
+    Text Shortening: Apply algorithms designed to shorten the text while retaining the main message, similar to what's done in automatic summarization. This would test the system's ability to retain the hidden message in a significantly reduced text.
+
+    Translation Attack: Translate the text to another language and then back to English. This "round-trip translation" often results in alterations in sentence structure and word choice, which could potentially disrupt the steganographic content.
+
+    Semantic Alteration: Alter the text to change its tone or style (e.g., from formal to informal) or to shift its point of view (e.g., from first-person to third-person). This could challenge the system's ability to maintain the hidden message across stylistic transformations.
+
+    Compression: Use text compression algorithms to compress and then decompress the text. While this might not be common in natural language processing, it could simulate scenarios where text needs to be compressed for storage or transmission.
+
+    Structural Reformatting: Change the format of the text, such as from prose to bullet points or an outlined format, to see if the hidden messages can survive structural changes.
+
+    Contextual Embedding Attacks: If your system relies on context for embedding or retrieving messages, intentionally altering the surrounding context or introducing contradictory context could potentially disrupt the steganography process.
+
+    Interference Injection: Introduce another layer of steganography on top of the existing one, potentially using a different method or key. This could test whether the presence of multiple steganographic messages can interfere with each other.
+
+    Historical Text Transformation: Adapt the text to mimic historical or archaic forms of English, testing the system's ability to maintain hidden messages across significant linguistic shifts.
+
+    Automated Parody or Satire Generation: Use algorithms designed to generate parodies or satirical versions of the text. This could introduce both subtle and overt alterations that challenge the integrity of the hidden message.

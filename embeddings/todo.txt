@@ -1,0 +1,17 @@
+try llm to vec (number 9 on leaderboard)
+
+make normalized plots for local models
+
+Notes
+- Using paragraphs instead of sentences is better for most models
+- Openai 'text-embedding-3-large' can find a cutoff with a 1% error rate
+- data contains text used in measurements
+    - human_pairs
+        - originals: Text taken from Neil's text messages and Wikipedia
+        - paraphrases: chatgpt 4 reworded originals
+    - ai_pairs
+        - originals: Text generated from chatgpt 4
+        - paraphrases: chatgpt 4 reworded originals
+        - short: short text generated from chatgpt 4 (currently no paraphrases)
+        - medium: medium text generated from chatgpt 4 (currently no paraphrases)
+        - long: long text generated from chatgpt 4 (currently no paraphrases)

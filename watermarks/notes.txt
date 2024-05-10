@@ -1,0 +1,19 @@
+All prfs match succesffully when encode and decode tokens match
+
+still a problem with encode/decode mismatches
+
+Check if indexing into r is correct?
+
+todo:
+swap out prf for simpler one
+decide on merge list change
+write attacks
+    synonym attacks
+    random reorder?
+    within a certain levenshtein edit distance?
+    ask chat gpt to rewrite them
+
+
+setting p[j] = 0 when r[j] == 0 will perfectly place watermark (only 1s are options now)
+    try only altering things > beta
+
