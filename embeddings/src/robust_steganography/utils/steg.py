@@ -1,8 +1,8 @@
 import logging
 import concurrent.futures
 import numpy as np
-from new_text import generate_response
-from get_embedding import get_embedding, get_embeddings_in_batch
+from .new_text import generate_response
+from .get_embedding import get_embedding, get_embeddings_in_batch
 
 def sample(client, desired_bit, history, hash_fn, system_prompt, max_length):
     sampled_bit = None

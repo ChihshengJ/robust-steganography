@@ -1,7 +1,7 @@
-from steg_system import StegSystem
-from hash_functions import RandomProjectionHash
-from error_correction import RepetitionCode, ConvolutionalCode
-from encoder import MinimalEncoder
+from embeddings.src.core.steg_system import StegSystem
+from embeddings.src.core.hash_functions import RandomProjectionHash
+from embeddings.src.core.error_correction import RepetitionCode, ConvolutionalCode
+from embeddings.src.core.encoder import MinimalEncoder
 import openai
 
 # Initialize components

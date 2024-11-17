@@ -1,12 +1,12 @@
 import openai
-from error_correction import RepetitionCode, ConvolutionalCode
-from hash_functions import RandomProjectionHash, PCAHash, OracleHash
-from steg import encode
-from get_embedding import get_embeddings_in_batch
-from paraphrase import paraphrase_message
-from encoder import Encoder, StandardEncoder
+from .error_correction import RepetitionCode, ConvolutionalCode
+from .hash_functions import RandomProjectionHash, PCAHash, OracleHash
+from .encoder import Encoder, StandardEncoder
+from .simulation import Simulator
+from ..utils.steg import encode
+from ..utils.get_embedding import get_embeddings_in_batch
+from ..utils.paraphrase import paraphrase_message
 from typing import Any
-from simulation import Simulator
 
 class StegSystem:
     def __init__(self, 

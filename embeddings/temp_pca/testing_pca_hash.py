@@ -5,7 +5,7 @@ from collections import defaultdict
 from tqdm import tqdm
 import json
 import numpy as np
-from pca_hash_model import load_pca, pca_hash, load_pickled_dataset
+from embeddings.temp_pca.pca_hash_model import load_pca, pca_hash, load_pickled_dataset
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 

@@ -5,8 +5,8 @@ from collections import defaultdict
 from tqdm import tqdm
 import json
 import numpy as np
-from embeddings.pca_hash_model import load_pca, pca_hash, load_pickled_dataset
-from embeddings.testing_pca_hash import load_test_data, hash_to_string
+from embeddings.temp_pca.pca_hash_model import load_pca, pca_hash, load_pickled_dataset
+from embeddings.temp_pca.testing_pca_hash import load_test_data, hash_to_string
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 

@@ -8,7 +8,7 @@ venv/
 /embeddings/env.sh
 
 # ignore pickle and log files
-/embeddings/*.pkl
-/embeddings/*.log
+/embeddings/src/robust_steganography/datasets/*.pkl
+/embeddings/src/robust_steganography/models/*.pkl
 
 __pycache__/

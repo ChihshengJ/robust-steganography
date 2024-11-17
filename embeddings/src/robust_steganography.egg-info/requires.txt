@@ -1,0 +1,11 @@
+numpy
+openai
+torch
+sentence-transformers
+tqdm
+scikit-learn
+
+[dev]
+pytest
+pytest-cov
+flake8

@@ -1,9 +1,9 @@
-from steg_system import StegSystem
-from hash_functions import OracleHash
-from error_correction import RepetitionCode, ConvolutionalCode
-from encoder import MinimalEncoder
-from system_prompts import TWO_WAY_DYNAMIC, ONE_WAY_MONOLOGUE
-from simulation import Simulator
+from robust_steganography.core.steg_system import StegSystem
+from robust_steganography.core.hash_functions import OracleHash
+from robust_steganography.core.error_correction import RepetitionCode, ConvolutionalCode
+from robust_steganography.core.encoder import MinimalEncoder
+from robust_steganography.config.system_prompts import TWO_WAY_DYNAMIC, ONE_WAY_MONOLOGUE
+from robust_steganography.core.simulation import Simulator
 import openai
 
 # Initialize components

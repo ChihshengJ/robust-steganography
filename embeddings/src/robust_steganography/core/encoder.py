@@ -48,7 +48,7 @@ class MinimalEncoder(CharacterEncoder):
     BITS_PER_CHAR = 5  # From CHAR_TO_BITS mapping
     
     def __init__(self):
-        from minimal_character_encoding import string_to_bits, bits_to_string
+        from ..utils.minimal_character_encoding import string_to_bits, bits_to_string
         self.encode_text = string_to_bits
         self.decode_bits = bits_to_string
     

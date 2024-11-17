@@ -1,6 +1,6 @@
 import unittest
 import random
-from error_correction import RepetitionCode, ConvolutionalCode
+from embeddings.src.core.error_correction import RepetitionCode, ConvolutionalCode
 
 class TestErrorCorrection(unittest.TestCase):
     def setUp(self):

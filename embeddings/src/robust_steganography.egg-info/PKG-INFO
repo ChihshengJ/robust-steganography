@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: robust_steganography
+Version: 0.1.0
+Summary: Embeddings-based steganography system for hiding messages in text
+Home-page: https://github.com/NeilAPerry/robust_steganography
+Author: Neil Perry
+Author-email: naperry@stanford.edu
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: openai
+Requires-Dist: torch
+Requires-Dist: sentence-transformers
+Requires-Dist: tqdm
+Requires-Dist: scikit-learn
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
