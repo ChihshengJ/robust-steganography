@@ -1,17 +1,29 @@
-try llm to vec (number 9 on leaderboard)
+train new pca model on better distribution
 
-make normalized plots for local models
+test and iterate on one way monologue system prompt
 
-Notes
-- Using paragraphs instead of sentences is better for most models
-- Openai 'text-embedding-3-large' can find a cutoff with a 1% error rate
-- data contains text used in measurements
-    - human_pairs
-        - originals: Text taken from Neil's text messages and Wikipedia
-        - paraphrases: chatgpt 4 reworded originals
-    - ai_pairs
-        - originals: Text generated from chatgpt 4
-        - paraphrases: chatgpt 4 reworded originals
-        - short: short text generated from chatgpt 4 (currently no paraphrases)
-        - medium: medium text generated from chatgpt 4 (currently no paraphrases)
-        - long: long text generated from chatgpt 4 (currently no paraphrases)
+make proper python package and fix imports accordingly
+
+probably rename demo to system and example to demo or leave as example
+
+refactor directory/file structure
+
+write measurement code. it should be a folder to hold graphs and tables and the code to generate them
+
+check for weird corruptions in padding head in error correction that could cause an exception to occur (like accessing past the end of the list). what is the worst case for convolutional codes?
+
+write testing code
+- hash functions
+- steganography
+
+need to test
+- example.py
+    - various combinations of real inputs
+- example_simulation.py
+    - convolutional code
+    - hash block sizes that are not 1
+    - ascii
+- rerun unit test
+    - add testing all encodings
+
+currently users need to agree on block size ahead of time. can we make this dynamic? i think it needs to be the current way

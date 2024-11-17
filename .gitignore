@@ -7,4 +7,8 @@ venv/
 # ignore environment files
 /embeddings/env.sh
 
+# ignore pickle and log files
+/embeddings/*.pkl
+/embeddings/*.log
+
 __pycache__/

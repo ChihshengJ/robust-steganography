@@ -1,6 +1,6 @@
 # make deterministic for testing
 from config_determinism import set_deterministic_behavior
-# set_deterministic_behavior()
+set_deterministic_behavior()
 
 # rest of needed imports
 from llm import tokenizer
