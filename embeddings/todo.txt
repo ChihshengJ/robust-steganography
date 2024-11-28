@@ -36,3 +36,7 @@ currently users need to agree on block size ahead of time. can we make this dyna
 
 Add config file of starting histories
 test corporate pca hash accuracy
+
+Blog mode?
+The Blog Authorship Corpus
+https://u.cs.biu.ac.il/~koppel/BlogCorpus.htm
