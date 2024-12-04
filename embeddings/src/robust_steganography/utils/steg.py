@@ -54,7 +54,9 @@ def sample_concurrent(
                 
                 print('message:', message)
                 print('sampled_bits:', sampled_bits)
-
+                print('desired_bits:', desired_bits)
+                
+                #! Ensure matching shapes for all combinations of inputs and settings
                 if np.array_equal(sampled_bits, desired_bits):
                     return message
 

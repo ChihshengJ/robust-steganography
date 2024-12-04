@@ -40,3 +40,11 @@ test corporate pca hash accuracy
 Blog mode?
 The Blog Authorship Corpus
 https://u.cs.biu.ac.il/~koppel/BlogCorpus.htm
+
+ensure that all hash functions return arrays, even when the output length is 1. This consistency will prevent similar issues in other parts of your code.
+
+current bug relates to lists that should be numpy arrays
+
+add training of new pca modes to library so users can define new modes
+
+response cleaning needs some work to make sure its complete sentences/paragraphs. also, the corporate prompt needs some fine tuning so that its consistent with old message history and not "restarting" the conversation.

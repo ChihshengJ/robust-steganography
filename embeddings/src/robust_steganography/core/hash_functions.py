@@ -6,6 +6,10 @@ class HashFunction:
     def __init__(self):
         pass
     
+    def _to_numpy_array(self, emb):
+        return np.array(emb)
+    
+    # Ensure that the output is a 1D array of bits
     def __call__(self, emb):
         raise NotImplementedError("Hash function must implement __call__")
         
@@ -19,9 +23,10 @@ class RandomProjectionHash(HashFunction):
         self.output_length = num_bits
         
     def __call__(self, emb):
+        emb = self._to_numpy_array(emb)
         projection = emb @ self.rand_matrix
         hashes = (projection > 0).astype(int)
-        return hashes.ravel()[0]
+        return hashes.ravel()
         
     def get_output_length(self):
         return self.output_length
@@ -35,8 +40,9 @@ class PCAHash(HashFunction):
         self.output_length = end - start
         
     def __call__(self, emb):
+        emb = self._to_numpy_array(emb)
         transformed = self.pca.transform(emb.reshape(1, -1))
-        return (transformed[:, self.start:self.end] > 0).astype(int).ravel()[0]
+        return (transformed[:, self.start:self.end] > 0).astype(int).ravel()
         
     def get_output_length(self):
         return self.output_length
@@ -46,13 +52,14 @@ class OracleHash(HashFunction):
         super().__init__()
         self.output_length = output_length
         self.error_rate = error_rate
-        self.hash_memory: Dict[str, np.ndarray] = {}
+        self.hash_memory: Dict[bytes, np.ndarray] = {}
         if seed is not None:
             np.random.seed(seed)
     
     def __call__(self, emb, corrupt: bool = False) -> np.ndarray:
         # Use embedding as key (convert to string for dict key)
-        key = str(emb.tolist())
+        emb_array = self._to_numpy_array(emb)
+        key = emb_array.tobytes()
         
         # If we haven't seen this embedding before, generate random bits
         if key not in self.hash_memory:
