@@ -45,6 +45,8 @@ ensure that all hash functions return arrays, even when the output length is 1. 
 
 current bug relates to lists that should be numpy arrays
 
-add training of new pca modes to library so users can define new modes
-
 response cleaning needs some work to make sure its complete sentences/paragraphs. also, the corporate prompt needs some fine tuning so that its consistent with old message history and not "restarting" the conversation.
+
+add code that would take in list of text -> paraphrase it -> get embedding pairs -> save in pickled format that pca training wants
+
+test ciphertext encoder

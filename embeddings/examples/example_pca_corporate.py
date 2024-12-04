@@ -3,14 +3,14 @@ from robust_steganography.core.hash_functions import PCAHash
 from robust_steganography.core.error_correction import RepetitionCode, ConvolutionalCode
 from robust_steganography.core.encoder import MinimalEncoder
 from robust_steganography.config.system_prompts import CORPORATE_MONOLOGUE
+from robust_steganography.utils import load_pca_model
 import openai
 import pickle
 
 # Initialize components
 client = openai.OpenAI()
-pca_model_path = "../temp_pca/pca_model.pkl"
-with open(pca_model_path, 'rb') as f:
-    pca_model = pickle.load(f)
+pca_model_path = "../src/robust_steganography/models/pca_corporate.pkl"
+pca_model = load_pca_model(pca_model_path)
 hash_fn = PCAHash(pca_model=pca_model, start=0, end=1)
 # ecc = ConvolutionalCode()
 ecc = RepetitionCode(repetitions=5)
