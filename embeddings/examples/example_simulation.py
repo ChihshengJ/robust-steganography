@@ -7,7 +7,8 @@ from robust_steganography.core.simulation import Simulator
 import openai
 
 # Initialize components
-client = openai.OpenAI()
+# client = openai.OpenAI()
+client = None
 hash_fn = OracleHash(output_length=4, error_rate=0.1)
 # ecc = RepetitionCode(repetitions=3, block_size=hash_fn.get_output_length())
 ecc = ConvolutionalCode(block_size=hash_fn.get_output_length())

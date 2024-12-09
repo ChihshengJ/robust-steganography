@@ -1,12 +1,8 @@
-train new pca model on better distribution
-
 test and iterate on one way monologue system prompt
 
 write measurement code. it should be a folder to hold graphs and tables and the code to generate them
 
 add type hints
-
-deal with temp_pca directory
 
 add documentation to all code
 
@@ -32,8 +28,6 @@ need to test
 - rerun unit test
     - add testing all encodings
 
-currently users need to agree on block size ahead of time. can we make this dynamic? i think it needs to be the current way
-
 Add config file of starting histories
 test corporate pca hash accuracy
 
@@ -41,12 +35,7 @@ Blog mode?
 The Blog Authorship Corpus
 https://u.cs.biu.ac.il/~koppel/BlogCorpus.htm
 
-ensure that all hash functions return arrays, even when the output length is 1. This consistency will prevent similar issues in other parts of your code.
-
-current bug relates to lists that should be numpy arrays
-
 response cleaning needs some work to make sure its complete sentences/paragraphs. also, the corporate prompt needs some fine tuning so that its consistent with old message history and not "restarting" the conversation.
 
 add code that would take in list of text -> paraphrase it -> get embedding pairs -> save in pickled format that pca training wants
 
-test ciphertext encoder

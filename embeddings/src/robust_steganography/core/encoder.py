@@ -69,11 +69,27 @@ class CiphertextEncoder(Encoder):
     """
     Handles encoding/decoding of ciphertext objects by serializing them to a standard format.
     Supports any encryption object that can be serialized to JSON or bytes.
+    
+    When using 'bytes' format, this encoder can also handle raw binary data directly:
+        - Raw bytes (e.g., b"Hello World")
+        - Bytearray objects
+        - Any object that can be converted to bytes
+        - UTF-8 encoded strings (after calling .encode('utf-8'))
+    
+    Examples:
+        # For encrypted data
+        encoder = CiphertextEncoder('bytes')
+        bits = encoder.encode(cipher.encrypt(b"secret"))
+        
+        # For raw binary data
+        encoder = CiphertextEncoder('bytes')
+        bits = encoder.encode(b"raw bytes")
     """
     def __init__(self, serialization_format: str = 'json'):
         """
         Args:
             serialization_format: Either 'json' or 'bytes' depending on encryption library
+                                Use 'bytes' for raw binary data
         """
         import json
         import base64
@@ -83,8 +99,10 @@ class CiphertextEncoder(Encoder):
         
     def encode(self, ciphertext: Any) -> list[int]:
         if self.format == 'json':
-            # Convert ciphertext object to JSON-serializable format
-            if hasattr(ciphertext, 'to_dict'):
+            # Directly use the dictionary if it's already JSON-serializable
+            if isinstance(ciphertext, dict):
+                data = ciphertext
+            elif hasattr(ciphertext, 'to_dict'):
                 data = ciphertext.to_dict()
             else:
                 data = ciphertext.__dict__

@@ -26,7 +26,7 @@ system = StegSystem(
 )
 
 # Hide message
-message = "a"
+message = "abcde"
 history = [
     "I wanted to follow up regarding the implementation timeline for the new risk management system. Based on our initial assessment, we'll need to coordinate closely with both IT and Operations to ensure a smooth transition. Please review the attached documentation when you have a moment.",
     
