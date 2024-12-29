@@ -23,3 +23,5 @@ write attacks
     random reorder?
     within a certain levenshtein edit distance?
     ask chat gpt to rewrite them
+
+update readme (and watermarking code?) to say its extendable and users can add their own models
