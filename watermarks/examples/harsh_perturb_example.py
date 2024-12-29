@@ -1,16 +1,13 @@
 """
-Example of watermarking with the Shakespeare NanoGPT model.
-
-Note: This is a character-level model, meaning each token is a single character.
-Because of this, token encode/decode operations will never have mismatches - 
-each character maps to exactly one token and vice versa. This makes the watermarking
-more reliable but limits the model to character-by-character generation.
+Example of watermarking using the harsh perturbation method.
+This demonstrates more aggressive watermarking that may produce
+less natural text but potentially stronger watermarks.
 """
 
 from watermark import (
     NanoGPTModel,
     AESPRF,
-    DeltaPerturb,
+    HarshPerturb,
     Embedder,
     Extractor,
     set_seed
@@ -20,22 +17,22 @@ def main():
     # Set seed for reproducibility
     set_seed(42)
     
-    # Initialize components
+    # Initialize with harsh perturbation
     model = NanoGPTModel()
     prf = AESPRF(vocab_size=model.vocab_size, max_token_id=model.vocab_size-1)
-    perturb = DeltaPerturb()
+    perturb = HarshPerturb()  # Using harsh perturbation instead of delta
     embedder = Embedder(model, model.tokenizer, prf, perturb)
     extractor = Extractor(model, model.tokenizer, prf)
 
     # Setup watermarking parameters
-    message = [1, 0, 1]  # 3-bit message to hide
-    keys = [b'\x00' * 32, b'\x01' * 32, b'\x02' * 32]  # One key per bit
-    history = ["To be, or not to be- that is the question:"]  # Shakespeare-style context
+    message = [1, 0, 1]
+    keys = [b'\x00' * 32, b'\x01' * 32, b'\x02' * 32]
+    history = ["To be, or not to be- that is the question:"]
     c = 5  # Length of n-grams used by PRF for watermarking
     delta = 0.1  # Perturbation strength
     
     # Generate watermarked text
-    print("Generating watermarked Shakespeare-style text...")
+    print("Generating watermarked text with harsh perturbation...")
     watermarked_text, _ = embedder.embed(
         keys=keys,
         h=history,

@@ -33,7 +33,7 @@ def main():
     message = [1, 0, 1]  # 3-bit message to hide
     keys = [b'\x00' * 32, b'\x01' * 32, b'\x02' * 32]  # One key per bit
     history = ["The future of artificial intelligence is", "a topic of great debate."]  # Modern context
-    context_size = 5  # Size of n-grams for watermarking
+    c = 5  # Length of n-grams used by PRF for watermarking
     delta = 0.1  # Perturbation strength
     
     # Generate watermarked text
@@ -43,7 +43,7 @@ def main():
         h=history,
         m=message,
         delta=delta,
-        c=context_size,
+        c=c,  # n-gram length for PRF
         covertext_length=100
     )
     
@@ -56,7 +56,7 @@ def main():
         keys=keys,
         h=history,
         ct=watermarked_text,
-        c=context_size
+        c=c  # Must use same n-gram length as embedding
     )
     
     # Detect watermark bits

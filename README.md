@@ -136,9 +136,56 @@ watermarked_text, _ = embedder.embed(
 recovered_counters, _ = extractor.extract(keys, history, watermarked_text, c=5)
 ```
 
+#### Custom Components
+
+The system is designed to be extensible. You can create custom models, PRFs, or perturbation methods by inheriting from the provided base classes:
+
+```python
+from watermark import LanguageModel, BaseTokenizer, PRF, PerturbFunction
+
+# Custom language model
+class MyCustomModel(LanguageModel):
+    def __init__(self):
+        self._tokenizer = MyCustomTokenizer()
+        # Initialize your model...
+    
+    def get_next_token_distribution(self, input_tokens):
+        # Implement your model's token prediction...
+        pass
+
+# Custom tokenizer
+class MyCustomTokenizer(BaseTokenizer):
+    def encode(self, text, return_tensors=None):
+        # Implement tokenization...
+        pass
+    
+    def decode(self, token_ids):
+        # Implement detokenization...
+        pass
+
+# Custom PRF
+class MyCustomPRF(PRF):
+    def __call__(self, key: bytes, text: str, c: int) -> list:
+        # Implement your PRF logic...
+        pass
+
+# Custom perturbation method
+class MyCustomPerturb(PerturbFunction):
+    def __call__(self, p, r, delta):
+        # Implement your perturbation method...
+        pass
+
+# Use custom components
+model = MyCustomModel()
+prf = MyCustomPRF()
+perturb = MyCustomPerturb()
+embedder = Embedder(model, model.tokenizer, prf, perturb)
+```
+
 For complete examples, see:
 - `examples/shakespeare_nanogpt_example.py`: Character-level watermarking
 - `examples/gpt2_example.py`: BPE-based watermarking
+- `examples/harsh_perturb_example.py`: Alternative perturbation method
 
 ## Testing
 
