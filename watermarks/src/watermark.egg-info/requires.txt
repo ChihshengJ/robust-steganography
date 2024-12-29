@@ -1,0 +1,9 @@
+torch
+tqdm
+pycryptodome
+bitstring
+numpy
+transformers
+pynacl
+cryptography
+pytest

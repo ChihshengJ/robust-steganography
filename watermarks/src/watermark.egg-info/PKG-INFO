@@ -1,0 +1,17 @@
+Metadata-Version: 2.1
+Name: watermark
+Version: 0.1
+Summary: Watermarking library for text generation
+Home-page: https://github.com/yourusername/watermark
+Author: Your Name
+Author-email: your.email@example.com
+Requires-Python: >=3.7
+Requires-Dist: torch
+Requires-Dist: tqdm
+Requires-Dist: pycryptodome
+Requires-Dist: bitstring
+Requires-Dist: numpy
+Requires-Dist: transformers
+Requires-Dist: pynacl
+Requires-Dist: cryptography
+Requires-Dist: pytest

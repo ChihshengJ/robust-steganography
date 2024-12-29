@@ -1,0 +1,25 @@
+refactor to make python module
+
+make the model swappable (gpt-2, shakespeare, bGPT, etc) in clean way like other stego code
+
+write get_limit function
+
+make perturb, and model be swappable
+
+try logging and comparing the prob dist before and after perturb
+
+rename prf to add smooth
+add sharp prf that zeros out entries and add quality warning
+rename nanogpt to add shakespeare
+
+convert attack files
+
+I think a bunch of the global functions in nangpt.py can be removed and are never called
+
+add back in config determinism
+
+write attacks
+    synonym attacks
+    random reorder?
+    within a certain levenshtein edit distance?
+    ask chat gpt to rewrite them
