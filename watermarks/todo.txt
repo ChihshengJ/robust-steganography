@@ -1,4 +1,6 @@
-write get_limit function
+update examples to use get_limit function
+
+delete get_limit function
 
 try logging and comparing the prob dist before and after perturb
 

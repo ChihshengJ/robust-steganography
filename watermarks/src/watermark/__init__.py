@@ -9,6 +9,7 @@ from .perturb.base import PerturbFunction
 from .core.embedder import Embedder
 from .core.extractor import Extractor
 from .utils.config import set_seed
+from .covertext import CovertextCalculator, SmoothCovertextCalculator
 
 __all__ = [
     'LanguageModel',
@@ -24,5 +25,7 @@ __all__ = [
     'HarshPerturb',
     'Embedder',
     'Extractor',
-    'set_seed'
+    'set_seed',
+    'CovertextCalculator',
+    'SmoothCovertextCalculator'
 ]

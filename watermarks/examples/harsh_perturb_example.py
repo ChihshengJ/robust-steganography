@@ -2,6 +2,14 @@
 Example of watermarking using the harsh perturbation method.
 This demonstrates more aggressive watermarking that may produce
 less natural text but potentially stronger watermarks.
+
+Note 1: The harsh perturbation method forces token probabilities to 0 or 1 based on
+the PRF output, leading to more reliable watermarking but potentially less natural text.
+
+Note 2: This example uses hardcoded small values for covertext_length and detection
+threshold to demonstrate the harsh perturbation method. For proper message recovery
+with statistical guarantees, see covertext_length_example.py which shows how to
+calculate the appropriate covertext length and detection parameters.
 """
 
 from watermark import (

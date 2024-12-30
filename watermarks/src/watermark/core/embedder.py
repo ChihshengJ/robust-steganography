@@ -5,7 +5,7 @@ from tqdm import tqdm
 from ..models.base import LanguageModel, BaseTokenizer
 from ..prf.base import PRF
 from ..perturb.base import PerturbFunction
-from ..utils.helpers import get_keys_to_use, get_limit, sample_key
+from ..utils.helpers import get_keys_to_use, sample_key
 
 class Embedder:
     def __init__(

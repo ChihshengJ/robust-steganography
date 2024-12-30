@@ -1,12 +1,17 @@
 """
-Example of watermarking with GPT-2.
+Example of watermarking with the GPT2 model.
 
-Note: GPT-2 uses Byte-Pair Encoding (BPE) for tokenization, which means tokens
+Note 1: GPT-2 uses Byte-Pair Encoding (BPE) for tokenization, which means tokens
 can be subwords or multiple words. Due to BPE merge rules, the same text can sometimes
 be tokenized differently during encoding vs decoding. These tokenization mismatches
 act similar to a small attack on the watermark, as they can disrupt the n-gram patterns
 used for watermarking. This makes the watermarking less reliable but allows for more
 natural language generation.
+
+Note 2: This example uses hardcoded small values for covertext_length and detection
+threshold to demonstrate basic usage of GPT2. For proper message recovery with 
+statistical guarantees, see covertext_length_example.py which shows how to 
+calculate the appropriate covertext length and detection parameters.
 """
 
 from watermark import (

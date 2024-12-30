@@ -1,10 +1,15 @@
 """
 Example of watermarking with the Shakespeare NanoGPT model.
 
-Note: This is a character-level model, meaning each token is a single character.
+Note 1: This is a character-level model, meaning each token is a single character.
 Because of this, token encode/decode operations will never have mismatches - 
 each character maps to exactly one token and vice versa. This makes the watermarking
 more reliable but limits the model to character-by-character generation.
+
+Note 2: This example uses hardcoded small values for covertext_length and detection
+threshold to demonstrate basic usage of the Shakespeare model. For proper message
+recovery with statistical guarantees, see covertext_length_example.py which shows
+how to calculate the appropriate covertext length and detection parameters.
 """
 
 from watermark import (

@@ -10,11 +10,13 @@ class Extractor:
         self,
         model: LanguageModel,
         tokenizer: BaseTokenizer,
-        prf: PRF
+        prf: PRF,
+        context_length: Optional[int] = None
     ):
         self.model = model
         self.tokenizer = tokenizer
         self.prf = prf
+        self.context_length = context_length or model.context_length
 
     def extract(
         self,
@@ -23,33 +25,42 @@ class Extractor:
         ct: str,
         c: int
     ) -> Tuple[List[int], dict]:
-        """Matches decode from steg.py"""
+        """Extract watermark from covertext."""
         # Compute the salt s from the history h
         s = len(h)
-        
-        # initialize counters for each bit in m
-        counters = [0 for _ in range(len(keys))]
-        
-        # tokenize stegotext and history
-        text = ct
-        tokens = {'input_ids': torch.tensor([self.tokenizer.encode(text)]), 
-                 'attention_mask': torch.tensor([[1] * len(self.tokenizer.encode(text))])}
-        
-        h_text = ''.join(h)
-        h_tokens = {'input_ids': torch.tensor([self.tokenizer.encode(h_text)]), 
-                   'attention_mask': torch.tensor([[1] * len(self.tokenizer.encode(h_text))])}
 
-        # for each token in stegotext after history
-        for j in tqdm(range(len(h_tokens['input_ids'][0]), len(tokens['input_ids'][0]))):
-            # test each key
-            for i, key in enumerate(keys):
-                partial_tokens = {
-                    'input_ids': tokens['input_ids'][:, 0:j],
-                    'attention_mask': tokens['attention_mask'][:, 0:j]
+        # Initialize counters for each key
+        counters = [0 for _ in keys]
+
+        # First tokenize history to know where watermarking starts
+        history_text = ''.join(h)
+        history_tokens = self.tokenizer(history_text, return_tensors='pt')
+        history_len = history_tokens['input_ids'].shape[1]
+
+        # Now tokenize full text (history + covertext)
+        full_text = history_text + ct
+        tokens = self.tokenizer(full_text, return_tensors='pt')
+
+        # For each position in covertext (after history)
+        for j in tqdm(range(history_len, tokens['input_ids'].shape[1])):
+            # Use only the last context_length tokens for PRF
+            if j > self.context_length:
+                context_tokens = {
+                    'input_ids': tokens['input_ids'][:, j-self.context_length:j],
+                    'attention_mask': tokens['attention_mask'][:, j-self.context_length:j]
                 }
-                r = self.prf(key, s, partial_tokens, c)
-                current_token_index = tokens['input_ids'][0][j].item()
-                if r[current_token_index] == 1:
+            else:
+                context_tokens = {
+                    'input_ids': tokens['input_ids'][:, :j],
+                    'attention_mask': tokens['attention_mask'][:, :j]
+                }
+
+            # Check each key
+            for i, key in enumerate(keys):
+                # Get PRF output for this position and key
+                r = self.prf(key, s, context_tokens, c)
+                # If chosen token is marked 1 by PRF, increment counter
+                if r[tokens['input_ids'][0][j].item()] == 1:
                     counters[i] += 1
-                    
+
         return counters, tokens
