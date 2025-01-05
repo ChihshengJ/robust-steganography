@@ -1,1 +1,6 @@
-log number of watermarked tokens in embedder and see how it compares to theory
+1. Make graphs
+    - m_length and covertext_length vs. success rate
+    - affects of delta
+    - affects of c
+    - success rate of perturbation methods
+    - success rate of attacks

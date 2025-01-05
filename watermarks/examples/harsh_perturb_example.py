@@ -41,7 +41,7 @@ def main():
     
     # Generate watermarked text
     print("Generating watermarked text with harsh perturbation...")
-    watermarked_text, _ = embedder.embed(
+    watermarked_text, _, _ = embedder.embed(
         keys=keys,
         h=history,
         m=message,

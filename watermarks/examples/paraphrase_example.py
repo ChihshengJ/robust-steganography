@@ -46,7 +46,7 @@ def main():
                           # short covertext length to save money on the API calls.
     
     # Generate watermarked text
-    watermarked_text, _ = embedder.embed(
+    watermarked_text, _, _ = embedder.embed(
         keys=keys,
         h=history,
         m=message,

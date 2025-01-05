@@ -57,7 +57,7 @@ def main():
     
     # Generate watermarked text of required length
     print("\nGenerating watermarked text of required length...")
-    watermarked_text, _ = embedder.embed(
+    watermarked_text, _, _ = embedder.embed(
         keys=keys,
         h=history,
         m=message,

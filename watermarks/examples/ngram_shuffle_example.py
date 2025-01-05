@@ -41,7 +41,7 @@ def main():
     print(f"Required covertext length: {required_length} tokens")
     
     # Generate watermarked text
-    watermarked_text, _ = embedder.embed(
+    watermarked_text, _, _ = embedder.embed(
         keys=keys,
         h=history,
         m=message,
