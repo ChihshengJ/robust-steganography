@@ -13,12 +13,9 @@ venv/
 /embeddings/temp_pca/*.pkl
 
 # ignore enron email data files
-/enron_emails/*.json
-/enron_emails/*.npy
-/enron_emails/*.pkl
-/enron_emails/paragraph_embeddings/
-/enron_emails/paragraph_paraphrase_embeddings/
-/enron_emails/paragraph_paraphrases/
+/embeddings/enron_emails/**/*.pkl
+/embeddings/enron_emails/**/*.json
+/embeddings/enron_emails/**/*.npy
 
 __pycache__/
 

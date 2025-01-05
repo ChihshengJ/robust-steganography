@@ -1,5 +1,3 @@
-test and iterate on one way monologue system prompt
-
 write measurement code. it should be a folder to hold graphs and tables and the code to generate them
 
 add type hints
@@ -11,8 +9,6 @@ add license
 add requirements.txt
 
 check for weird corruptions in padding head in error correction that could cause an exception to occur (like accessing past the end of the list). what is the worst case for convolutional codes?
-
-steg.py resume and sample (non concurrent) are out of date. Maybe delete?
 
 write testing code
 - hash functions

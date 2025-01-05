@@ -8,6 +8,17 @@
 
 The embeddings-based system leverages various components such as encoders, error correction codes, and hash functions to ensure robust message embedding and retrieval. It is designed to hide messages within text using advanced embedding techniques.
 
+#### Enron Email Dataset Processing
+
+The `enron_emails` directory contains utilities for processing the Sent Enron email dataset (http://www.verbs.colorado.edu/enronsent) to train the PCA hash model:
+
+- **Data Cleaning**: Scripts to clean and preprocess the raw Enron email corpus
+- **Embedding Generation**: Code to generate embeddings for both original emails and their paraphrases
+- **Paraphrase Generation**: Tools to create semantically equivalent versions of emails using LLMs
+- **Data Formatting**: Utilities to format the original and paraphrase embeddings for PCA model training
+
+This processed data is used to train a PCA-based hash function that is robust to semantic-preserving transformations, which is a key component of the steganography system. To create other covertext modes, follow this example process and create a corresponding PCA Hash. Then add an appropriate system prompt to generate the covertext.
+
 ### Watermarking-Based System
 
 The watermarking-based system modifies language model output distributions to embed watermarks in generated text. It supports both character-level (NanoGPT) and BPE-based (GPT2) models, offering different trade-offs between watermark reliability and text naturalness.
