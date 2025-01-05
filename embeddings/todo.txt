@@ -4,10 +4,6 @@ add type hints
 
 add documentation to all code
 
-add license
-
-add requirements.txt
-
 check for weird corruptions in padding head in error correction that could cause an exception to occur (like accessing past the end of the list). what is the worst case for convolutional codes?
 
 write testing code
