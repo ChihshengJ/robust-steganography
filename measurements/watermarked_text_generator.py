@@ -1,5 +1,6 @@
 import json
 import sys
+import random
 from watermark import (
     GPT2Model,
     AESPRF,
@@ -26,18 +27,22 @@ def generate_watermarked_text(id):
     embedder = Embedder(model, model.tokenizer, prf, perturb)
 
     # Watermarking parameters.
-    message = [1, 0, 1]  # 3-bit message to hide
+    message = [random.randint(0, 1) for _ in range(3)]  # 3-bit message to hide
     keys = [b'\x00' * 32, b'\x01' * 32, b'\x02' * 32]  # One key per bit
     history = ["How have you been?"]  # Context
 
     # Generate watermarked text.
     watermarked_text, tokens, _ = embedder.embed(keys=keys, h=history, m=message, delta=delta, c=c, covertext_length=required_length)
 
+    # Convert tokens to a serializable format (list of token IDs)
+    serializable_tokens = tokens['input_ids'].tolist()
+
     # Save to JSON file.
     output_data = {
         "id": id,
         "watermarked_text": watermarked_text,
-        "tokens": tokens
+        "tokens": serializable_tokens,
+        "message": message
     }
 
     with open(f"watermarked_texts/{id}.json", "w") as f:
