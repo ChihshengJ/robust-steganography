@@ -332,7 +332,7 @@ def plot_watermarking_tampering_effect(tampering_types, tampering_percentages, b
     # -----------------------------------------------------------------------------
     # Setup watermarking system (using your provided parameters)
     # -----------------------------------------------------------------------------
-    n_bits = 3              # Length of message to hide
+    n_bits = 1              # Length of message to hide
     epsilon = 1 - baseline_recovery          # 95% success probability
     delta = 0.2             # Perturbation strength
     safety_factor = 10
@@ -403,7 +403,7 @@ def plot_watermarking_tampering_effect(tampering_types, tampering_percentages, b
                 else:
                     attacked_text = watermarked_text  # Fallback; should not occur.
                 
-                recovered_message = extractor.extract(attacked_text)
+                recovered_message = extractor.extract(keys=keys, ct=attacked_text, h=history, c=c)
                 bitwise_acc = compute_recovery_accuracy(message, recovered_message)
                 results_bitwise[mode_label].append(bitwise_acc)
                 data_lines_bitwise.append(f"{tp}\t{mode_label}\t{bitwise_acc}")
@@ -498,11 +498,11 @@ def main():
     # Use delta values [0.01, 0.05, 0.1, 0.2] with a fixed message length of n = 3.
     # ---------------------------
     # delta_values = [0.01, 0.05, 0.1, 0.2]
-    # n_bits = 3  # Fixed message length for this experiment
+    # n_bits = 1  # Fixed message length for this experiment
     # plot_watermark_length_delta(delta_values, n_bits)
 
     # ---------------------------
-    tampering_types = ["n-gram shuffle", "synonym replacements", "paraphrasing"]
+    tampering_types = ["NGram Shuffle", "Synonym Attack", "Paraphrase Attack"]
     tampering_percentages = [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
     recovery_accuracy = 0.95
     plot_watermarking_tampering_effect(tampering_types, tampering_percentages, recovery_accuracy)

@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
+from httpx import Headers
 from tqdm import tqdm
-from robust_steganography.utils.paraphrase import paraphrase_message
+from robust_steganography.utils.paraphrase import paraphrase_message, paraphrase_message_ollama
 from openai import OpenAI
 import argparse
 import nltk
@@ -24,7 +25,7 @@ def process_paragraphs_in_chunks(json_path, output_dir, chunk_size=100, specific
         data = json.load(f)
         paragraphs = data['paragraphs']
     
-    client = OpenAI()
+    # client = OpenAI()
     failed_ranges = []
     
     # Determine ranges to process
@@ -54,7 +55,11 @@ def process_paragraphs_in_chunks(json_path, output_dir, chunk_size=100, specific
             # Process each paragraph in chunk
             for para in chunk_paragraphs:
                 try:
-                    paraphrased_text = paraphrase_message(client, para['text'])
+                    # paraphrased_text = paraphrase_message(client, para['text'])
+                    paraphrased_text = paraphrase_message_ollama(
+                        host="http://192.168.2.34:11434/api/chat",
+                        message=para['text']
+                    )
                     paraphrased_para = {
                         "text": paraphrased_text,
                         "sentence_count": len(nltk.sent_tokenize(paraphrased_text)),

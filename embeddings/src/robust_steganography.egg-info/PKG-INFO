@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: robust_steganography
 Version: 0.1.0
 Summary: Embeddings-based steganography system for hiding messages in text
@@ -20,3 +20,226 @@ Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: pytest-cov; extra == "dev"
 Requires-Dist: flake8; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# Robust Steganography Library
+
+A Python library for hiding messages within text using embedding techniques. The library provides a flexible framework for steganographic message encoding with support for different encoding schemes, error correction, and hash functions.
+
+## Features
+
+- Multiple encoding schemes (ASCII, minimal character, ciphertext)
+- Error correction (repetition codes, convolutional codes)
+- Hash functions (PCA-based, random projection, oracle)
+- Support for different conversation modes (one-way monologue, two-way dynamic, corporate emails) and ability to add custom conversation modes
+- Simulation capabilities for testing
+- Built-in encryption support
+- Customizable system prompts
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/NeilAPerry/robust_steganography.git
+   cd robust_steganography
+   ```
+
+2. Create and activate a virtual environment (recommended):
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install the package in development mode:
+   ```bash
+   cd embeddings
+   pip install -e .
+   ```
+
+4. Install required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+5. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your OpenAI API key and other configurations
+   source .env
+   ```
+
+## Basic Usage
+
+Here's a simple example of hiding and recovering a message:
+
+```python
+from robust_steganography.core.steg_system import StegSystem
+from robust_steganography.core.hash_functions import PCAHash
+from robust_steganography.core.error_correction import RepetitionCode
+from robust_steganography.core.encoder import MinimalEncoder
+import openai
+
+# Initialize components
+client = openai.OpenAI()
+hash_fn = PCAHash(pca_model=your_pca_model)
+ecc = RepetitionCode(repetitions=3)
+
+system = StegSystem(
+    client=client,
+    hash_function=hash_fn,
+    error_correction=ecc,
+    encoder=MinimalEncoder(),
+    system_prompt="You are having a casual conversation."
+)
+
+# Hide message
+message = "Hello world"
+history = ["Hi, how are you?", "I'm doing well, thanks!"]
+stego_texts = system.hide_message(message, history)
+
+# Recover message
+recovered = system.recover_message(stego_texts)
+```
+
+## Library Structure
+
+```
+embeddings/
+├── src/
+│   └── robust_steganography/
+│       ├── core/           # Core components
+│       │   ├── encoder.py
+│       │   ├── error_correction.py
+│       │   ├── hash_functions.py
+│       │   ├── simulation.py
+│       │   └── steg_system.py
+│       ├── utils/          # Utility functions
+│       │   ├── embedding_utils.py
+│       │   ├── get_embedding.py
+│       │   └── paraphrase.py
+│       └── config/         # Configuration
+│           └── system_prompts.py
+├── examples/               # Example scripts
+└── tests/                 # Unit tests
+```
+
+## Examples
+
+The `examples/` directory contains several example scripts demonstrating different use cases:
+
+1. Basic message hiding: `example.py`
+2. Simulation mode: `example_simulation.py`
+3. Corporate communication: `example_pca_corporate.py`
+4. Encrypted messages: `example_simulator_ciphertext_json.py`
+
+## Extending the Library
+
+### Creating Custom Encoders
+
+Inherit from the `Encoder` base class and implement the required methods:
+
+```python
+from robust_steganography.core.encoder import Encoder
+
+class CustomEncoder(Encoder):
+    def encode(self, data: Any) -> list[int]:
+        # Convert your data to bits
+        pass
+    
+    def decode(self, bits: list[int]) -> Any:
+        # Convert bits back to original data
+        pass
+```
+
+### Implementing Custom Hash Functions
+
+Create a new hash function by inheriting from `HashFunction`:
+
+```python
+from robust_steganography.core.hash_functions import HashFunction
+
+class CustomHash(HashFunction):
+    def __init__(self, output_length: int):
+        self.output_length = output_length
+    
+    def hash(self, text: str) -> list[int]:
+        # Implement your hashing logic
+        pass
+    
+    def get_output_length(self) -> int:
+        return self.output_length
+```
+
+### Training PCA Models
+
+To create a custom PCA hash function:
+
+1. Collect training data (text pairs)
+2. Generate embeddings using sentence transformers
+3. Train PCA model on embedding differences
+4. Save model using pickle
+5. Use with `PCAHash` class
+
+## Operating Modes
+
+### Two-Way Dynamic
+- Simulates natural conversation
+- Best for casual communication
+- Example: `TWO_WAY_DYNAMIC` system prompt
+
+### One-Way Monologue
+- Generates continuous text without interaction
+- Suitable for blog posts, articles
+- Example: `ONE_WAY_MONOLOGUE` system prompt
+
+### Corporate Communication
+- Formal business communication style
+- Uses specialized PCA model
+- Example: `CORPORATE_MONOLOGUE` system prompt
+
+## Error Correction
+
+Two main error correction schemes are available:
+
+1. Repetition Code
+   - Simple redundancy-based error correction
+   - Good for low noise scenarios
+   - Configurable repetition count
+
+2. Convolutional Code
+   - More sophisticated error correction
+   - Better handling of burst errors
+   - Configurable block size
+
+## Testing
+
+Run the test suite:
+
+```bash
+pytest tests/
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Contact
+
+For questions and support, please open an issue on GitHub.

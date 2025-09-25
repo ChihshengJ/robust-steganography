@@ -25,7 +25,7 @@ system = StegSystem(
 )
 
 # Hide message
-message = "abcdefghijklmnopqrstuvwxyz"
+message = "mission compromised"
 history = [
     "What are you up to today?",
     "Nothing much, just working on a project.",

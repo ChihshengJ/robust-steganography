@@ -1,23 +1,28 @@
 # Ignore Python virtual environments
-venv/
+.venv/
 
 # Ignore Jupyter notebook checkpoints
 .ipynb_checkpoints/
 
 # ignore environment files
-/embeddings/env.sh
+embeddings/.env
 
 # ignore pickle and log files
-/embeddings/src/robust_steganography/datasets/*.pkl
-/embeddings/src/robust_steganography/models/*.pkl
-/embeddings/temp_pca/*.pkl
+embeddings/src/robust_steganography/datasets/*.pkl
+embeddings/src/robust_steganography/models/*.pkl
+embeddings/temp_pca/*.pkl
 
 # ignore enron email data files
-/embeddings/enron_emails/**/*.pkl
-/embeddings/enron_emails/**/*.json
-/embeddings/enron_emails/**/*.npy
+embeddings/enron_emails/**/*.pkl
+embeddings/enron_emails/**/*.json
+embeddings/enron_emails/**/*.npy
+
+# ignore measurement checkpoints
+measurements/checkpoints/
+measurements/watermarked_texts/
 
 __pycache__/
+.pytest_cache/
 
 # macOS system files
 .DS_Store

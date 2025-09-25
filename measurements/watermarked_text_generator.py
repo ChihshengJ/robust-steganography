@@ -11,7 +11,7 @@ from watermark import (
 )
 
 def generate_watermarked_text(id):
-    n_bits = 3              # Length of message to hide
+    n_bits = 1              # Length of message to hide
     epsilon = 0.05          # 95% success probability
     delta = 0.2             # Perturbation strength
     safety_factor = 10
@@ -20,6 +20,7 @@ def generate_watermarked_text(id):
     # Instantiate required components.
     calculator = SmoothCovertextCalculator()
     required_length = calculator.get_covertext_length(n=n_bits, epsilon=epsilon, delta=delta, safety_factor=safety_factor)
+    print(f"required length: {required_length}")
 
     model = GPT2Model()
     prf = AESPRF(vocab_size=model.vocab_size, max_token_id=model.vocab_size - 1)

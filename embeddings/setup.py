@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 try:
     long_description = open("README.md").read()
@@ -16,13 +16,13 @@ setup(
         "torch",
         "sentence-transformers",
         "tqdm",
-        "scikit-learn"
+        "scikit-learn",
     ],
     extras_require={
-        'dev': [
-            'pytest',
-            'pytest-cov',
-            'flake8',
+        "dev": [
+            "pytest",
+            "pytest-cov",
+            "flake8",
         ],
     },
     author="Neil Perry",

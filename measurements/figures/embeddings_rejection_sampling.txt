@@ -1,0 +1,10 @@
+Rejection Sampling Results:
+RandomProjectionHash: 1.76 ± 0.28 average trials
+OracleHash: 1.74 ± 0.31 average trials
+Oracle 2 bits: 3.20 ± 0.58 average trials
+Oracle 3 bits: 8.56 ± 2.16 average trials
+Oracle 4 bits: 16.38 ± 4.42 average trials
+Oracle 5 bits: 33.24 ± 8.72 average trials
+Oracle 6 bits: 60.16 ± 14.76 average trials
+Oracle 7 bits: 120.24 ± 35.07 average trials
+Oracle 8 bits: 186.32 ± 52.47 average trials

@@ -20,5 +20,6 @@ src/robust_steganography/utils/get_embedding.py
 src/robust_steganography/utils/minimal_character_encoding.py
 src/robust_steganography/utils/new_text.py
 src/robust_steganography/utils/paraphrase.py
+src/robust_steganography/utils/pca_utils.py
 src/robust_steganography/utils/steg.py
 tests/test_error_correction.py

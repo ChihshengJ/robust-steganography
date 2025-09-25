@@ -1,14 +1,16 @@
+import json
 import os
 import quopri
-import nltk
-from nltk.tokenize import sent_tokenize
-import matplotlib.pyplot as plt
-from collections import Counter
-import json
-from operator import itemgetter
 import re
 import unicodedata
-nltk.download('punkt', quiet=True)  # Download required NLTK data
+from operator import itemgetter
+
+import matplotlib.pyplot as plt
+import nltk
+from nltk.tokenize import sent_tokenize
+
+nltk.download("punkt", quiet=True)  # Download required NLTK data
+
 
 def parse_enron_emails(directory_path):
     """
@@ -23,25 +25,28 @@ def parse_enron_emails(directory_path):
     """
     email_list = []
 
-    # Iterate through all files in the directory
     for filename in os.listdir(directory_path):
-        # Only process files matching the expected format (e.g., enronsent00)
         if filename.startswith("enronsent"):
             file_path = os.path.join(directory_path, filename)
-            
-            with open(file_path, 'r', encoding='utf-8') as file:
+
+            with open(file_path, "r", encoding="utf-8") as file:
                 # Read the file content and split on two blank lines
                 content = file.read()
                 emails = content.split("\n\n")  # Split by the two blank lines
-                
+
                 # Decode each email and clean up the text
                 for email in emails:
                     if email.strip():
-                        decoded_email = quopri.decodestring(email).decode('utf-8', errors='ignore')
-                        cleaned_email = decoded_email.replace('- 30 -', '').strip()  # Remove '- 30 -'
+                        decoded_email = quopri.decodestring(email).decode(
+                            "utf-8", errors="ignore"
+                        )
+                        cleaned_email = decoded_email.replace(
+                            "- 30 -", ""
+                        ).strip()  # Remove '- 30 -'
                         email_list.append(cleaned_email)
-    
+
     return email_list
+
 
 def clean_text(text):
     """
@@ -52,98 +57,111 @@ def clean_text(text):
     for char in text:
         # Get unicode category for this character
         category = unicodedata.category(char)
-        
+
         # Keep normal letters, numbers, punctuation, spaces, and symbols
         # Remove control characters (Cc) and format characters (Cf)
-        if category not in ['Cc', 'Cf']:
+        if category not in ["Cc", "Cf"]:
             cleaned_chars.append(char)
         else:
-            cleaned_chars.append(' ')
-    
-    text = ''.join(cleaned_chars)
-    
+            cleaned_chars.append(" ")
+
+    text = "".join(cleaned_chars)
+
     # Skip if text contains Enron-specific patterns
-    if re.search(r'E\d{3}[-\s]?\d*', text):  # Matches E### patterns
-        return ''
-    
+    if re.search(r"E\d{3}[-\s]?\d*", text):  # Matches E### patterns
+        return ""
+
     # Skip if too many formatting characters
-    if sum(c in '|>+-=' for c in text) > len(text) * 0.1:  # More than 10% special chars
-        return ''
-    
+    if sum(c in "|>+-=" for c in text) > len(text) * 0.1:  # More than 10% special chars
+        return ""
+
     # Remove ASCII art and formatting characters
-    text = re.sub(r'\|[\-\+\>\s]+\|', ' ', text)  # Vertical bars with formatting
-    text = re.sub(r'[\-\+\>\<\|]{4,}', ' ', text)  # Repeated formatting chars
-    
+    text = re.sub(r"\|[\-\+\>\s]+\|", " ", text)  # Vertical bars with formatting
+    text = re.sub(r"[\-\+\>\<\|]{4,}", " ", text)  # Repeated formatting chars
+
     # Remove specific patterns
-    text = re.sub(r'\b(?:SBX2|SB|AB)\s*\d+\b', '[BILL]', text)  # Legislative bill numbers
-    
+    text = re.sub(
+        r"\b(?:SBX2|SB|AB)\s*\d+\b", "[BILL]", text
+    )  # Legislative bill numbers
+
     # Common boilerplate patterns to remove
     artifacts = [
-        '=====================',
-        '-----Original Message-----',
-        '- 30 -',
-        '____________________',
-        '-----',
-        'All rights reserved',
-        'This message was sent from',
-        'If you have any questions or comments regarding this email',
-        'Copyright',
-        '©',
-        'Confidential',
-        'CONFIDENTIAL',
-        'Best regards',
-        'Kind regards',
-        'Sincerely',
-        'Tel:',
-        'Phone:',
-        'Fax:',
-        'Email:',
-        'www.',
+        "=====================",
+        "-----Original Message-----",
+        "- 30 -",
+        "____________________",
+        "-----",
+        "All rights reserved",
+        "This message was sent from",
+        "If you have any questions or comments regarding this email",
+        "Copyright",
+        "©",
+        "Confidential",
+        "CONFIDENTIAL",
+        "Best regards",
+        "Kind regards",
+        "Sincerely",
+        "Tel:",
+        "Phone:",
+        "Fax:",
+        "Email:",
+        "www.",
     ]
-    
+
     # Skip paragraphs that are likely signatures or contact info
-    if any(line.strip().startswith(('Tel:', 'Phone:', 'Fax:', 'Email:', 'www.')) 
-           for line in text.split('\n')):
-        return ''
-    
+    if any(
+        line.strip().startswith(("Tel:", "Phone:", "Fax:", "Email:", "www."))
+        for line in text.split("\n")
+    ):
+        return ""
+
     cleaned = text.strip()
-    
+
     # Remove common artifacts
     for artifact in artifacts:
-        cleaned = cleaned.replace(artifact, '')
-    
+        cleaned = cleaned.replace(artifact, "")
+
     # Remove lines that are just URLs, email addresses, or other noise
     lines = []
-    for line in cleaned.split('\n'):
+    for line in cleaned.split("\n"):
         line = line.strip()
         # Skip if line is too short or just punctuation
-        if (not line or 
-            len(line) < 3 or
-            line in ['?', '.', '!'] or
+        if (
+            not line
+            or len(line) < 3
+            or line in ["?", ".", "!"]
+            or
             # Skip email headers
-            re.match(r'\d{2}/\d{2}/\d{2,4}\s+\d{1,2}:\d{2}\s*(?:AM|PM)', line) or
-            re.match(r'(?:From|To|Subject|Date|Sent):\s*', line) or
+            re.match(r"\d{2}/\d{2}/\d{2,4}\s+\d{1,2}:\d{2}\s*(?:AM|PM)", line)
+            or re.match(r"(?:From|To|Subject|Date|Sent):\s*", line)
+            or
             # Skip URLs and emails
-            any(pattern in line.lower() for pattern in 
-                ['http://', 'https://', '@', '.com', '.net', '.org']) or
+            any(
+                pattern in line.lower()
+                for pattern in ["http://", "https://", "@", ".com", ".net", ".org"]
+            )
+            or
             # Skip if too many quote markers
-            line.count('>') > 5 or
+            line.count(">") > 5
+            or
             # Skip if looks like a file path
-            line.count('.') > 3):
+            line.count(".") > 3
+        ):
             continue
         lines.append(line)
-    
-    cleaned = ' '.join(lines)
-    
+
+    cleaned = " ".join(lines)
+
     # Skip if text appears truncated
-    if cleaned.endswith((':', ',', '...')):
-        return ''
-        
+    if cleaned.endswith((":", ",", "...")):
+        return ""
+
     # Skip if too short after cleaning
     if len(cleaned) < 10:
-        return ''
-    
+        return ""
+
     return cleaned
+
 
 def parse_paragraphs(emails):
     """
@@ -151,72 +169,97 @@ def parse_paragraphs(emails):
     """
     seen_paragraphs = set()  # Track duplicates
     paragraphs = []
-    
+
     for email in emails:
-        email_paragraphs = [p.strip() for p in email.split('\n\n')]
-        
+        email_paragraphs = [p.strip() for p in email.split("\n\n")]
+
         for paragraph in email_paragraphs:
             clean_para = clean_text(paragraph)
-            
+
             if not clean_para:  # Skip empty paragraphs
                 continue
-                
+
             # Skip if we've seen this paragraph before
             if clean_para in seen_paragraphs:
                 continue
-                
+
             # Only keep paragraphs with 2+ valid sentences
             sentences = sent_tokenize(clean_para)
-            valid_sentences = [s for s in sentences 
-                             if len(s.strip()) > 3  # Increased minimum length
-                             and not s.strip().startswith('>') 
-                             and not any(s.strip().startswith(p) for p in 
-                                       ['http', '@', '===', 'tel:', 'fax:', 'phone:', 'email:', 'www.'])
-                             and not any(boilerplate in s.lower() for boilerplate in 
-                                       ['all rights reserved', 'confidential', 'copyright'])]
-            
+            valid_sentences = [
+                s
+                for s in sentences
+                if len(s.strip()) > 3  # Increased minimum length
+                and not s.strip().startswith(">")
+                and not any(
+                    s.strip().startswith(p)
+                    for p in [
+                        "http",
+                        "@",
+                        "===",
+                        "tel:",
+                        "fax:",
+                        "phone:",
+                        "email:",
+                        "www.",
+                    ]
+                )
+                and not any(
+                    boilerplate in s.lower()
+                    for boilerplate in [
+                        "all rights reserved",
+                        "confidential",
+                        "copyright",
+                    ]
+                )
+            ]
+
             if len(valid_sentences) >= 2:
                 seen_paragraphs.add(clean_para)
                 paragraphs.append(clean_para)
-    
+
     return paragraphs
+
 
 def plot_sentence_distribution(paragraphs):
     """
     Creates a histogram showing the distribution of sentences per paragraph.
-    
+
     Parameters:
         paragraphs (list): List of paragraph strings
     """
     # Calculate sentence counts
     sentence_counts = [len(sent_tokenize(p)) for p in paragraphs]
-    
+
     # Plot the histogram
     plt.figure(figsize=(10, 6))
-    plt.hist(sentence_counts, bins=range(0, 11, 1),
-             edgecolor='black', alpha=0.7)
-    plt.title('Distribution of Sentences per Paragraph')
-    plt.xlabel('Number of Sentences')
-    plt.ylabel('Number of Paragraphs')
+    plt.hist(sentence_counts, bins=range(0, 11, 1), edgecolor="black", alpha=0.7)
+    plt.title("Distribution of Sentences per Paragraph")
+    plt.xlabel("Number of Sentences")
+    plt.ylabel("Number of Paragraphs")
     plt.xlim(0, 10)
     plt.grid(True, alpha=0.3)
 
     # Add text box with statistics
-    stats_text = f'Total Paragraphs: {len(paragraphs)}\n'
-    stats_text += f'Mean Sentences: {sum(sentence_counts)/len(sentence_counts):.1f}\n'
-    stats_text += f'Max Sentences: {max(sentence_counts)}'
-    plt.text(0.95, 0.95, stats_text,
-             transform=plt.gca().transAxes,
-             verticalalignment='top',
-             horizontalalignment='right',
-             bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    stats_text = f"Total Paragraphs: {len(paragraphs)}\n"
+    stats_text += f"Mean Sentences: {sum(sentence_counts) / len(sentence_counts):.1f}\n"
+    stats_text += f"Max Sentences: {max(sentence_counts)}"
+    plt.text(
+        0.95,
+        0.95,
+        stats_text,
+        transform=plt.gca().transAxes,
+        verticalalignment="top",
+        horizontalalignment="right",
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+    )
 
     plt.show()
+
 
 def save_sorted_paragraphs(paragraphs, output_file):
     """
     Sorts paragraphs by sentence count and saves them to a JSON file with metadata.
-    
+
     Parameters:
         paragraphs (list): List of paragraph strings
         output_file (str): Path to output JSON file
@@ -225,27 +268,40 @@ def save_sorted_paragraphs(paragraphs, output_file):
     paragraph_data = []
     for p in paragraphs:
         sentences = sent_tokenize(p)
-        paragraph_data.append({
-            'text': p,
-            'sentence_count': len(sentences),
-            'sentences': sentences,
-            'word_count': len(p.split())
-        })
-    
+        paragraph_data.append(
+            {
+                "text": p,
+                "sentence_count": len(sentences),
+                "sentences": sentences,
+                "word_count": len(p.split()),
+            }
+        )
+
     # Sort by sentence count
-    sorted_paragraphs = sorted(paragraph_data, key=itemgetter('sentence_count'))
-    
+    sorted_paragraphs = sorted(paragraph_data, key=itemgetter("sentence_count"))
+
     # Save to JSON file
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump({
-            'metadata': {
-                'total_paragraphs': len(sorted_paragraphs),
-                'mean_sentences': sum(p['sentence_count'] for p in sorted_paragraphs) / len(sorted_paragraphs),
-                'max_sentences': max(p['sentence_count'] for p in sorted_paragraphs),
-                'total_words': sum(p['word_count'] for p in sorted_paragraphs)
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "metadata": {
+                    "total_paragraphs": len(sorted_paragraphs),
+                    "mean_sentences": sum(
+                        p["sentence_count"] for p in sorted_paragraphs
+                    )
+                    / len(sorted_paragraphs),
+                    "max_sentences": max(
+                        p["sentence_count"] for p in sorted_paragraphs
+                    ),
+                    "total_words": sum(p["word_count"] for p in sorted_paragraphs),
+                },
+                "paragraphs": sorted_paragraphs,
             },
-            'paragraphs': sorted_paragraphs
-        }, f, indent=2, ensure_ascii=False)
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
+
 
 # Process the emails
 directory_path = os.path.expanduser("~/Downloads/enronsent")
@@ -253,7 +309,7 @@ emails = parse_enron_emails(directory_path)
 multi_sentence_paragraphs = parse_paragraphs(emails)
 
 # Save sorted paragraphs
-output_file = 'enron_paragraphs.json'
+output_file = "enron_paragraphs.json"
 save_sorted_paragraphs(multi_sentence_paragraphs, output_file)
 
 # Print basic statistics and plot histogram
