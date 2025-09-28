@@ -1,20 +1,20 @@
-import pickle
 import json
-import time
-from tqdm import tqdm
-from pathlib import Path
-from typing import List, Optional, Any
-import random
 import logging
+import pickle
+import random
+import time
+from pathlib import Path
+from typing import Any, override
 
 import matplotlib.pyplot as plt
 import openai
 from robust_steganography.core.encoder import Encoder
 from robust_steganography.core.error_correction import RepetitionCode
 from robust_steganography.core.hash_functions import (
-    PCAHash,
+    RandomProjectionHash,
 )
 from robust_steganography.core.steg_system import StegSystem
+from tqdm import tqdm
 from watermark import GPT2Model
 from watermark.attacks.ngram_shuffle import NGramShuffleAttack
 from watermark.attacks.paraphrase import ParaphraseAttack
@@ -34,20 +34,22 @@ class BypassEncoder(Encoder):
     def __init__(self):
         pass
 
-    def encode(self, data: List[int]) -> List[int]:
+    @override
+    def encode(self, data: list[int]) -> list[int]:
         return data
-
-    def decode(self, bits: List[int]) -> List[int]:
+    
+    @override
+    def decode(self, bits: list[int]) -> list[int]:
         return bits
 
 def attack(
     attack_type: str,
-    messages: List[str],
+    messages: list[str],
     paraphrase_instance: ParaphraseAttack,
     model: LanguageModel,
     tp: float,
     mode: bool,
-) -> List[str]:
+) -> list[str]:
     attacked_texts = []
     for mes in messages:
         if attack_type == "n-gram":
@@ -77,19 +79,20 @@ def load_pickle(path: Path):
     with open(path, "rb") as f:
         return pickle.load(f)
 
-def append_lines(path: Path, lines: List[str]):
+def append_lines(path: Path, lines: list[str]):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
 def generate_recovery_accuracy_resumable(
-    tampering_levels: List[float],
+    tampering_levels: list[float],
+    attack_configurations: list,
     system: StegSystem,
     num_bits: int,
     num_messages: int,
-    history: Optional[List[str]] = None,
+    history: list[str] | None = None,
     runs: int = 5,
-    seed: Optional[int] = None,
+    seed: int | None = None,
     checkpoint_path: str = "checkpoints/exp_checkpoint.pkl",
     output_path: str = "exp_results",
     save_texts: bool = False,
@@ -119,13 +122,6 @@ def generate_recovery_accuracy_resumable(
     summary_dir = out_dir / "summaries"
     summary_dir.mkdir(parents=True, exist_ok=True)
 
-    attack_configurations = [
-        ("NGram Shuffle (local)", "n-gram", True),
-        ("NGram Shuffle (global)", "n-gram", False),
-        ("Synonym Attack", "synonym", None),
-        ("Paraphrase Attack (local)", "paraphrase", True),
-        ("Paraphrase Attack (global)", "paraphrase", False),
-    ]
 
     if seed is not None:
         random.seed(seed)
@@ -139,12 +135,12 @@ def generate_recovery_accuracy_resumable(
 
     paraphrase_instance = ParaphraseAttack(
         client=system.client,
-        model="gpt-4o-mini",
+        model="gpt-4.1-nano",
         temperature=0.0,
     )
     model = GPT2Model()
 
-    messages: List[List[int]] = [[random.randint(0, 1) for _ in range(num_bits)] for _ in range(num_messages)]
+    messages: list[list[int]] = [[random.randint(0, 1) for _ in range(num_bits)] for _ in range(num_messages)]
 
     if resume and checkpoint_file.exists():
         checkpoint = load_pickle(checkpoint_file)
@@ -278,8 +274,8 @@ def generate_recovery_accuracy_resumable(
 
                 run_pbar.close()
                 # end runs for message
-                perfect_recovery_run = (100.0 * success_count / float(runs)) if runs > 0 else 0.0
-                bitwise_recovery_run = (100.0 * bit_score / float(runs)) if runs > 0 else 0.0
+                perfect_recovery_run = success_count / float(runs) if runs > 0 else 0.0
+                bitwise_recovery_run = bit_score / float(runs) if runs > 0 else 0.0
                 perfect_recovery += perfect_recovery_run
                 bitwise_recovery += bitwise_recovery_run
 
@@ -336,13 +332,12 @@ def generate_recovery_accuracy_resumable(
     LOGGER.info("Experiment finished; final results saved into checkpoint and summary directory.")
     return all_ret
 
-
 def generate_recovery_accuracy(
-    tampering_levels: List,
+    tampering_levels: list,
     system: StegSystem,
     num_bits: int,
     num_messages: int,
-    history: Optional[List[str]] = None,
+    history: list[str] | None = None,
     runs: int = 5,
 ):
     import random
@@ -353,21 +348,21 @@ def generate_recovery_accuracy(
             "Want to grab coffee and discuss it?",
         ]
     attack_configurations = [
-        ("NGram Shuffle (local)", "n-gram", True),
-        ("NGram Shuffle (global)", "n-gram", False),
-        ("Synonym Attack", "synonym", None),
+        # ("NGram Shuffle (local)", "n-gram", True),
+        # ("NGram Shuffle (global)", "n-gram", False),
+        # ("Synonym Attack", "synonym", None),
         ("Paraphrase Attack (local)", "paraphrase", True),
         ("Paraphrase Attack (global)", "paraphrase", False),
     ]
     paraphrase_instance = ParaphraseAttack(
         client=system.client,
-        model="gpt-4o-mini",
+        model="gpt-5-nano",
         temperature=0.0,
     )
     model = GPT2Model()
 
     # construct random secret messages using num_bits and num_messages
-    messages: List[List[int]] = [[random.randint(0, 1) for _ in range(num_bits)] for _ in range(num_messages)]
+    messages: list[list[int]] = [[random.randint(0, 1) for _ in range(num_bits)] for _ in range(num_messages)]
 
     all_ret = {}
     for attack_label, attack_type, mode in attack_configurations:
@@ -413,16 +408,16 @@ def generate_recovery_accuracy(
                     )
 
                 perfect_recovery_run = (
-                    100.0 * success_count / float(runs) if runs > 0 else 0.0
+                    success_count / float(runs) if runs > 0 else 0.0
                 )
                 bitwise_recovery_run = (
-                    100.0 * bit_score / float(runs) if runs > 0 else 0.0
+                    bit_score / float(runs) if runs > 0 else 0.0
                 )
                 perfect_recovery += perfect_recovery_run
                 bitwise_recovery += bitwise_recovery_run
 
-            perfect = 100.0 * perfect_recovery / float(num_messages)
-            bitwise = 100.0 * bitwise_recovery /float(num_messages)
+            perfect = perfect_recovery / float(num_messages)
+            bitwise = bitwise_recovery /float(num_messages)
 
             results_bitwise[mode].append(bitwise)
             results_perfect[mode].append(perfect)
@@ -438,13 +433,12 @@ def generate_recovery_accuracy(
 
     return all_ret
 
-
 def plot_recovery_results(tp, attack_types, results, output_path):
     for attack_type in attack_types:
-        results_bitwise = results[attack_type][0]
-        results_perfect = results[attack_type][1]
-        datalines_bitwise = results[attack_type][2]
-        data_lines_perfect = results[attack_type][3]
+        results_bitwise = results[attack_type]['results_bitwise']
+        results_perfect = results[attack_type]['results_perfect']
+        datalines_bitwise = results[attack_type]['data_lines_bitwise']
+        data_lines_perfect = results[attack_type]['data_lines_perfect']
 
         plt.figure(figsize=(8, 6))
         # plt.axhline(baseline_recovery, color='gray', linestyle='--', label="Baseline")
@@ -477,7 +471,7 @@ def plot_recovery_results(tp, attack_types, results, output_path):
         # Plot Perfect Recovery Rate for this attack type.
         # -----------------------------------------------------------------------------
         plt.figure(figsize=(8, 6))
-        plt.axhline(1.0, color="gray", linestyle="--", label="100% Perfect Recovery")
+        # plt.axhline(1.0, color="gray", linestyle="--", label="100% Perfect Recovery")
         for mode_label, rate_list in results_perfect.items():
             plt.plot(
                 tp,
@@ -502,15 +496,15 @@ def plot_recovery_results(tp, attack_types, results, output_path):
 
 
 def main():
-    from robust_steganography.utils.pca_utils import load_pca_model
     from robust_steganography.config.system_prompts import CORPORATE_MONOLOGUE
-    tp = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+    tp = [0.1, 0.5]
 
     # Initialize components
     client = openai.OpenAI()
-    hash_fn = PCAHash(
-        pca_model=load_pca_model("../embeddings/src/robust_steganography/models/pca_corporate.pkl")
-    )
+    # hash_fn = PCAHash(
+    #     pca_model=load_pca_model("../embeddings/src/robust_steganography/models/pca_corporate.pkl")
+    # )
+    hash_fn = RandomProjectionHash(embedding_dim=3072)
     
     # ecc = ConvolutionalCode()
     ecc = RepetitionCode(repetitions=5)
@@ -529,26 +523,36 @@ def main():
         system_prompt=system_prompt,
         chunk_length=40,
     )
-    tampering_types = ["NGram Shuffle", "Synonym Attack", "Paraphrase Attack"]
 
+    attack_configurations = [
+        # ("NGram Shuffle (local)", "n-gram", True),
+        # ("NGram Shuffle (global)", "n-gram", False),
+        # ("Synonym Attack", "synonym", None),
+        ("Paraphrase Attack (local)", "paraphrase", True),
+        ("Paraphrase Attack (global)", "paraphrase", False),
+    ]
+
+    attack_keys = [t[0] for t in attack_configurations]
     results = generate_recovery_accuracy_resumable(
-                tampering_levels=tp,
-                system=system,
-                num_bits=1,
-                num_messages=5,
-                history=history,
-                runs=5,
-                seed=42,
-                checkpoint_path="checkpoints/exp_checkpoint.pkl",
-                output_path="figures/embedding_recovery_test",
-                save_texts=False,
-                max_saved_examples=200,
-                resume=True,
-                checkpoint_after_each_message=False,
-            )
+        tampering_levels=tp,
+        attack_configurations = attack_configurations,
+        system=system, 
+        num_bits=1,
+        num_messages=1,
+        history=history,
+        runs=3,
+        seed=42,
+        checkpoint_path="checkpoints/exp_checkpoint.pkl",
+        output_path="figures/embedding_recovery_test",
+        save_texts=False,
+        max_saved_examples=200,
+        resume=True,
+        checkpoint_after_each_message=False,
+    )
+    print(results)
 
     output_path = "./figures/embedding_recovery_test/"
-    plot_recovery_results(tp, tampering_types, results, output_path)
+    plot_recovery_results(tp,attack_keys, results, output_path)
 
 
 if __name__ == "__main__":
