@@ -20,6 +20,7 @@ embeddings/enron_emails/**/*.npy
 # ignore measurement checkpoints
 measurements/checkpoints/
 measurements/watermarked_texts/
+measurements/figures/embedding_recovery_test/summaries/
 
 __pycache__/
 .pytest_cache/
