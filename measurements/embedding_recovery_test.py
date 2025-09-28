@@ -9,7 +9,7 @@ from typing import Any, override
 import matplotlib.pyplot as plt
 import openai
 from robust_steganography.core.encoder import Encoder
-from robust_steganography.core.error_correction import RepetitionCode
+from robust_steganography.core.error_correction import ConvolutionalCode
 from robust_steganography.core.hash_functions import (
     RandomProjectionHash,
 )
@@ -332,107 +332,6 @@ def generate_recovery_accuracy_resumable(
     LOGGER.info("Experiment finished; final results saved into checkpoint and summary directory.")
     return all_ret
 
-def generate_recovery_accuracy(
-    tampering_levels: list,
-    system: StegSystem,
-    num_bits: int,
-    num_messages: int,
-    history: list[str] | None = None,
-    runs: int = 5,
-):
-    import random
-    if history is None:
-        history = [
-            "What are you up to today?",
-            "Nothing much, just working on a project.",
-            "Want to grab coffee and discuss it?",
-        ]
-    attack_configurations = [
-        # ("NGram Shuffle (local)", "n-gram", True),
-        # ("NGram Shuffle (global)", "n-gram", False),
-        # ("Synonym Attack", "synonym", None),
-        ("Paraphrase Attack (local)", "paraphrase", True),
-        ("Paraphrase Attack (global)", "paraphrase", False),
-    ]
-    paraphrase_instance = ParaphraseAttack(
-        client=system.client,
-        model="gpt-5-nano",
-        temperature=0.0,
-    )
-    model = GPT2Model()
-
-    # construct random secret messages using num_bits and num_messages
-    messages: list[list[int]] = [[random.randint(0, 1) for _ in range(num_bits)] for _ in range(num_messages)]
-
-    all_ret = {}
-    for attack_label, attack_type, mode in attack_configurations:
-        LOGGER.info(f"Testing {attack_label}, {attack_type}, {mode}")
-        results_bitwise = {mode: []}
-        results_perfect = {mode: []}
-        data_lines_bitwise = ["Tampering_Percentage\tMode\tBitwise_Accuracy"]
-        data_lines_perfect = ["Tampering_Percentage\tMode\tPerfect_Recovery_Rate"]
-        for tp in tqdm(tampering_levels, desc="Tampering levels"):
-            bitwise_recovery = 0
-            perfect_recovery = 0
-            for message in tqdm(messages, desc="Messages"):
-                success_count = 0
-                bit_score = 0
-
-                # run trials
-                for _ in tqdm(range(runs), desc=f"runs@tp={tp}", leave=False):
-                    try:
-                        stego_texts = system.hide_message(message, history)
-                    except Exception as e:
-                        LOGGER.warning(f"system.hide_message failed: {e}")
-                        continue
-                    attacked_texts = attack(
-                        attack_type=attack_type,
-                        messages=stego_texts,
-                        paraphrase_instance=paraphrase_instance,
-                        model=model,
-                        tp=tp,
-                        mode=mode,
-                    )
-
-                    # perfect recovery score
-                    try:
-                        recovered = system.recover_message(attacked_texts)
-                    except Exception:
-                        LOGGER.warning("Message recovery failure")
-                        recovered = None
-                    if recovered == message:
-                        success_count += 1
-                    # bit-wise score
-                    bit_score += compute_recovery_accuracy(
-                        system.encoder.encode(message), system.encoder.encode(recovered)
-                    )
-
-                perfect_recovery_run = (
-                    success_count / float(runs) if runs > 0 else 0.0
-                )
-                bitwise_recovery_run = (
-                    bit_score / float(runs) if runs > 0 else 0.0
-                )
-                perfect_recovery += perfect_recovery_run
-                bitwise_recovery += bitwise_recovery_run
-
-            perfect = perfect_recovery / float(num_messages)
-            bitwise = bitwise_recovery /float(num_messages)
-
-            results_bitwise[mode].append(bitwise)
-            results_perfect[mode].append(perfect)
-            data_lines_bitwise.append(f"{tp}\t{mode}\t{bitwise}")
-            data_lines_perfect.append(f"{tp}\t{mode}\t{perfect}")
-
-        all_ret[attack_label] = (
-            results_bitwise,
-            results_perfect,
-            data_lines_bitwise,
-            data_lines_perfect,
-        )
-
-    return all_ret
-
 def plot_recovery_results(tp, attack_types, results, output_path):
     for attack_type in attack_types:
         results_bitwise = results[attack_type]['results_bitwise']
@@ -505,9 +404,11 @@ def main():
     #     pca_model=load_pca_model("../embeddings/src/robust_steganography/models/pca_corporate.pkl")
     # )
     hash_fn = RandomProjectionHash(embedding_dim=3072)
-    
-    # ecc = ConvolutionalCode()
-    ecc = RepetitionCode(repetitions=5)
+
+    # THe length of the stegotext is controlled by the error correction algorithm:
+    # Repetition: reprtition * num_bits
+    # Convolution: 4 * (num_bits + K -1)
+    ecc = ConvolutionalCode(block_size=1, K=3)
     system_prompt = CORPORATE_MONOLOGUE
 
     history = [
