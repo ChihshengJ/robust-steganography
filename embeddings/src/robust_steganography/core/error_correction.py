@@ -111,8 +111,8 @@ class RepetitionCode(ErrorCorrection):
 
 
 class ConvolutionalCode(ErrorCorrection):
-    def __init__(self, block_size=1):
-        self.K = 15  # Constraint length
+    def __init__(self, block_size=1, K=15):
+        self.K = K  # Constraint length
         self.width = self.K
         self.block_size = block_size
 

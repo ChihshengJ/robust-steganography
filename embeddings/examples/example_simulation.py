@@ -1,10 +1,11 @@
-from robust_steganography.core.steg_system import StegSystem
-from robust_steganography.core.hash_functions import OracleHash
-from robust_steganography.core.error_correction import RepetitionCode, ConvolutionalCode
+from robust_steganography.config.system_prompts import (
+    TWO_WAY_DYNAMIC,
+)
 from robust_steganography.core.encoder import MinimalEncoder
-from robust_steganography.config.system_prompts import TWO_WAY_DYNAMIC, ONE_WAY_MONOLOGUE
+from robust_steganography.core.error_correction import ConvolutionalCode
+from robust_steganography.core.hash_functions import OracleHash
 from robust_steganography.core.simulation import Simulator
-import openai
+from robust_steganography.core.steg_system import StegSystem
 
 # Initialize components
 # client = openai.OpenAI()
@@ -20,7 +21,7 @@ system = StegSystem(
     error_correction=ecc,
     encoder=MinimalEncoder(),
     system_prompt=system_prompt,
-    chunk_length=50,
+    chunk_length=5,
     simulator=Simulator()  # Pass simulator instance directly
 )
 
