@@ -1,21 +1,22 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import os
-import openai
-import re
 import random
+import re
+
+import matplotlib.pyplot as plt
+import numpy as np
+import openai
 from watermark import (
-    GPT2Model,
     AESPRF,
-    SmoothPerturb,
-    SmoothCovertextCalculator,
     Embedder,
     Extractor,
-    SynonymAttack,
+    GPT2Model,
     NGramShuffleAttack,
-    ParaphraseAttack
+    ParaphraseAttack,
+    SmoothCovertextCalculator,
+    SmoothPerturb,
+    SynonymAttack,
 )
+
 
 #! Add function to look at chance of repeated n-grams in covertext as n varies
 def distinct_n(tokens, n):
@@ -509,5 +510,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
