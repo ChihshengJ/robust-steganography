@@ -1,0 +1,3 @@
+Tampering_Percentage	Perfect_Recovery_Rate
+0.3	100.0
+0.7	100.0
