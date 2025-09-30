@@ -1,16 +1,17 @@
 import math
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 
 
 class ErrorCorrection(ABC):
     @abstractmethod
-    def encode(self, bits):
+    def encode(self, bits) -> list[Any]:
         pass
 
     @abstractmethod
-    def decode(self, bits):
+    def decode(self, bits, actual_length) -> list[Any]:
         pass
 
 
@@ -40,9 +41,10 @@ class RepetitionCode(ErrorCorrection):
 
         return encoded_bits
 
-    def decode(self, bits):
+    def decode(self, bits, actual_length):
         # Flatten input array
-        bits = np.array(bits).flatten()
+        bits = np.array(bits).flatten()[:actual_length]
+        # print(f"decoding bits:{bits}")
 
         decoded_bits = []
         for i in range(0, len(bits), self.repetitions):
@@ -200,9 +202,9 @@ class ConvolutionalCode(ErrorCorrection):
 
         return padded_input_bits, num_padding_bits, num_padding_bits_field_size
 
-    def decode(self, received_bits):
+    def decode(self, received_bits, actual_length):
         # Flatten input array
-        received_bits = np.array(received_bits).flatten()
+        received_bits = np.array(received_bits).flatten()[:actual_length]
 
         n = 4  # Code rate denominator
         total_tail_bits = self.K - 1
