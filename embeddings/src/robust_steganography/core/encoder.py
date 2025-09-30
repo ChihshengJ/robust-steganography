@@ -15,19 +15,42 @@ class Encoder(ABC):
 
 class CharacterEncoder(Encoder):
     """Base class for character-based encodings"""
-    @abstractmethod
-    def encode(self, text: str) -> list[int]:
-        pass
-    
-    @abstractmethod
+    def encode(self, data: Any) -> list[int]:
+        """
+        Encode a string into bits.
+        accept Any but will raise a TypeError if the data is not a string.
+        """
+        if not isinstance(data, str):
+            raise TypeError(
+                f"CharacterEncoder can only encode strings, but received type '{type(data).__name__}'"
+            )
+
+        text: str = data
+        bits = []
+        for char in text:
+            # Using 8-bit ASCII for this example
+            binary_representation = bin(ord(char))[2:].zfill(8)
+            bits.extend([int(b) for b in binary_representation])
+        return bits
+
     def decode(self, bits: list[int]) -> str:
-        pass
+        if len(bits) % 8 != 0:
+            raise ValueError("Bit list length must be a multiple of 8.")
+        
+        chars = []
+        for i in range(0, len(bits), 8):
+            byte_string = "".join(map(str, bits[i:i+8]))
+            char_code = int(byte_string, 2)
+            chars.append(chr(char_code))
+            
+        return "".join(chars)
+    
 
 class StandardEncoder(CharacterEncoder):
     BITS_PER_CHAR = 8  # UTF-8/ASCII uses 8 bits per character
     
-    def encode(self, text: str) -> list[int]:
-        return [int(bit) for char in text for bit in format(ord(char), '08b')]
+    def encode(self, data: str) -> list[int]:
+        return [int(bit) for char in data for bit in format(ord(char), '08b')]
     
     def decode(self, bits: list[int]) -> str:
         """Convert bits back to string, with error checking."""
@@ -52,8 +75,8 @@ class MinimalEncoder(CharacterEncoder):
         self.encode_text = string_to_bits
         self.decode_bits = bits_to_string
     
-    def encode(self, text: str) -> list[int]:
-        return self.encode_text(text)
+    def encode(self, data: str) -> list[int]:
+        return self.encode_text(data)
     
     def decode(self, bits: list[int]) -> str:
         """Decode a bit sequence into a string, with error checking."""
@@ -97,15 +120,15 @@ class CiphertextEncoder(Encoder):
         self.json = json
         self.base64 = base64
         
-    def encode(self, ciphertext: Any) -> list[int]:
+    def encode(self, data: Any) -> list[int]:
         if self.format == 'json':
             # Directly use the dictionary if it's already JSON-serializable
-            if isinstance(ciphertext, dict):
-                data = ciphertext
-            elif hasattr(ciphertext, 'to_dict'):
-                data = ciphertext.to_dict()
+            if isinstance(data, dict):
+                data = data
+            elif hasattr(data, 'to_dict'):
+                data = data.to_dict()
             else:
-                data = ciphertext.__dict__
+                data = data.__dict__
             
             # Convert to JSON string then to bits
             json_str = self.json.dumps(data)
@@ -113,10 +136,10 @@ class CiphertextEncoder(Encoder):
             
         elif self.format == 'bytes':
             # Handle byte-based ciphertext
-            if isinstance(ciphertext, bytes):
-                byte_data = ciphertext
+            if isinstance(data, bytes):
+                byte_data = data
             else:
-                byte_data = bytes(ciphertext)
+                byte_data = bytes(data)
                 
             # Convert bytes to base64 string then to bits
             b64_str = self.base64.b64encode(byte_data).decode('utf-8')

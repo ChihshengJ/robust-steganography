@@ -10,7 +10,7 @@ from typing import Any, override
 import matplotlib.pyplot as plt
 import openai
 from robust_steganography.core.encoder import Encoder
-from robust_steganography.core.error_correction import ConvolutionalCode, RepetitionCode
+from robust_steganography.core.error_correction import RepetitionCode
 from robust_steganography.core.hash_functions import (
     RandomProjectionHash,
 )
@@ -129,32 +129,49 @@ def generate_recovery_accuracy_resumable(
     system: StegSystem,
     num_bits: int,
     num_messages: int,
-    history: list[str] | None = None,
+    num_stego_per_message: int,
     runs: int = 5,
+    history: list[str] | None = None,
     seed: int | None = None,
     checkpoint_path: str = "checkpoints/exp_checkpoint.pkl",
     output_path: str = "exp_results",
     save_texts: bool = False,
     max_saved_examples: int = 200,
     resume: bool = True,
-    checkpoint_after_each_message: bool = False,
+    checkpoint_after_each_stego: bool = False,
 ):
     """
-    Resumable, logged version of generate_recovery_accuracy.
+    Loop structure:
+    1. For each message:
+       a. Generate num_stego_per_message stego texts
+       b. For each attack configuration:
+          For each tampering level:
+            For each stego text:
+              For each run:
+                Attack and recover
+              Aggregate across runs
+            Aggregate across stego texts
+          Aggregate across tampering levels
+       c. Aggregate across attacks
+    2. Aggregate across all messages
 
     Parameters:
     - tampering_levels: iterable of tampering percentages
-    - system: object with hide_message(message, history) and recover_message(attacked_texts)
-              and encoder.encode(...)
+    - attack_configurations: list of (label, type, config) tuples
+    - system: StegSystem with hide_message() and recover_message()
+    - num_bits: number of bits per message
+    - num_messages: number of different messages to test
+    - num_stego_per_message: number of stego texts to generate per message
+    - runs: number of attack/recovery runs per stego text
+    - history: conversation history for stego generation
     - seed: optional random seed for deterministic message generation
     - checkpoint_path: pickle file path for checkpointing/resume
-    - out_dir: directory to write CSV/JSONL logs
-    - save_texts: whether to save stego/attacked/recovered text outputs (can be large)
-    - max_saved_examples: maximum number of examples to persist across the whole run (to limit size)
+    - output_path: directory to write CSV/JSONL logs
+    - save_texts: whether to save stego/attacked/recovered text outputs
+    - max_saved_examples: maximum number of examples to persist
     - resume: if True and checkpoint exists, resume from it
-    - checkpoint_after_each_message: if True, checkpoint more frequently (slower)
+    - checkpoint_after_each_stego: if True, checkpoint after each stego generation
     """
-
     out_dir = Path(output_path)
     checkpoint_file = Path(checkpoint_path)
     texts_log_path = out_dir / "texts_log.jsonl"
@@ -163,6 +180,7 @@ def generate_recovery_accuracy_resumable(
 
     if seed is not None:
         random.seed(seed)
+
     if history is None:
         history = [
             "What are you up to today?",
@@ -170,7 +188,6 @@ def generate_recovery_accuracy_resumable(
             "Want to grab coffee and discuss it?",
         ]
 
-    # setting local to False so that paraphrase always use global paraphrase to handle one sentence
     paraphrase_instance = ParaphraseAttack(
         client=system.client, model="gpt-4.1-nano", temperature=0.5, local=False
     )
@@ -179,218 +196,297 @@ def generate_recovery_accuracy_resumable(
     messages: list[list[int]] = [
         [random.randint(0, 1) for _ in range(num_bits)] for _ in range(num_messages)
     ]
-    # print(messages)
 
     if resume and checkpoint_file.exists():
         checkpoint = load_pickle(checkpoint_file)
         LOGGER.info(f"[resume] loaded checkpoint from {checkpoint_file}")
     else:
         checkpoint = {
+            "message_index": 0,
+            "current_message_stego_complete": False,
+            "stego_gen_index": 0,
             "attack_index": 0,
             "tampering_index": 0,
-            "message_index": 0,
+            "stego_index": 0,
             "run_index": 0,
-            "all_ret": {},  # store final results per attack label
+            "all_ret": {},
+            "message_results": {},
             "texts_saved_count": 0,
             "random_state": None,
+            "current_stego_texts": [],
         }
 
-    # Get random state for resume reseeding
     checkpoint["random_state"] = random.getstate()
-
     save_pickle(checkpoint_file, checkpoint)
 
     all_ret = checkpoint.get("all_ret", {})
-
     LOGGER.info("Start Experiment")
-    for a_idx in range(checkpoint["attack_index"], len(attack_configurations)):
-        attack_label, attack_type, _ = attack_configurations[a_idx]
 
-        LOGGER.info(
-            f"Starting attack {a_idx + 1}/{len(attack_configurations)}: {attack_label} ({attack_type}, mode=local (embedding system does not support global))"
-        )
+    # Main Loop
+    for msg_idx in range(checkpoint["message_index"], num_messages):
+        message = messages[msg_idx]
+        LOGGER.info(f"\n{'=' * 60}")
+        LOGGER.info(f"Processing Message {msg_idx + 1}/{num_messages}")
+        LOGGER.info(f"{'=' * 60}")
 
-        if attack_label in all_ret:
-            results_bitwise = all_ret[attack_label].get("results_bitwise", [])
-            results_perfect = all_ret[attack_label].get("results_perfect", [])
-            data_lines_bitwise = all_ret[attack_label].get(
-                "data_lines_bitwise", ["Tampering_Percentage\tMode\tBitwise_Accuracy"]
+        # Generating stegotexts
+        if not checkpoint.get("current_message_stego_complete", False):
+            LOGGER.info(
+                f"Generating {num_stego_per_message} stego texts for message {msg_idx}"
             )
-            data_lines_perfect = all_ret[attack_label].get(
-                "data_lines_perfect",
-                ["Tampering_Percentage\tMode\tPerfect_Recovery_Rate"],
+            current_stego_texts = checkpoint.get("current_stego_texts", [])
+
+            stego_gen_pbar = tqdm(
+                total=num_stego_per_message,
+                desc=f"Generating stego (msg {msg_idx})",
+                initial=checkpoint["stego_gen_index"],
             )
+
+            for stego_i in range(checkpoint["stego_gen_index"], num_stego_per_message):
+                stego_texts = system.hide_message(message, history)
+                current_stego_texts.append(stego_texts)
+
+                checkpoint["stego_gen_index"] = stego_i + 1
+                checkpoint["current_stego_texts"] = current_stego_texts
+
+                if checkpoint_after_each_stego:
+                    save_pickle(checkpoint_file, checkpoint)
+
+                stego_gen_pbar.update(1)
+
+            stego_gen_pbar.close()
+
+            checkpoint["current_message_stego_complete"] = True
+            checkpoint["current_stego_texts"] = current_stego_texts
+            save_pickle(checkpoint_file, checkpoint)
+            LOGGER.info(f"Stego generation complete for message {msg_idx}")
         else:
-            results_bitwise = []
-            results_perfect = []
-            data_lines_bitwise = ["Tampering_Percentage\tBitwise_Accuracy"]
-            data_lines_perfect = ["Tampering_Percentage\tPerfect_Recovery_Rate"]
-
-        # iterate tampering levels
-        tampering_pbar = tqdm(
-            tampering_levels,
-            desc=f"Tampering levels ({attack_label})",
-            position=0,
-            leave=True,
-            initial=checkpoint["tampering_index"],
-        )
-        for t_idx, tp in enumerate(
-            tampering_levels[checkpoint["tampering_index"] :],
-            start=checkpoint["tampering_index"],
-        ):
-            tampering_pbar.n = t_idx  # keep position consistent
-            tampering_pbar.refresh()
-            tp = tampering_levels[t_idx]
-
-            perfect_recovery = 0.0
-            bitwise_recovery = 0.0
-
-            msg_pbar = tqdm(
-                range(len(messages)),
-                desc=f"Messages@tp={tp}",
-                position=1,
-                leave=False,
-                initial=checkpoint["message_index"],
+            current_stego_texts = checkpoint["current_stego_texts"]
+            LOGGER.info(
+                f"Using {len(current_stego_texts)} pre-generated stego texts for message {msg_idx}"
             )
-            for m_idx in range(checkpoint["message_index"], len(messages)):
-                msg_pbar.update(1)
-                message = messages[m_idx]
-                success_count = 0
-                bit_score = 0.0
 
-                run_pbar = tqdm(
-                    range(runs),
-                    desc=f"runs (msg {m_idx}, tp={tp})",
-                    position=2,
+        # Start attacks
+        message_results = checkpoint.get("message_results", {})
+        for a_idx in range(checkpoint["attack_index"], len(attack_configurations)):
+            attack_label, attack_type, _ = attack_configurations[a_idx]
+            LOGGER.info(
+                f"\nAttack {a_idx + 1}/{len(attack_configurations)}: {attack_label} (Message {msg_idx})"
+            )
+            if attack_label not in all_ret:
+                all_ret[attack_label] = {
+                    "results_bitwise": [],
+                    "results_perfect": [],
+                    "data_lines_bitwise": ["Tampering_Percentage\tBitwise_Accuracy"],
+                    "data_lines_perfect": [
+                        "Tampering_Percentage\tPerfect_Recovery_Rate"
+                    ],
+                    "tampering_level_data": {},
+                }
+            if attack_label not in message_results:
+                message_results[attack_label] = {"tampering_level_data": {}}
+            tampering_pbar = tqdm(
+                tampering_levels,
+                desc=f"Tampering ({attack_label}, msg {msg_idx})",
+                position=0,
+                leave=True,
+                initial=checkpoint["tampering_index"],
+            )
+            for t_idx in range(checkpoint["tampering_index"], len(tampering_levels)):
+                tampering_pbar.n = t_idx
+                tampering_pbar.refresh()
+                tp = tampering_levels[t_idx]
+                if tp not in message_results[attack_label]["tampering_level_data"]:
+                    message_results[attack_label]["tampering_level_data"][tp] = {
+                        "perfect_scores": [],
+                        "bitwise_scores": [],
+                    }
+                stego_pbar = tqdm(
+                    range(len(current_stego_texts)),
+                    desc=f"Stego texts@tp={tp}",
+                    position=1,
                     leave=False,
-                    initial=checkpoint.get("run_index", 0),
+                    initial=checkpoint["stego_index"],
+                )
+                for s_idx in range(checkpoint["stego_index"], len(current_stego_texts)):
+                    stego_pbar.update(1)
+                    stego_texts = current_stego_texts[s_idx]
+                    success_count = 0
+                    bit_score = 0.0
+                    run_pbar = tqdm(
+                        range(runs),
+                        desc=f"Runs (stego {s_idx})",
+                        position=2,
+                        leave=False,
+                        initial=checkpoint.get("run_index", 0),
+                    )
+                    for run_i in range(checkpoint.get("run_index", 0), runs):
+                        run_pbar.update(1)
+                        attacked_texts = attack(
+                            attack_type=attack_type,
+                            messages=stego_texts,
+                            paraphrase_instance=paraphrase_instance,
+                            model=model,
+                            tp=tp,
+                            mode=True,
+                        )
+                        recovered = system.recover_message(attacked_texts)
+                        if recovered == message:
+                            success_count += 1
+                        encoded_truth = system.encoder.encode(message)
+                        encoded_rec = system.encoder.encode(recovered)
+                        if encoded_truth is None or encoded_rec is None:
+                            this_bitwise = 0.0
+                        else:
+                            this_bitwise = compute_recovery_accuracy(
+                                encoded_truth, encoded_rec
+                            )
+                        bit_score += this_bitwise
+
+                        if (
+                            save_texts
+                            and checkpoint["texts_saved_count"] < max_saved_examples
+                        ):
+                            record = {
+                                "timestamp": time.time(),
+                                "attack_label": attack_label,
+                                "attack_type": attack_type,
+                                "tampering": tp,
+                                "message_index": msg_idx,
+                                "stego_index": s_idx,
+                                "run_index": run_i,
+                                "message_bits": message,
+                                "stego_texts": stego_texts,
+                                "attacked_texts": attacked_texts,
+                                "recovered": recovered,
+                            }
+                            with open(texts_log_path, "a", encoding="utf-8") as tf:
+                                tf.write(json.dumps(record, default=str) + "\n")
+                            checkpoint["texts_saved_count"] += 1
+
+                        checkpoint["message_index"] = msg_idx
+                        checkpoint["attack_index"] = a_idx
+                        checkpoint["tampering_index"] = t_idx
+                        checkpoint["stego_index"] = s_idx
+                        checkpoint["run_index"] = run_i + 1
+                        save_pickle(checkpoint_file, checkpoint)
+
+                    run_pbar.close()
+
+                    perfect_for_stego = success_count / float(runs) if runs > 0 else 0.0
+                    bitwise_for_stego = bit_score / float(runs) if runs > 0 else 0.0
+
+                    message_results[attack_label]["tampering_level_data"][tp][
+                        "perfect_scores"
+                    ].append(perfect_for_stego)
+                    message_results[attack_label]["tampering_level_data"][tp][
+                        "bitwise_scores"
+                    ].append(bitwise_for_stego)
+
+                    checkpoint["run_index"] = 0
+                    checkpoint["stego_index"] = s_idx + 1
+                    checkpoint["message_results"] = message_results
+                    save_pickle(checkpoint_file, checkpoint)
+
+                stego_pbar.close()
+
+                tp_data = message_results[attack_label]["tampering_level_data"][tp]
+                perfect_avg = (
+                    sum(tp_data["perfect_scores"]) / len(tp_data["perfect_scores"])
+                    if tp_data["perfect_scores"]
+                    else 0.0
+                )
+                bitwise_avg = (
+                    sum(tp_data["bitwise_scores"]) / len(tp_data["bitwise_scores"])
+                    if tp_data["bitwise_scores"]
+                    else 0.0
                 )
 
-                stego_texts = system.hide_message(message, history)
-                # print(f"stego length: {len(stego_texts)}")
-                # print(stego_texts)
-                for run_i in range(checkpoint.get("run_index", 0), runs):
-                    run_pbar.update(1)
-                    attacked_texts = attack(
-                        attack_type=attack_type,
-                        messages=stego_texts,
-                        paraphrase_instance=paraphrase_instance,
-                        model=model,
-                        tp=tp,
-                        mode=True,
-                    )
-                    # print(f"attacked length: {len(attacked_texts)}")
-                    # print(attacked_texts)
-                    recovered = system.recover_message(attacked_texts)
+                if tp not in all_ret[attack_label]["tampering_level_data"]:
+                    all_ret[attack_label]["tampering_level_data"][tp] = {
+                        "perfect_per_message": [],
+                        "bitwise_per_message": [],
+                    }
 
-                    # perfect recovery
-                    if recovered == message:
-                        success_count += 1
+                all_ret[attack_label]["tampering_level_data"][tp][
+                    "perfect_per_message"
+                ].append(perfect_avg)
+                all_ret[attack_label]["tampering_level_data"][tp][
+                    "bitwise_per_message"
+                ].append(bitwise_avg)
 
-                    # bitwise score
-                    encoded_truth = system.encoder.encode(message)
-                    encoded_rec = system.encoder.encode(recovered)
-                    if encoded_truth is None or encoded_rec is None:
-                        this_bitwise = 0.0
-                    else:
-                        this_bitwise = compute_recovery_accuracy(
-                            encoded_truth, encoded_rec
-                        )
-                    bit_score += this_bitwise
-
-                    # optionally save texts for debugging (limited)
-                    if (
-                        save_texts
-                        and checkpoint["texts_saved_count"] < max_saved_examples
-                    ):
-                        record = {
-                            "timestamp": time.time(),
-                            "attack_label": attack_label,
-                            "attack_type": attack_type,
-                            "tampering": tp,
-                            "message_index": m_idx,
-                            "run_index": run_i,
-                            "message_bits": message,
-                            "stego_texts": stego_texts,
-                            "attacked_texts": attacked_texts,
-                            "recovered": recovered,
-                        }
-                        # append as JSON line
-                        with open(texts_log_path, "a", encoding="utf-8") as tf:
-                            tf.write(json.dumps(record, default=str) + "\n")
-                        checkpoint["texts_saved_count"] += 1
-
-                    # update run-level checkpoint indices so we can resume precisely
-                    checkpoint["attack_index"] = a_idx
-                    checkpoint["tampering_index"] = t_idx
-                    checkpoint["message_index"] = m_idx
-                    checkpoint["run_index"] = run_i + 1
-                    save_pickle(checkpoint_file, checkpoint)
-
-                run_pbar.close()
-                # end runs for message
-                perfect_recovery_run = success_count / float(runs) if runs > 0 else 0.0
-                bitwise_recovery_run = bit_score / float(runs) if runs > 0 else 0.0
-                perfect_recovery += perfect_recovery_run
-                bitwise_recovery += bitwise_recovery_run
-
-                # message-level checkpoint: reset run_index to 0 for next message
+                checkpoint["stego_index"] = 0
                 checkpoint["run_index"] = 0
-                checkpoint["message_index"] = m_idx + 1
-                if checkpoint_after_each_message:
-                    save_pickle(checkpoint_file, checkpoint)
+                checkpoint["tampering_index"] = t_idx + 1
+                checkpoint["all_ret"] = all_ret
+                save_pickle(checkpoint_file, checkpoint)
 
-            msg_pbar.close()
-            # end messages loop
-            perfect = 100.0 * perfect_recovery / float(len(messages))
-            bitwise = 100.0 * bitwise_recovery / float(len(messages))
+            tampering_pbar.close()
 
-            results_bitwise.append(bitwise)
-            results_perfect.append(perfect)
-            data_lines_bitwise.append(f"{tp}\t{bitwise}")
-            data_lines_perfect.append(f"{tp}\t{perfect}")
-
-            # save summary CSV/TSV for this attack so partial outputs are available
-            tsv_bitwise_path = (
-                summary_dir / f"{attack_label.replace(' ', '_')}_bitwise.tsv"
-            )
-            tsv_perfect_path = (
-                summary_dir / f"{attack_label.replace(' ', '_')}_perfect.tsv"
-            )
-            # write full file (overwrite) so it always contains complete so far results
-            with open(tsv_bitwise_path, "w", encoding="utf-8") as f:
-                f.write("\n".join(data_lines_bitwise) + "\n")
-            with open(tsv_perfect_path, "w", encoding="utf-8") as f:
-                f.write("\n".join(data_lines_perfect) + "\n")
-
-            # update all_ret and checkpoint
-            all_ret[attack_label] = {
-                "results_bitwise": results_bitwise,
-                "results_perfect": results_perfect,
-                "data_lines_bitwise": data_lines_bitwise,
-                "data_lines_perfect": data_lines_perfect,
-            }
-            checkpoint["all_ret"] = all_ret
-
-            checkpoint["tampering_index"] = t_idx + 1
-            checkpoint["message_index"] = 0
+            checkpoint["tampering_index"] = 0
+            checkpoint["stego_index"] = 0
             checkpoint["run_index"] = 0
-
-            # persist checkpoint after each tampering level (cheap)
+            checkpoint["attack_index"] = a_idx + 1
+            checkpoint["all_ret"] = all_ret
+            checkpoint["message_results"] = message_results
             save_pickle(checkpoint_file, checkpoint)
 
-        tampering_pbar.close()
-        # end tampering_levels loop
+        checkpoint["message_index"] = msg_idx + 1
+        checkpoint["attack_index"] = 0
         checkpoint["tampering_index"] = 0
-        checkpoint["message_index"] = 0
+        checkpoint["stego_index"] = 0
         checkpoint["run_index"] = 0
-        checkpoint["attack_index"] = a_idx + 1
-        checkpoint["all_ret"] = all_ret
+        checkpoint["current_message_stego_complete"] = False
+        checkpoint["stego_gen_index"] = 0
+        checkpoint["current_stego_texts"] = []
+        checkpoint["message_results"] = {}
         save_pickle(checkpoint_file, checkpoint)
 
-    LOGGER.info(
-        "Experiment finished; final results saved into checkpoint and summary directory."
-    )
+    # Aggregating results
+    LOGGER.info("\nFinal aggregation across all messages")
+
+    for attack_label in all_ret:
+        results_bitwise = []
+        results_perfect = []
+        data_lines_bitwise = ["Tampering_Percentage\tBitwise_Accuracy"]
+        data_lines_perfect = ["Tampering_Percentage\tPerfect_Recovery_Rate"]
+
+        for tp in tampering_levels:
+            tp_data = all_ret[attack_label]["tampering_level_data"][tp]
+
+            perfect_final = (
+                100.0
+                * sum(tp_data["perfect_per_message"])
+                / len(tp_data["perfect_per_message"])
+            )
+            bitwise_final = (
+                100.0
+                * sum(tp_data["bitwise_per_message"])
+                / len(tp_data["bitwise_per_message"])
+            )
+
+            results_bitwise.append(bitwise_final)
+            results_perfect.append(perfect_final)
+            data_lines_bitwise.append(f"{tp}\t{bitwise_final}")
+            data_lines_perfect.append(f"{tp}\t{perfect_final}")
+
+        all_ret[attack_label]["results_bitwise"] = results_bitwise
+        all_ret[attack_label]["results_perfect"] = results_perfect
+        all_ret[attack_label]["data_lines_bitwise"] = data_lines_bitwise
+        all_ret[attack_label]["data_lines_perfect"] = data_lines_perfect
+
+        tsv_bitwise_path = summary_dir / f"{attack_label.replace(' ', '_')}_bitwise.tsv"
+        tsv_perfect_path = summary_dir / f"{attack_label.replace(' ', '_')}_perfect.tsv"
+
+        with open(tsv_bitwise_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(data_lines_bitwise) + "\n")
+        with open(tsv_perfect_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(data_lines_perfect) + "\n")
+
+    checkpoint["all_ret"] = all_ret
+    save_pickle(checkpoint_file, checkpoint)
+
+    LOGGER.info("Experiment finished; final results saved.")
     return all_ret
 
 
@@ -453,7 +549,8 @@ def plot_recovery_results(tp, attack_types, results, output_path):
 def main():
     from robust_steganography.config.system_prompts import CORPORATE_MONOLOGUE
 
-    tp = [0.3, 0.7]
+    tp = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    # tp = [0.0, 0.3, 0.5]
 
     # Initialize components
     client = openai.OpenAI()
@@ -465,8 +562,8 @@ def main():
     # THe length of the stegotext is controlled by the error correction algorithm:
     # Repetition: reprtition * num_bits
     # Convolution: 4 * (num_bits + K -1)
-    ecc = ConvolutionalCode(block_size=1, K=3)
-    # ecc = RepetitionCode(2)
+    # ecc = ConvolutionalCode(block_size=1, K=3)
+    ecc = RepetitionCode(5)
     system_prompt = CORPORATE_MONOLOGUE
 
     history = [
@@ -490,22 +587,25 @@ def main():
     ]
 
     attack_keys = [t[0] for t in attack_configurations]
-    results = generate_recovery_accuracy_resumable(
-        tampering_levels=tp,
-        attack_configurations=attack_configurations,
-        system=system,
-        num_bits=3,
-        num_messages=1,
-        history=history,
-        runs=3,
-        seed=8454,
-        checkpoint_path="checkpoints/exp_checkpoint.pkl",
-        output_path="figures/embedding_recovery_test",
-        save_texts=False,
-        max_saved_examples=200,
-        resume=True,
-        checkpoint_after_each_message=False,
-    )
+
+    params = {
+        "tampering_levels": tp,
+        "attack_configurations": attack_configurations,
+        "system": system,
+        "num_bits": 3,
+        "num_messages": 1,
+        "num_stego_per_message": 20,
+        "runs": 5,
+        "history": history,
+        "seed": 8454,
+        "checkpoint_path": "checkpoints/exp_checkpoint.pkl",
+        "output_path": "figures/embedding_recovery_test",
+        "save_texts": False,
+        "max_saved_examples": 200,
+        "resume": True,
+        "checkpoint_after_each_stego": False,
+    }
+    results = generate_recovery_accuracy_resumable(**params)
     print(results)
 
     output_path = "./figures/embedding_recovery_test/"

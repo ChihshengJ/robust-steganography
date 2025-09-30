@@ -2,6 +2,8 @@ import concurrent.futures
 
 import numpy as np
 
+from robust_steganography.core.hash_functions import HashFunction
+
 from .get_embedding import get_embeddings_in_batch
 from .new_text import generate_response
 
@@ -11,7 +13,7 @@ def sample_concurrent(
     desired_bits,  # List of bits (the chunk)
     history,
     hash_fn,
-    k=5,
+    k=4,
     system_prompt="You are having a casual conversation.",
     max_length=200,
 ):
@@ -39,9 +41,8 @@ def sample_concurrent(
                 emb = np.array(emb).reshape(1, -1)
                 sampled_bits = hash_fn(emb)
 
-                # print('message:', message)
-                # print('sampled_bits:', sampled_bits)
-                # print('desired_bits:', desired_bits)
+                print("message:", message)
+                print(f"sampled_bits: {sampled_bits}, desired bits: {desired_bits}")
 
                 #! Ensure matching shapes for all combinations of inputs and settings
                 if np.array_equal(sampled_bits, desired_bits):
@@ -50,11 +51,11 @@ def sample_concurrent(
 
 def encode(
     client,
-    chunks,
-    history,
-    hash_fn,
-    k=5,
-    system_prompt="You are having a casual conversation.",
+    chunks: list[list[int]],
+    history: list[list[str]],
+    hash_fn: HashFunction,
+    k: int = 5,
+    system_prompt: str | None = "You are having a casual conversation.",
     max_length=200,
 ):
     cover_text = []

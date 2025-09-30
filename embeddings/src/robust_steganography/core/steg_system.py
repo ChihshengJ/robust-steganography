@@ -1,29 +1,32 @@
 from typing import Any, List
 
+from robust_steganography.core.error_correction import ErrorCorrection
+
 from ..utils.get_embedding import get_embeddings_in_batch
 from ..utils.steg import encode
-from .encoder import Encoder, StandardEncoder
-from .hash_functions import OracleHash
+from .encoder import CharacterEncoder, Encoder
+from .hash_functions import HashFunction, OracleHash
 
 
 class StegSystem:
     def __init__(
         self,
         client,
-        hash_function,
-        error_correction,
-        encoder: Encoder = None,
-        system_prompt=None,
-        chunk_length=200,
+        hash_function: HashFunction,
+        error_correction: ErrorCorrection,
+        encoder: Encoder | None = None,
+        system_prompt: str | None = None,
+        chunk_length: int = 200,
         simulator=None,
     ):
         self.client = client
         self.hash_fn = hash_function
         self.ecc = error_correction
-        self.encoder = encoder or StandardEncoder()
+        self.encoder = encoder or CharacterEncoder()
         self.system_prompt = system_prompt
         self.chunk_length = chunk_length
         self.simulator = simulator
+        self.error_encoded_length = None
 
         # Get hash output length
         self.hash_output_length = getattr(hash_function, "output_length")
@@ -36,16 +39,25 @@ class StegSystem:
 
     def hide_message(self, data: Any, history) -> List[str]:
         # Get raw bits from encoder
-        m_bits = self.encoder.encode(data)
+        m_bits: list[int] = self.encoder.encode(data)
+        # print(m_bits)
 
         # Let the ECC handle any necessary padding
-        m_encoded = self.ecc.encode(m_bits)
+        m_encoded: List[int] = self.ecc.encode(m_bits)
+        # print(m_encoded)
+        self.error_encoded_length = len(m_encoded)
 
         # Convert to chunks of size hash_output_length
         m_chunks = [
             m_encoded[i : i + self.hash_output_length]
             for i in range(0, len(m_encoded), self.hash_output_length)
         ]
+        # padding
+        m_chunks = [
+            nested + [0] * (self.hash_output_length - len(nested))
+            for nested in m_chunks
+        ]
+        # print(m_chunks)
 
         if self.simulator:
             cover_texts = []
@@ -81,6 +93,6 @@ class StegSystem:
             embeddings = get_embeddings_in_batch(self.client, stego_texts)
             bits_encoded = [self.hash_fn(emb) for emb in embeddings]
 
-        m_bits = self.ecc.decode(bits_encoded)
+        m_bits = self.ecc.decode(bits_encoded, self.error_encoded_length)
 
         return self.encoder.decode(m_bits)
