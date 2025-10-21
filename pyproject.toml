@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robust_steganography"
+version = "0.1.0"
+description = "Embeddings-based steganography system for hiding messages in text"
+authors = [
+  { name = "Neil Perry", email = "naperry@stanford.edu" },
+]
+
+readme = "README.md"
+requires-python = ">=3.7"
+license = { text = "MIT License" }
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+dependencies = [
+  "numpy",
+  "openai",
+  "torch",
+  "sentence-transformers",
+  "tqdm",
+  "scikit-learn",
+  "pycryptodome",
+  "bitstring",
+  "transformers",
+  "pynacl",
+  "cryptography",
+  "nltk>=3.8.1",
+  "textattack>=0.3.9",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "pytest-cov",
+]
+
+[project.urls]
+Homepage = "https://github.com/NeilAPerry/robust_steganography"
+
+[dependency-groups]
+dev = [
+    "robust-steganography",
+]
+
+[tool.uv.sources]
+robust-steganography = { workspace = true }
+

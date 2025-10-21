@@ -1,0 +1,17 @@
+numpy
+openai
+torch
+sentence-transformers
+tqdm
+scikit-learn
+pycryptodome
+bitstring
+transformers
+pynacl
+cryptography
+nltk>=3.8.1
+textattack>=0.3.9
+
+[dev]
+pytest
+pytest-cov

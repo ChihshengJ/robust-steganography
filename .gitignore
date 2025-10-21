@@ -5,17 +5,17 @@
 .ipynb_checkpoints/
 
 # ignore environment files
-embeddings/.env
+.env
 
 # ignore pickle and log files
-embeddings/src/robust_steganography/datasets/*.pkl
-embeddings/src/robust_steganography/models/*.pkl
+embeddings/datasets/*.pkl
+embeddings/models/*.pkl
 embeddings/temp_pca/*.pkl
 
 # ignore enron email data files
-embeddings/enron_emails/**/*.pkl
-embeddings/enron_emails/**/*.json
-embeddings/enron_emails/**/*.npy
+enron_emails/**/*.pkl
+enron_emails/**/*.json
+enron_emails/**/*.npy
 
 # ignore measurement checkpoints
 measurements/checkpoints/
