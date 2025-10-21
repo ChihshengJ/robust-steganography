@@ -1,0 +1,33 @@
+write measurement code. it should be a folder to hold graphs and tables and the code to generate them
+
+add type hints
+
+add documentation to all code
+
+check for weird corruptions in padding head in error correction that could cause an exception to occur (like accessing past the end of the list). what is the worst case for convolutional codes?
+
+write testing code
+- hash functions
+- steganography
+
+need to test
+- example.py
+    - various combinations of real inputs
+- example_simulation.py
+    - convolutional code
+    - hash block sizes that are not 1
+    - ascii
+- rerun unit test
+    - add testing all encodings
+
+Add config file of starting histories
+test corporate pca hash accuracy
+
+Blog mode?
+The Blog Authorship Corpus
+https://u.cs.biu.ac.il/~koppel/BlogCorpus.htm
+
+response cleaning needs some work to make sure its complete sentences/paragraphs. also, the corporate prompt needs some fine tuning so that its consistent with old message history and not "restarting" the conversation.
+
+add code that would take in list of text -> paraphrase it -> get embedding pairs -> save in pickled format that pca training wants
+

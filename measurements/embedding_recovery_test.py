@@ -8,19 +8,20 @@ from pathlib import Path
 from typing import Any, override
 
 import matplotlib.pyplot as plt
+import nltk
 import openai
-from robust_steganography.core.encoder import Encoder
-from robust_steganography.core.error_correction import RepetitionCode
-from robust_steganography.core.hash_functions import (
-    RandomProjectionHash,
-)
-from robust_steganography.core.steg_system import StegSystem
+
+# from src.embeddings.utils.get_embedding import client
 from tqdm import tqdm
-from watermark import GPT2Model
-from watermark.attacks.ngram_shuffle import NGramShuffleAttack
-from watermark.attacks.paraphrase import ParaphraseAttack
-from watermark.attacks.synonym import SynonymAttack
-from watermark.models.base import LanguageModel
+
+from embeddings import Encoder, RandomProjectionHash, RepetitionCode, StegSystem
+from watermarks import (
+    GPT2Model,
+    LanguageModel,
+    NGramShuffleAttack,
+    ParaphraseAttack,
+    SynonymAttack,
+)
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
@@ -43,30 +44,48 @@ class BypassEncoder(Encoder):
 def attack(
     attack_type: str,
     messages: list[str],
-    paraphrase_instance: ParaphraseAttack,
+    client,
+    # paraphrase_instance: ParaphraseAttack,
     model: LanguageModel,
     tp: float,
     mode: bool,
 ) -> list[str]:
-    attacked_text = []
-    for mes in messages:
-        if attack_type == "n-gram":
-            at = NGramShuffleAttack(model=model, n=3, probability=tp, local=mode)
-            attacked_text.append(at(mes))
-        elif attack_type == "synonym":
-            at = SynonymAttack(method="wordnet", probability=tp)
-            attacked_text.append(at(mes))
-        else:
-            assert attack_type == "paraphrase", "Unsupported attacking method"
-            if tp < 1.0:
-                # local mode: take in all message and
-                attacked_text.append(
-                    apply_partial_paraphrase(mes, paraphrase_instance, tp)
-                )
+    if (not mode) and attack_type == "paraphrase":
+        length = len(messages)
+        complete_message = " ".join(messages)
+        print(f"original message: {complete_message}")
+        at = ParaphraseAttack(
+            client=client, model="gpt-4o-mini", temperature=0, local=False
+        )
+        attacked_text = at(complete_message)
+        segmented = nltk.sent_tokenize(attacked_text)
+        print(f"input length: {length}, output length:{len(segmented)}")
+        print(segmented)
+        return segmented
+
+    else:
+        attacked_text = []
+        for mes in messages:
+            if attack_type == "n-gram":
+                at = NGramShuffleAttack(model=model, n=3, probability=tp, local=mode)
+                attacked_text.append(at(mes))
+            elif attack_type == "synonym":
+                at = SynonymAttack(method="wordnet", probability=tp)
+                attacked_text.append(at(mes))
             else:
-                # global paraphrase
-                attacked_text.append(paraphrase_instance(mes))
-    return attacked_text
+                assert attack_type == "paraphrase", "Unsupported attacking method"
+                at = ParaphraseAttack(
+                    client=client, model="gpt-4o-mini", temperature=0, local=False
+                )
+                # if tp < 1.0:
+                #     # local mode: take in all message and
+                #     attacked_text.append(
+                #         apply_partial_paraphrase(mes, paraphrase_instance, tp)
+                #     )
+                # else:
+                #     # global paraphrase
+                #     attacked_text.append(paraphrase_instance(mes))
+        return attacked_text
 
 
 def save_pickle(path: Path, obj: Any):
@@ -188,14 +207,15 @@ def generate_recovery_accuracy_resumable(
             "Want to grab coffee and discuss it?",
         ]
 
-    paraphrase_instance = ParaphraseAttack(
-        client=system.client, model="gpt-4.1-nano", temperature=0.5, local=False
-    )
+    # paraphrase_instance = ParaphraseAttack(
+    #     client=system.client, model="gpt-4.1-nano", temperature=0.5, local=False
+    # )
     model = GPT2Model()
 
     messages: list[list[int]] = [
         [random.randint(0, 1) for _ in range(num_bits)] for _ in range(num_messages)
     ]
+    print(f"messages: {messages}")
 
     if resume and checkpoint_file.exists():
         checkpoint = load_pickle(checkpoint_file)
@@ -311,6 +331,7 @@ def generate_recovery_accuracy_resumable(
                 for s_idx in range(checkpoint["stego_index"], len(current_stego_texts)):
                     stego_pbar.update(1)
                     stego_texts = current_stego_texts[s_idx]
+                    # print("stego text:", " ".join(stego_texts))
                     success_count = 0
                     bit_score = 0.0
                     run_pbar = tqdm(
@@ -325,11 +346,13 @@ def generate_recovery_accuracy_resumable(
                         attacked_texts = attack(
                             attack_type=attack_type,
                             messages=stego_texts,
-                            paraphrase_instance=paraphrase_instance,
+                            client=system.client,
+                            # paraphrase_instance=paraphrase_instance,
                             model=model,
                             tp=tp,
-                            mode=True,
+                            mode=False,
                         )
+                        # print(f"attacked text: {' '.join(attacked_texts)}")
                         recovered = system.recover_message(attacked_texts)
                         if recovered == message:
                             success_count += 1
@@ -547,10 +570,10 @@ def plot_recovery_results(tp, attack_types, results, output_path):
 
 
 def main():
-    from robust_steganography.config.system_prompts import CORPORATE_MONOLOGUE
+    from embeddings import CORPORATE_MONOLOGUE_ALT
 
-    tp = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-    # tp = [0.0, 0.3, 0.5]
+    # tp = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    tp = [0.5]
 
     # Initialize components
     client = openai.OpenAI()
@@ -559,12 +582,12 @@ def main():
     # )
     hash_fn = RandomProjectionHash(embedding_dim=3072)
 
-    # THe length of the stegotext is controlled by the error correction algorithm:
+    # The length of the stegotext is controlled by the error correction algorithm:
     # Repetition: reprtition * num_bits
     # Convolution: 4 * (num_bits + K -1)
     # ecc = ConvolutionalCode(block_size=1, K=3)
     ecc = RepetitionCode(5)
-    system_prompt = CORPORATE_MONOLOGUE
+    system_prompt = CORPORATE_MONOLOGUE_ALT
 
     history = [
         "I wanted to follow up regarding the implementation timeline for the new risk management system. Based on our initial assessment, we'll need to coordinate closely with both IT and Operations to ensure a smooth transition. Please review the attached documentation when you have a moment.",
@@ -577,13 +600,13 @@ def main():
         error_correction=ecc,
         encoder=BypassEncoder(),
         system_prompt=system_prompt,
-        chunk_length=40,
+        max_length=200,
     )
 
     attack_configurations = [
-        ("NGram Shuffle", "n-gram", False),
+        # ("NGram Shuffle", "n-gram", False),
         # ("Synonym Attack", "synonym", None),
-        ("Paraphrase Attack", "paraphrase", True),
+        ("Paraphrase Attack", "paraphrase", False),
     ]
 
     attack_keys = [t[0] for t in attack_configurations]
@@ -594,13 +617,13 @@ def main():
         "system": system,
         "num_bits": 3,
         "num_messages": 1,
-        "num_stego_per_message": 20,
+        "num_stego_per_message": 10,
         "runs": 5,
         "history": history,
         "seed": 8454,
         "checkpoint_path": "checkpoints/exp_checkpoint.pkl",
         "output_path": "figures/embedding_recovery_test",
-        "save_texts": False,
+        "save_texts": True,
         "max_saved_examples": 200,
         "resume": True,
         "checkpoint_after_each_stego": False,
