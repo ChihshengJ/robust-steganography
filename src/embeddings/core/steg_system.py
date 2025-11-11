@@ -1,6 +1,10 @@
 from typing import Any, List
 
+from nltk.tokenize import sent_tokenize
+
+from ..config.system_prompts import STORY_SEGMENTATION
 from ..utils.get_embedding import get_embeddings_in_batch
+from ..utils.new_text import generate_response
 from ..utils.steg import encode
 from .encoder import CharacterEncoder, Encoder
 from .error_correction import ErrorCorrection
@@ -17,6 +21,7 @@ class StegSystem:
         system_prompt: str | None = None,
         max_length: int = 200,
         simulator=None,
+        story_mode=False,
     ):
         self.client = client
         self.hash_fn = hash_function
@@ -26,6 +31,8 @@ class StegSystem:
         self.max_length = max_length
         self.simulator = simulator
         self.error_encoded_length = None
+        self.chunk_length = 0
+        self.story_mode = story_mode
 
         # Get hash output length
         self.hash_output_length = getattr(hash_function, "output_length")
@@ -56,7 +63,7 @@ class StegSystem:
             nested + [0] * (self.hash_output_length - len(nested))
             for nested in m_chunks
         ]
-        # print(m_chunks)
+        self.chunk_length = len(m_chunks)
 
         if self.simulator:
             cover_texts = []
@@ -81,14 +88,41 @@ class StegSystem:
         )
         return cover_text
 
-    def recover_message(self, stego_texts):
+    def recover_message(self, stego_text: str):
+        # assuming stego_text is a block of text, not separated by sentence
         if self.simulator:
-            embeddings = [self.simulator.get_embedding(text) for text in stego_texts]
+            embeddings = [self.simulator.get_embedding(text) for text in stego_text]
             bits_encoded = [self.hash_fn(emb, corrupt=True) for emb in embeddings]
+        elif self.story_mode:
+            chunks = self._rechunking_message(stego_text, self.chunk_length)
+            print(
+                f"original length: {self.chunk_length}, chunked_length: {len(chunks)}"
+            )
+            embeddings = get_embeddings_in_batch(self.client, chunks)
+            bits_encoded = [self.hash_fn(emb) for emb in embeddings]
         else:
-            embeddings = get_embeddings_in_batch(self.client, stego_texts)
+            chunks = sent_tokenize(stego_text)
+            print(
+                f"original length: {self.chunk_length}, chunked_length: {len(chunks)}"
+            )
+            embeddings = get_embeddings_in_batch(self.client, stego_text)
             bits_encoded = [self.hash_fn(emb) for emb in embeddings]
 
         m_bits = self.ecc.decode(bits_encoded, self.error_encoded_length)
 
         return self.encoder.decode(m_bits)
+
+    def _rechunking_message(self, stego_text: str, chunk_length: int) -> list[str]:
+        system_prompt = STORY_SEGMENTATION.format(chunk_length=chunk_length)
+        # print(f"system_prompt: {system_prompt}")
+        chunks = generate_response(
+            self.client,
+            conversation_history=f"the story: {stego_text}",
+            system_prompt=system_prompt,
+            max_length=5000,
+            temperature=0.0,
+        )
+        # print(f"chunks: {chunks}")
+        chunks = [chunk.strip() for chunk in chunks.split("[sep]")]
+        # print(f"chunk length: {len(chunks)}, actual elgnth: {chunk_length}")
+        return chunks

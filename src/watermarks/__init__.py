@@ -1,4 +1,4 @@
-from .attacks import NGramShuffleAttack, ParaphraseAttack, SynonymAttack
+from .attacks import Attack, NGramShuffleAttack, ParaphraseAttack, SynonymAttack
 from .core.embedder import Embedder
 from .core.extractor import Extractor
 from .covertext import CovertextCalculator, SmoothCovertextCalculator
@@ -36,6 +36,7 @@ __all__ = [
     "log_prf_output",
     "CovertextCalculator",
     "SmoothCovertextCalculator",
+    "Attack",
     "SynonymAttack",
     "NGramShuffleAttack",
     "ParaphraseAttack",

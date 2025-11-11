@@ -629,7 +629,7 @@ def generate_lsh_accuracy_rates(
             error_correction=ecc,
             encoder=MinimalEncoder(),
             system_prompt=system_prompt,
-            chunk_length=50,
+            max_length=50,
             simulator=Simulator(),
         )
 
@@ -719,7 +719,7 @@ def main():
         error_correction=ecc,
         encoder=MinimalEncoder(),
         system_prompt=system_prompt,
-        chunk_length=40,
+        max_length=40,
     )
     recover_rates = generate_paraphrase_recovery_accuracy(tampering_percentages, system)
     plot_paraphrasing_effect_1bit([0.0, 0.5, 1.0], [40, 0, 60])

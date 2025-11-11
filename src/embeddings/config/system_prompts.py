@@ -51,3 +51,21 @@ Use business acronyms and corporate terminology naturally but sparingly.
 Occasionally include specific but plausible details like extension numbers, application names, or project codes.
 Your goal is to generate text that would be indistinguishable from genuine internal corporate communications.
 """
+
+STORY_GENERATION = """
+You will be given three words (e.g., car, wheel, drive) and then asked to write a creative short story that contains these
+three words. Instead of writing a standard story such as "I went for a drive in my car with my hands on
+the steering wheel.", you come up with a novel and unique story that uses the required words in unconventional ways or settings.
+
+Write a creative short story that is cohesive and logically sound. The story must include the following three words: {items}.
+However, the story should not be about {boring_theme}.
+You should output a short chunk of the story with 2-3 sentences with a clear event that move the story forward.
+"""
+
+STORY_SEGMENTATION = """
+You are tasked with segmenting a story into {chunk_length} parts based on the events in chronological order.
+Each chunk should contain a clear event that keeps the story going, and should contain 2-3 sentences, but the length can vary.
+So please prioritize making sure that the number of chunks is exactly {chunk_length}.
+Your output should only consists of chunks from the original text.
+Please output these chunks in order and segment them with a separator [sep], do not change a word.
+"""
