@@ -2,20 +2,20 @@ import json
 import logging
 import pickle
 import random
-import re
 import time
 from pathlib import Path
 from typing import Any, override
 
 import matplotlib.pyplot as plt
-import nltk
 import openai
 
 # from src.embeddings.utils.get_embedding import client
 from tqdm import tqdm
 
 from embeddings import Encoder, RandomProjectionHash, RepetitionCode, StegSystem
+from embeddings.config.system_prompts import STORY_GENERATION
 from watermarks import (
+    Attack,
     GPT2Model,
     LanguageModel,
     NGramShuffleAttack,
@@ -43,49 +43,24 @@ class BypassEncoder(Encoder):
 
 def attack(
     attack_type: str,
+    at: dict[str, Attack],
     messages: list[str],
-    client,
-    # paraphrase_instance: ParaphraseAttack,
-    model: LanguageModel,
     tp: float,
-    mode: bool,
-) -> list[str]:
-    if (not mode) and attack_type == "paraphrase":
-        length = len(messages)
-        complete_message = " ".join(messages)
-        print(f"original message: {complete_message}")
-        at = ParaphraseAttack(
-            client=client, model="gpt-4o-mini", temperature=0, local=False
-        )
-        attacked_text = at(complete_message)
-        segmented = nltk.sent_tokenize(attacked_text)
-        print(f"input length: {length}, output length:{len(segmented)}")
-        print(segmented)
-        return segmented
+    local: bool,
+) -> str:
+    # print(f"attack input message: {messages}")
+    stego_text = " ".join(messages)
+    return at[attack_type](stego_text, tp, local)
 
-    else:
-        attacked_text = []
-        for mes in messages:
-            if attack_type == "n-gram":
-                at = NGramShuffleAttack(model=model, n=3, probability=tp, local=mode)
-                attacked_text.append(at(mes))
-            elif attack_type == "synonym":
-                at = SynonymAttack(method="wordnet", probability=tp)
-                attacked_text.append(at(mes))
-            else:
-                assert attack_type == "paraphrase", "Unsupported attacking method"
-                at = ParaphraseAttack(
-                    client=client, model="gpt-4o-mini", temperature=0, local=False
-                )
-                # if tp < 1.0:
-                #     # local mode: take in all message and
-                #     attacked_text.append(
-                #         apply_partial_paraphrase(mes, paraphrase_instance, tp)
-                #     )
-                # else:
-                #     # global paraphrase
-                #     attacked_text.append(paraphrase_instance(mes))
-        return attacked_text
+
+def init_attacks(model: LanguageModel, client) -> dict[str, Attack]:
+    return {
+        "n-gram": NGramShuffleAttack(model=model, n=3),
+        "synonym": SynonymAttack(method="wordnet"),
+        "paraphrase": ParaphraseAttack(
+            client=client, model="gpt-4o-mini", temperature=0
+        ),
+    }
 
 
 def save_pickle(path: Path, obj: Any):
@@ -114,31 +89,6 @@ def compute_recovery_accuracy(original, recovered):
         return 0.0
     correct = sum(1 for o, r in zip(original, recovered) if o == r)
     return correct / len(original)
-
-
-def apply_partial_paraphrase(
-    text: str, paraphrase_attack: ParaphraseAttack, tampering_percentage: float
-):
-    """
-    Applies the paraphrase attack only on a fraction of sentences.
-
-    Splits the text into sentences (using punctuation as delimiters), then for
-    each sentence, with probability equal to tampering_percentage the paraphrase
-    attack is applied; otherwise, the sentence is left unchanged.
-    Returns the recombined text.
-    """
-    # Simple splitting on sentence-ending punctuation.
-    sentences = re.split(r"(?<=[.!?])\s+", text)
-    new_sentences = []
-    for sentence in sentences:
-        if not sentence.strip():
-            continue
-        if random.random() < tampering_percentage:
-            new_sentence = paraphrase_attack(sentence)
-            new_sentences.append(new_sentence)
-        else:
-            new_sentences.append(sentence)
-    return " ".join(new_sentences)
 
 
 # Experiment
@@ -288,10 +238,11 @@ def generate_recovery_accuracy_resumable(
 
         # Start attacks
         message_results = checkpoint.get("message_results", {})
+        at = init_attacks(model=model, client=system.client)
         for a_idx in range(checkpoint["attack_index"], len(attack_configurations)):
-            attack_label, attack_type, _ = attack_configurations[a_idx]
+            attack_label, attack_type, mode = attack_configurations[a_idx]
             LOGGER.info(
-                f"\nAttack {a_idx + 1}/{len(attack_configurations)}: {attack_label} (Message {msg_idx})"
+                f"\nAttack {a_idx + 1}/{len(attack_configurations)}: {attack_label, mode} (Message {msg_idx})"
             )
             if attack_label not in all_ret:
                 all_ret[attack_label] = {
@@ -331,7 +282,6 @@ def generate_recovery_accuracy_resumable(
                 for s_idx in range(checkpoint["stego_index"], len(current_stego_texts)):
                     stego_pbar.update(1)
                     stego_texts = current_stego_texts[s_idx]
-                    # print("stego text:", " ".join(stego_texts))
                     success_count = 0
                     bit_score = 0.0
                     run_pbar = tqdm(
@@ -343,17 +293,15 @@ def generate_recovery_accuracy_resumable(
                     )
                     for run_i in range(checkpoint.get("run_index", 0), runs):
                         run_pbar.update(1)
-                        attacked_texts = attack(
+                        attacked_text = attack(
                             attack_type=attack_type,
+                            at=at,
                             messages=stego_texts,
-                            client=system.client,
-                            # paraphrase_instance=paraphrase_instance,
-                            model=model,
                             tp=tp,
-                            mode=False,
+                            local=mode,
                         )
-                        # print(f"attacked text: {' '.join(attacked_texts)}")
-                        recovered = system.recover_message(attacked_texts)
+                        # print(f"===========\nattacked text:\n{attacked_text}")
+                        recovered = system.recover_message(attacked_text)
                         if recovered == message:
                             success_count += 1
                         encoded_truth = system.encoder.encode(message)
@@ -380,7 +328,7 @@ def generate_recovery_accuracy_resumable(
                                 "run_index": run_i,
                                 "message_bits": message,
                                 "stego_texts": stego_texts,
-                                "attacked_texts": attacked_texts,
+                                "attacked_texts": attacked_text,
                                 "recovered": recovered,
                             }
                             with open(texts_log_path, "a", encoding="utf-8") as tf:
@@ -570,10 +518,10 @@ def plot_recovery_results(tp, attack_types, results, output_path):
 
 
 def main():
-    from embeddings import CORPORATE_MONOLOGUE_ALT
+    from embeddings.config.system_prompts import CORPORATE_MONOLOGUE_ALT
 
     # tp = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-    tp = [0.5]
+    tp = [0.5, 1.0]
 
     # Initialize components
     client = openai.OpenAI()
@@ -582,18 +530,26 @@ def main():
     # )
     hash_fn = RandomProjectionHash(embedding_dim=3072)
 
+    ##############################################################################
     # The length of the stegotext is controlled by the error correction algorithm:
     # Repetition: reprtition * num_bits
     # Convolution: 4 * (num_bits + K -1)
-    # ecc = ConvolutionalCode(block_size=1, K=3)
-    ecc = RepetitionCode(5)
-    system_prompt = CORPORATE_MONOLOGUE_ALT
+    ##############################################################################
 
-    history = [
-        "I wanted to follow up regarding the implementation timeline for the new risk management system. Based on our initial assessment, we'll need to coordinate closely with both IT and Operations to ensure a smooth transition. Please review the attached documentation when you have a moment.",
-        "After consulting with the development team, we've identified several key milestones that need to be addressed before proceeding. The current testing phase has revealed some potential integration issues with our legacy systems, particularly in the trade validation module. We're working on implementing the necessary fixes and expect to have an updated timeline by end of week.",
-        "Given the complexity of these changes, I believe it would be beneficial to schedule a stakeholder review meeting. We should include representatives from Risk Management, IT Operations, and the Trading desk to ensure all requirements are being met. I've asked Sarah to coordinate calendars for next Tuesday afternoon.",
-    ]
+    # ecc = ConvolutionalCode(block_size=1, K=3)
+    ecc = RepetitionCode(3)
+    system_prompt = STORY_GENERATION.format(
+        items="alien, wigs, fashion",
+        boring_theme="An alien stealing wigs from a fashion show",
+    )
+    # system_prompt = CORPORATE_MONOLOGUE_ALT
+
+    # history = [
+    #     "I wanted to follow up regarding the implementation timeline for the new risk management system. Based on our initial assessment, we'll need to coordinate closely with both IT and Operations to ensure a smooth transition. Please review the attached documentation when you have a moment.",
+    #     "After consulting with the development team, we've identified several key milestones that need to be addressed before proceeding. The current testing phase has revealed some potential integration issues with our legacy systems, particularly in the trade validation module. We're working on implementing the necessary fixes and expect to have an updated timeline by end of week.",
+    #     "Given the complexity of these changes, I believe it would be beneficial to schedule a stakeholder review meeting. We should include representatives from Risk Management, IT Operations, and the Trading desk to ensure all requirements are being met. I've asked Sarah to coordinate calendars for next Tuesday afternoon.",
+    # ]
+    history = []
     system = StegSystem(
         client=client,
         hash_function=hash_fn,
@@ -601,12 +557,14 @@ def main():
         encoder=BypassEncoder(),
         system_prompt=system_prompt,
         max_length=200,
+        story_mode=True,
     )
-
+    
+    # Right now we treat tp == 1 as global so there is no need to tamper with mode
     attack_configurations = [
-        # ("NGram Shuffle", "n-gram", False),
-        # ("Synonym Attack", "synonym", None),
-        ("Paraphrase Attack", "paraphrase", False),
+        ("NGram Shuffle", "n-gram", True),
+        ("Synonym Attack", "synonym", None),
+        ("Paraphrase Attack", "paraphrase", True),
     ]
 
     attack_keys = [t[0] for t in attack_configurations]
@@ -617,17 +575,18 @@ def main():
         "system": system,
         "num_bits": 3,
         "num_messages": 1,
-        "num_stego_per_message": 10,
-        "runs": 5,
+        "num_stego_per_message": 2,
+        "runs": 10,
         "history": history,
-        "seed": 8454,
+        "seed": 7342,
         "checkpoint_path": "checkpoints/exp_checkpoint.pkl",
         "output_path": "figures/embedding_recovery_test",
         "save_texts": True,
         "max_saved_examples": 200,
         "resume": True,
-        "checkpoint_after_each_stego": False,
+        "checkpoint_after_each_stego": True,
     }
+
     results = generate_recovery_accuracy_resumable(**params)
     print(results)
 

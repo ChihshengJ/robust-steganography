@@ -1,9 +1,7 @@
-from .synonym import SynonymAttack
+from .attack import Attack
 from .ngram_shuffle import NGramShuffleAttack
 from .paraphrase import ParaphraseAttack
+from .synonym import SynonymAttack
 
-__all__ = [
-    'SynonymAttack',
-    'NGramShuffleAttack', 
-    'ParaphraseAttack'
-] 
+__all__ = ["Attack", "SynonymAttack", "NGramShuffleAttack", "ParaphraseAttack"]
+

@@ -3,17 +3,16 @@ from random import shuffle
 from typing import List
 
 from ..models.base import LanguageModel
+from .attack import Attack
 
 
-class NGramShuffleAttack:
+class NGramShuffleAttack(Attack):
     """Attack that breaks text into token n-grams and shuffles their positions."""
 
     def __init__(
         self,
         model: LanguageModel,
         n: int = 3,
-        probability: float = 1.0,
-        local: bool = True,
     ):
         """
         Initialize the n-gram shuffle attack.
@@ -28,15 +27,12 @@ class NGramShuffleAttack:
             local (bool): If True, preserves sentence structure.
                          If False, shuffles token n-grams globally (default: True)
         """
+        super().__init__()
         if n < 1:
             raise ValueError("n must be at least 1")
-        if not 0 <= probability <= 1:
-            raise ValueError("Probability must be between 0 and 1")
 
         self.model = model
         self.n = n
-        self.probability = probability
-        self.local = local
 
     def _split_into_ngrams(self, tokens: List[int]) -> List[List[int]]:
         """Split a list of tokens into n-grams."""
@@ -46,9 +42,9 @@ class NGramShuffleAttack:
             ngrams.append(ngram)
         return ngrams
 
-    def _shuffle_ngrams(self, ngrams: List[List[int]]) -> List[List[int]]:
+    def _shuffle_ngrams(self, ngrams: List[List[int]], tp: float) -> List[List[int]]:
         """Shuffle a portion of n-grams based on probability."""
-        num_to_shuffle = int(len(ngrams) * self.probability)
+        num_to_shuffle = int(len(ngrams) * tp)
         if num_to_shuffle == 0:
             return ngrams
 
@@ -63,28 +59,34 @@ class NGramShuffleAttack:
             shuffled[idx1] = ngrams[idx2]
         return shuffled
 
-    def __call__(self, text: str) -> str:
+    def __call__(self, text: str, tampering: float, local: bool) -> str:
         """Apply the n-gram shuffle attack."""
-        if self.probability == 0:
+        if not 0 <= tampering <= 1:
+            raise ValueError("tp must be between 0 and 1")
+
+        if tampering == 0:
             return text
 
-        if self.local:
-            return self._local_shuffle(text)
+        if local and tampering < 0.99:
+            return self._local_shuffle(text, tampering)
         else:
-            return self._global_shuffle(text)
+            return self._global_shuffle(text, tampering)
 
-    def _global_shuffle(self, text: str) -> str:
+    def _global_shuffle(self, text: str, tp: float) -> str:
         """Shuffle token n-grams globally."""
         # Convert text to tokens and split into n-grams
         tokens = self.model.tokenizer.encode(text)
         ngrams = self._split_into_ngrams(tokens)
 
         # Shuffle and decode
-        shuffled_ngrams = self._shuffle_ngrams(ngrams)
+        shuffled_ngrams = self._shuffle_ngrams(ngrams, tp)
         shuffled_tokens = [token for ngram in shuffled_ngrams for token in ngram]
-        return self.model.tokenizer.decode(shuffled_tokens)
+        result = self.model.tokenizer.decode(shuffled_tokens)
+        print("Debug global shuffle:")
+        print(f"in:\n{text}\nout:\n{result}")
+        return result
 
-    def _local_shuffle(self, text: str) -> str:
+    def _local_shuffle(self, text: str, tp: float) -> str:
         """Shuffle n-grams while preserving sentence structure."""
         # Split text into sentences while preserving separators
         parts = re.split(r"([.!?]+(?:\s+|$))", text)
@@ -103,7 +105,7 @@ class NGramShuffleAttack:
                 ngrams = self._split_into_ngrams(tokens)
 
                 # Shuffle and decode
-                shuffled_ngrams = self._shuffle_ngrams(ngrams)
+                shuffled_ngrams = self._shuffle_ngrams(ngrams, tp)
                 shuffled_tokens = [
                     token for ngram in shuffled_ngrams for token in ngram
                 ]
@@ -112,5 +114,7 @@ class NGramShuffleAttack:
             # Add the separator if it exists
             if i + 1 < len(parts):
                 new_parts.append(parts[i + 1])
-
-        return "".join(new_parts)
+        result = "".join(new_parts)
+        print("Debug local shuffle:")
+        print(f"parts:\n{parts}\nnew_parts:\n{result}")
+        return result
