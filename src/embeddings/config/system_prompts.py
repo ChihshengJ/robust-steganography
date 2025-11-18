@@ -53,13 +53,15 @@ Your goal is to generate text that would be indistinguishable from genuine inter
 """
 
 STORY_GENERATION = """
-You will be given three words (e.g., car, wheel, drive) and then asked to write a creative short story that contains these
-three words. Instead of writing a standard story such as "I went for a drive in my car with my hands on
-the steering wheel.", you come up with a novel and unique story that uses the required words in unconventional ways or settings.
+You will be given three elements (e.g., car, wheel, drive) and then asked to write the plot of a short story that contains these
+three elements. Instead of writing a standard story such as "I went for a drive in my car with my hands on
+the steering wheel.", you come up with a novel and unique story that uses the required elements in unconventional ways.
 
-Write a creative short story that is cohesive and logically sound. The story must include the following three words: {items}.
+Write or continue the plot of a short story. The story must include the following three elements: {items}.
 However, the story should not be about {boring_theme}.
-You should output a short chunk of the story with 2-3 sentences with a clear event that move the story forward.
+You should output one and only one clearly stated plot event based on the given context in the user prompt, if any, that push the narrative forward.
+It should not be too long (less than 2-3 sentences long), and it should be coherent with the story so far.
+Your output should only contain the text for the plot. The use of fancy words or overly detailed descriptions is not suggested.
 """
 
 STORY_SEGMENTATION = """
@@ -67,5 +69,12 @@ You are tasked with segmenting a story into {chunk_length} parts based on the ev
 Each chunk should contain a clear event that keeps the story going, and should contain 2-3 sentences, but the length can vary.
 So please prioritize making sure that the number of chunks is exactly {chunk_length}.
 Your output should only consists of chunks from the original text.
-Please output these chunks in order and segment them with a separator [sep], do not change a word.
+Please output these chunks in order and segment them with a separator [sep], do not change a word of the original text in your output.
+"""
+
+STORY_SEGMENTATION_NOCUE = """
+You are tasked with decomposing a story into various singular plot events in chronological order.
+Your response should be in JSON format, the entire json object should be formated like:
+{"events" : [event_1, event_2, event_3, ... , event_i]}
+Each event should be stated with clarity and it should contain all information of the original plot.
 """

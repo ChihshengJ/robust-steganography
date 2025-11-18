@@ -69,5 +69,6 @@ def encode(
             max_length=max_length,
         )
         history.append(response)
+        print(f"history: {history}")
         cover_text.append(response)
     return cover_text

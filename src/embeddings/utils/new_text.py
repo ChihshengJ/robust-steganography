@@ -20,21 +20,26 @@ def generate_response(
     client,
     conversation_history,
     system_prompt="You are a highly dynamic conversational model tasked with generating responses that are extremely varied in tone, content, and structure.",
-    max_length=200,
+    max_length=300,
     temperature=1.0,
+    top_p=1.0,
+    decomp_mode=False,
 ):
     # Prepare the prompt from the conversation history
     # adding datetime noise to disable prompt caching
-    if isinstance(conversation_history, list):
+    if not decomp_mode:
         prompt = "\n".join(conversation_history) + "\n"
     else:
         prompt = conversation_history
     # print(f"prompt: {prompt}")
 
+    format = {"type": "json_object"} if decomp_mode else None
+
     try:
         # Generate a response using GPT-4o mini
         response = client.chat.completions.create(
             model=STEGO_GEN_MODEL,  # Original model name preserved
+            response_format=format,
             messages=[
                 {
                     "role": "system",
@@ -44,9 +49,7 @@ def generate_response(
             ],
             max_tokens=max_length,  # Use passed in max_length
             temperature=temperature,  # Preserved original temperature
-            top_p=1.0,
-            frequency_penalty=0.0,
-            presence_penalty=0.0,
+            top_p=top_p,
             # stop=["\n"],
         )
         # print("initial response:\n", response)

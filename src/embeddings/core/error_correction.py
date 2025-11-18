@@ -43,7 +43,8 @@ class RepetitionCode(ErrorCorrection):
 
     def decode(self, bits, actual_length):
         # Flatten input array
-        bits = np.array(bits).flatten()[:actual_length]
+        # bits = np.array(bits).flatten()[:actual_length]
+        bits = np.array(bits).flatten()
         # print(f"decoding bits:{bits}")
 
         decoded_bits = []
