@@ -50,7 +50,10 @@ def attack(
 ) -> str:
     # print(f"attack input message: {messages}")
     stego_text = " ".join(messages)
-    return at[attack_type](stego_text, tp, local)
+    print(f"======stego_text======\n{stego_text}")
+    result = at[attack_type](stego_text, tp, local)
+    print(f"======attacked_text======\n{result}")
+    return result
 
 
 def init_attacks(model: LanguageModel, client) -> dict[str, Attack]:
@@ -301,7 +304,9 @@ def generate_recovery_accuracy_resumable(
                             local=mode,
                         )
                         # print(f"===========\nattacked text:\n{attacked_text}")
+                        system.set_chunk_length(len(stego_texts))
                         recovered = system.recover_message(attacked_text)
+                        print(f"message: {message}, recovered: {recovered}")
                         if recovered == message:
                             success_count += 1
                         encoded_truth = system.encoder.encode(message)
@@ -518,8 +523,6 @@ def plot_recovery_results(tp, attack_types, results, output_path):
 
 
 def main():
-    from embeddings.config.system_prompts import CORPORATE_MONOLOGUE_ALT
-
     # tp = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
     tp = [0.5, 1.0]
 
@@ -528,7 +531,7 @@ def main():
     # hash_fn = PCAHash(
     #     pca_model=load_pca_model("../embeddings/src/robust_steganography/models/pca_corporate.pkl")
     # )
-    hash_fn = RandomProjectionHash(embedding_dim=3072)
+    hash_fn = RandomProjectionHash(embedding_dim=3072, seed=42)
 
     ##############################################################################
     # The length of the stegotext is controlled by the error correction algorithm:
@@ -537,10 +540,10 @@ def main():
     ##############################################################################
 
     # ecc = ConvolutionalCode(block_size=1, K=3)
-    ecc = RepetitionCode(3)
+    ecc = RepetitionCode(5)
     system_prompt = STORY_GENERATION.format(
-        items="alien, wigs, fashion",
-        boring_theme="An alien stealing wigs from a fashion show",
+        items="kids, ice cream, truck",
+        boring_theme="Kids getting ice cream from an ice cream truck",
     )
     # system_prompt = CORPORATE_MONOLOGUE_ALT
 
@@ -559,12 +562,13 @@ def main():
         max_length=200,
         story_mode=True,
     )
-    
+
     # Right now we treat tp == 1 as global so there is no need to tamper with mode
     attack_configurations = [
-        ("NGram Shuffle", "n-gram", True),
-        ("Synonym Attack", "synonym", None),
+        # ("NGram Shuffle", "n-gram", True),
+        # ("Synonym Attack", "synonym", None),
         ("Paraphrase Attack", "paraphrase", True),
+        # ("Translate Attack", "translate", True),
     ]
 
     attack_keys = [t[0] for t in attack_configurations]
@@ -578,9 +582,9 @@ def main():
         "num_stego_per_message": 2,
         "runs": 10,
         "history": history,
-        "seed": 7342,
-        "checkpoint_path": "checkpoints/exp_checkpoint.pkl",
-        "output_path": "figures/embedding_recovery_test",
+        "seed": 8485,
+        "checkpoint_path": "checkpoints/test/exp_checkpoint.pkl",
+        "output_path": "figures/test/embedding_recovery_test",
         "save_texts": True,
         "max_saved_examples": 200,
         "resume": True,
@@ -590,8 +594,8 @@ def main():
     results = generate_recovery_accuracy_resumable(**params)
     print(results)
 
-    output_path = "./figures/embedding_recovery_test/"
-    plot_recovery_results(tp, attack_keys, results, output_path)
+    # output_path = "./figures/embedding_recovery_test/"
+    # plot_recovery_results(tp, attack_keys, results, output_path)
 
 
 if __name__ == "__main__":

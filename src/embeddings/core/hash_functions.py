@@ -1,4 +1,5 @@
 from typing import Dict, Optional
+
 import numpy as np
 
 
@@ -18,8 +19,9 @@ class HashFunction:
 
 
 class RandomProjectionHash(HashFunction):
-    def __init__(self, embedding_dim=3072, num_bits=1):
+    def __init__(self, embedding_dim=3072, num_bits=1, seed=128):
         super().__init__()
+        np.random.seed(seed)
         self.rand_matrix = np.random.randn(embedding_dim, num_bits)
         self.output_length = num_bits
 

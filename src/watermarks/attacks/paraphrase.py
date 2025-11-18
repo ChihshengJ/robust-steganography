@@ -137,7 +137,7 @@ class ParaphraseAttack(Attack):
             if i + 1 < len(parts):
                 new_parts.append(parts[i + 1])
 
-        result = "".join(new_parts)
+        result = "".join(new_parts).replace("..", ".")
         # print("Debug local paraphrase:")
         # print(f"parts:\n{parts}\nnew_parts:\n{result}")
         return result
