@@ -60,7 +60,7 @@ the steering wheel.", you come up with a novel and unique story that uses the re
 Write or continue the plot of a short story. The story must include the following three elements: {items}.
 However, the story should not be about {boring_theme}.
 You should output one and only one clearly stated plot event based on the given context in the user prompt, if any, that push the narrative forward.
-It should not be too long (less than 2-3 sentences long), and it should be coherent with the story so far.
+It should not be excessively long. One sentence is ideal. And it should be coherent with the story so far.
 Your output should only contain the text for the plot. The use of fancy words or overly detailed descriptions is not suggested.
 """
 

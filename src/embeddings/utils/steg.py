@@ -40,8 +40,8 @@ def sample_concurrent(
                 emb = np.array(emb).reshape(1, -1)
                 sampled_bits = hash_fn(emb)
 
-                print("message:", message)
-                print(f"sampled_bits: {sampled_bits}, desired bits: {desired_bits}")
+                # print("message:", message)
+                # print(f"sampled_bits: {sampled_bits}, desired bits: {desired_bits}")
                 #
                 #! Ensure matching shapes for all combinations of inputs and settings
                 if np.array_equal(sampled_bits, desired_bits):
@@ -69,6 +69,5 @@ def encode(
             max_length=max_length,
         )
         history.append(response)
-        print(f"history: {history}")
         cover_text.append(response)
     return cover_text
