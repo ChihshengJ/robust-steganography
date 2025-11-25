@@ -50,7 +50,9 @@ class RepetitionCode(ErrorCorrection):
         decoded_bits = []
         for i in range(0, len(bits), self.repetitions):
             chunk = bits[i : i + self.repetitions]
-            decoded_bits.append(int(sum(chunk) > self.repetitions // 2))
+            # cut off extra bits if it's shorter than half of the chunk length
+            if len(chunk) in range(self.repetitions // 2 + 1, self.repetitions + 1):
+                decoded_bits.append(int(sum(chunk) > self.repetitions // 2))
 
         # Unpad the decoded bitswq
         unpadded_bits = self._unpad_output(decoded_bits)
