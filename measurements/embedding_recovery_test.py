@@ -524,7 +524,7 @@ def plot_recovery_results(tp, attack_types, results, output_path):
 
 def main():
     # tp = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-    tp = [0.5, 1.0]
+    tp = [0.7, 1.0]
 
     # Initialize components
     client = openai.OpenAI()
@@ -542,8 +542,8 @@ def main():
     # ecc = ConvolutionalCode(block_size=1, K=3)
     ecc = RepetitionCode(5)
     system_prompt = STORY_GENERATION.format(
-        items="kids, ice cream, truck",
-        boring_theme="Kids getting ice cream from an ice cream truck",
+        items="spy, weapons, embassy",
+        boring_theme="A spy trying to smuggle weapons into the embassy",
     )
     # system_prompt = CORPORATE_MONOLOGUE_ALT
 
@@ -563,7 +563,7 @@ def main():
         story_mode=True,
     )
 
-    # Right now we treat tp == 1 as global so there is no need to tamper with mode
+    # Right now we treat tp == 1 as global so there is no need to switch modes
     attack_configurations = [
         # ("NGram Shuffle", "n-gram", True),
         # ("Synonym Attack", "synonym", None),
@@ -578,11 +578,11 @@ def main():
         "attack_configurations": attack_configurations,
         "system": system,
         "num_bits": 3,
-        "num_messages": 1,
-        "num_stego_per_message": 2,
-        "runs": 10,
+        "num_messages": 3,
+        "num_stego_per_message": 10,
+        "runs": 5,
         "history": history,
-        "seed": 8485,
+        "seed": 38,
         "checkpoint_path": "checkpoints/test/exp_checkpoint.pkl",
         "output_path": "figures/test/embedding_recovery_test",
         "save_texts": True,
@@ -594,8 +594,8 @@ def main():
     results = generate_recovery_accuracy_resumable(**params)
     print(results)
 
-    # output_path = "./figures/embedding_recovery_test/"
-    # plot_recovery_results(tp, attack_keys, results, output_path)
+    output_path = "./figures/embedding_recovery_test/"
+    plot_recovery_results(tp, attack_keys, results, output_path)
 
 
 if __name__ == "__main__":
