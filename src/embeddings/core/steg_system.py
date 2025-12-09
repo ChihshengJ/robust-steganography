@@ -43,7 +43,7 @@ class StegSystem:
                 f"not {type(hash_function).__name__}"
             )
 
-    def hide_message(self, data: Any, history) -> List[str]:
+    def hide_message(self, data: Any, history) -> str:
         # Get raw bits from encoder
         m_bits: list[int] = self.encoder.encode(data)
 
@@ -74,7 +74,7 @@ class StegSystem:
                     if all(h == d for h, d in zip(hash_bits, desired_bits)):
                         cover_texts.append(text)
                         break
-            return cover_texts
+            return " ".join(cover_texts)
 
         # Normal mode - use real API calls
         cover_text = encode(
@@ -85,7 +85,7 @@ class StegSystem:
             system_prompt=self.system_prompt,
             max_length=self.max_length,
         )
-        return cover_text
+        return " ".join(cover_text)
 
     def recover_message(self, stego_text: str):
         # assuming stego_text is a block of text, not separated by sentence

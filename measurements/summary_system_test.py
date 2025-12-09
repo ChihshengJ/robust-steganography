@@ -8,12 +8,13 @@ from typing import Any, override
 
 import matplotlib.pyplot as plt
 import openai
+from datasets import load_dataset
 
 # from src.embeddings.utils.get_embedding import client
 from tqdm import tqdm
 
-from embeddings import Encoder, RandomProjectionHash, RepetitionCode, StegSystem
-from embeddings.config.system_prompts import STORY_GENERATION
+from embeddings import Encoder, RandomProjectionHash, RepetitionCode
+from embeddings.core.summary_system import SummarySystem
 from watermarks import (
     Attack,
     GPT2Model,
@@ -98,7 +99,7 @@ def compute_recovery_accuracy(original, recovered):
 def generate_recovery_accuracy_resumable(
     tampering_levels: list[float],
     attack_configurations: list,
-    system: StegSystem,
+    system: SummarySystem,
     num_bits: int,
     num_messages: int,
     num_stego_per_message: int,
@@ -149,6 +150,9 @@ def generate_recovery_accuracy_resumable(
     texts_log_path = out_dir / "texts_log.jsonl"
     summary_dir = out_dir / "summaries"
     summary_dir.mkdir(parents=True, exist_ok=True)
+
+    cnn_ds = load_dataset("abisee/cnn_dailymail", "1.0.0", split="test")
+    article = cnn_ds[0]["article"]
 
     if seed is not None:
         random.seed(seed)
@@ -216,7 +220,7 @@ def generate_recovery_accuracy_resumable(
             )
 
             for stego_i in range(checkpoint["stego_gen_index"], num_stego_per_message):
-                stego_text = system.hide_message(message, history)
+                stego_text = system.hide_message(message, article)
                 current_stego_texts.append(stego_text)
 
                 checkpoint["stego_gen_index"] = stego_i + 1
@@ -304,7 +308,6 @@ def generate_recovery_accuracy_resumable(
                             local=mode,
                         )
                         # print(f"===========\nattacked text:\n{attacked_text}")
-                        system.set_chunk_length(len(stego_text))
                         recovered = system.recover_message(attacked_text)
                         print(f"message: {message}, recovered: {recovered}")
                         if recovered == message:
@@ -528,9 +531,6 @@ def main():
 
     # Initialize components
     client = openai.OpenAI()
-    # hash_fn = PCAHash(
-    #     pca_model=load_pca_model("../embeddings/src/robust_steganography/models/pca_corporate.pkl")
-    # )
     hash_fn = RandomProjectionHash(embedding_dim=3072, seed=42)
 
     ##############################################################################
@@ -540,27 +540,15 @@ def main():
     ##############################################################################
 
     # ecc = ConvolutionalCode(block_size=1, K=3)
-    ecc = RepetitionCode(5)
-    system_prompt = STORY_GENERATION.format(
-        items="spy, weapons, embassy",
-        boring_theme="A spy trying to smuggle weapons into the embassy",
-    )
-    # system_prompt = CORPORATE_MONOLOGUE_ALT
-
-    # history = [
-    #     "I wanted to follow up regarding the implementation timeline for the new risk management system. Based on our initial assessment, we'll need to coordinate closely with both IT and Operations to ensure a smooth transition. Please review the attached documentation when you have a moment.",
-    #     "After consulting with the development team, we've identified several key milestones that need to be addressed before proceeding. The current testing phase has revealed some potential integration issues with our legacy systems, particularly in the trade validation module. We're working on implementing the necessary fixes and expect to have an updated timeline by end of week.",
-    #     "Given the complexity of these changes, I believe it would be beneficial to schedule a stakeholder review meeting. We should include representatives from Risk Management, IT Operations, and the Trading desk to ensure all requirements are being met. I've asked Sarah to coordinate calendars for next Tuesday afternoon.",
-    # ]
+    ecc = RepetitionCode(3)
     history = []
-    system = StegSystem(
+
+    system = SummarySystem(
         client=client,
+        key=5,
         hash_function=hash_fn,
         error_correction=ecc,
         encoder=BypassEncoder(),
-        system_prompt=system_prompt,
-        max_length=200,
-        story_mode=True,
     )
 
     # Right now we treat tp == 1 as global so there is no need to switch modes
@@ -579,23 +567,23 @@ def main():
         "system": system,
         "num_bits": 3,
         "num_messages": 3,
-        "num_stego_per_message": 10,
-        "runs": 5,
+        "num_stego_per_message": 1,
+        "runs": 1,
         "history": history,
         "seed": 38,
         "checkpoint_path": "checkpoints/test/exp_checkpoint.pkl",
         "output_path": "figures/test/embedding_recovery_test",
-        "save_texts": True,
+        "save_texts": False,
         "max_saved_examples": 200,
-        "resume": True,
-        "checkpoint_after_each_stego": True,
+        "resume": False,
+        "checkpoint_after_each_stego": False,
     }
 
     results = generate_recovery_accuracy_resumable(**params)
     print(results)
 
-    output_path = "./figures/embedding_recovery_test/"
-    plot_recovery_results(tp, attack_keys, results, output_path)
+    # output_path = "./figures/embedding_recovery_test/"
+    # plot_recovery_results(tp, attack_keys, results, output_path)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ pyproject.toml
 src/__init__.py
 src/embeddings/__init__.py
 src/embeddings/config/__init__.py
+src/embeddings/config/constants.py
 src/embeddings/config/system_prompts.py
 src/embeddings/core/__init__.py
 src/embeddings/core/encoder.py
@@ -11,6 +12,7 @@ src/embeddings/core/error_correction.py
 src/embeddings/core/hash_functions.py
 src/embeddings/core/simulation.py
 src/embeddings/core/steg_system.py
+src/embeddings/core/summary_system.py
 src/embeddings/utils/__init__.py
 src/embeddings/utils/embedding_utils.py
 src/embeddings/utils/get_embedding.py
@@ -30,11 +32,15 @@ src/robust_steganography.egg-info/SOURCES.txt
 src/robust_steganography.egg-info/dependency_links.txt
 src/robust_steganography.egg-info/requires.txt
 src/robust_steganography.egg-info/top_level.txt
+src/summaries/__init__.py
+src/summaries/encode.py
 src/watermarks/__init__.py
 src/watermarks/attacks/__init__.py
+src/watermarks/attacks/attack.py
 src/watermarks/attacks/ngram_shuffle.py
 src/watermarks/attacks/paraphrase.py
 src/watermarks/attacks/synonym.py
+src/watermarks/attacks/translation.py
 src/watermarks/core/__init__.py
 src/watermarks/core/embedder.py
 src/watermarks/core/extractor.py

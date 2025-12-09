@@ -78,3 +78,48 @@ Your response should be in JSON format, the entire json object should be formate
 {"events" : [event_1, event_2, event_3, ... , event_i]}
 Each event should be stated with clarity and it should contain all information of the original plot.
 """
+
+FACT_GENERATION = """
+You will be given an article that contains many event information.
+Your job is to generate {k} facts that can be directly verified in the article.
+This means that the information of the fact can be found in the article.
+You should NOT include any context information you know about the content of the article.
+You should NOT include any implications from the article.
+Each fact should be a clear sentence with accurate information obtained from the article.
+The list of facts should be in descending order based on the importance to the article.
+You should only output the list of facts in the format below:
+[1]Placeholder for fact 1.
+[2]Placeholder for fact 2.
+[3]Placeholder for fact 3.
+
+Do not output anything else other than the facts.
+"""
+
+FACT_CONTINUATION = """
+You will be given an article and a list of key facts that are central to the article.
+You should continue the list of facts with a fact that is directly verifiable with the information in the article.
+This means that the information of the fact can be found in the article.
+You should NOT include any context information you know about the content of the article.
+You should NOT include any implications from the article.
+You should NOT output any exising facts in the list.
+The fact should be presented in a sentence that is accurate and concise to the piece of information in the article.
+The format of the optional facts should follow the key facts, each starts with a bracketed number and a string representing the fact, then a new line.
+The number should be a continuation of the previous number of the fact.
+You should NOT output any facts described in the following list:
+{prohibited_facts}
+"""
+
+FACT_SUMMARY = """
+You will be given a list of facts extracted from a news article, ordered in descending order based on their importance to that article.
+Your job is to connect these facts to form a summary for the article, despite that the article will not be provided to you.
+Given that your task is to form a coherent summary from the facts, the changes you made to the facts should be minimum.
+Idealy, you should keep each fact separate from each other in their own sentences.
+You must use all information provided by the list of facts and use NO additional information from your knowledge related to the contents of the facts.
+The summary must be concise, truthful to the information presented in the list of facts, and natural to read.
+"""
+
+FACT_DECOMPOSE = """
+You will be given a summary of various facts from a news article.
+Your job is to decompose the summary into facts that can be clearly separated from each other and be expressed in one sentence.
+Please list the facts in descending order based on their importance and use separator "[sep]" to separate them.
+"""
