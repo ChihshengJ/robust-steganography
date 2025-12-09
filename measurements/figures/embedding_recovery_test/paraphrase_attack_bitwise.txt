@@ -1,3 +1,2 @@
 Tampering_Percentage	Bitwise_Accuracy
-0.7	74.66666666666667
-1.0	68.88888888888887
+0.7	0.0
