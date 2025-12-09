@@ -80,30 +80,36 @@ Each event should be stated with clarity and it should contain all information o
 """
 
 FACT_GENERATION = """
-You will be given an article that contains many event information.
-Your job is to generate {k} facts that can be directly verified in the article.
-This means that the information of the fact can be found in the article.
-You should NOT include any context information you know about the content of the article.
-You should NOT include any implications from the article.
-Each fact should be a clear sentence with accurate information obtained from the article.
-The list of facts should be in descending order based on the importance to the article.
-You should only output the list of facts in the format below:
-[1]Placeholder for fact 1.
-[2]Placeholder for fact 2.
-[3]Placeholder for fact 3.
-
-Do not output anything else other than the facts.
+You will be given a news article. And your task is to extract exactly {k} facts that are explicitly stated in the article.
+A fact is a stand-alone declarative sentence whose entire content can be directly verified with the article.
+A fact MUST NOT include any background knowledge not mentioned in the article
+A fact MUST NOT include any interpretation, implication, speculation, or causal inference
+A fact MUST NOT include any information combined from multiple sentences unless the article itself explicitly links them
+You must follow these rules:
+1. Use only information present in the article.
+2. Each fact must be fully supported by specific text in the article.
+3. Each fact must be a single, concise, declarative sentence.
+Rank the {k} facts in descending order of importance, where importance means central to the main event, outcome, or topic of the article.
+Output format (strict):
+[1]Fact 1.
+[2]Fact 2.
+[3]Fact 3.
+...
+Output only the list of facts and nothing else.
 """
 
 FACT_CONTINUATION = """
-You will be given an article and a list of key facts that are central to the article.
-You should continue the list of facts with a fact that is directly verifiable with the information in the article.
-This means that the information of the fact can be found in the article.
-You should NOT include any context information you know about the content of the article.
-You should NOT include any implications from the article.
-You should NOT output any exising facts in the list.
-The fact should be presented in a sentence that is accurate and concise to the piece of information in the article.
-The format of the optional facts should follow the key facts, each starts with a bracketed number and a string representing the fact, then a new line.
+You will be given a news article and a list of key facts that are already extracted from the article.
+Your task is to continue the list of facts with one optional fact that is explicitly stated in the article and not already included in the given list.
+A fact is a stand-alone declarative sentence whose entire content can be directly verified with the article.
+A fact MUST NOT include any background knowledge not mentioned in the article
+A fact MUST NOT include any interpretation, implication, speculation, or causal inference
+A fact MUST NOT include any information combined from multiple sentences unless the article itself explicitly links them
+You must follow these rules:
+1. Use only information present in the article.
+2. Each fact must be fully supported by specific text in the article.
+3. Each fact must be a single, concise, declarative sentence.
+Your output should follow the format of the key facts, each starts with a bracketed number and a string representing the fact, then a new line.
 The number should be a continuation of the previous number of the fact.
 You should NOT output any facts described in the following list:
 {prohibited_facts}
