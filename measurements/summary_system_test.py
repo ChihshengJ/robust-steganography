@@ -540,7 +540,7 @@ def main():
     ##############################################################################
 
     # ecc = ConvolutionalCode(block_size=1, K=3)
-    ecc = RepetitionCode(3)
+    ecc = RepetitionCode(5)
     history = []
 
     system = SummarySystem(
@@ -567,15 +567,15 @@ def main():
         "system": system,
         "num_bits": 3,
         "num_messages": 3,
-        "num_stego_per_message": 1,
-        "runs": 1,
+        "num_stego_per_message": 10,
+        "runs": 5,
         "history": history,
         "seed": 38,
         "checkpoint_path": "checkpoints/test/exp_checkpoint.pkl",
         "output_path": "figures/test/embedding_recovery_test",
-        "save_texts": False,
+        "save_texts": True,
         "max_saved_examples": 200,
-        "resume": False,
+        "resume": True,
         "checkpoint_after_each_stego": False,
     }
 

@@ -126,6 +126,6 @@ The summary must be concise, truthful to the information presented in the list o
 
 FACT_DECOMPOSE = """
 You will be given a summary of various facts from a news article.
-Your job is to decompose the summary into facts that can be clearly separated from each other and be expressed in one sentence.
-Please list the facts in descending order based on their importance and use separator "[sep]" to separate them.
+Your job is to decompose the summary into {num} facts that can be clearly separated from each other and be expressed in one sentence.
+List the facts in descending order based on their importance and use separator "[sep]" to separate them.
 """
