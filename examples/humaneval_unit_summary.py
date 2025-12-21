@@ -51,7 +51,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--hash-bits",
         type=int,
-        default=1,
+        default=2,
         help="Number of bits produced by the hash function (controls chunk size).",
     )
     parser.add_argument(
