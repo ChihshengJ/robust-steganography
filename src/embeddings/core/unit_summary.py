@@ -55,7 +55,9 @@ class BehaviorPlan:
         data = cls._parse_payload(payload)
 
         def _clean(items: Iterable[str]) -> List[str]:
-            return [item.strip() for item in items if isinstance(item, str) and item.strip()]
+            return [
+                item.strip() for item in items if isinstance(item, str) and item.strip()
+            ]
 
         return cls(
             high=_clean(data.get("high", [])),
@@ -91,7 +93,9 @@ class UnitSummarySystem:
         bit_prefix: Sequence[int] | None = None,
     ):
         if key < 0:
-            raise ValueError("key must be non-negative (represents high priority behaviors)")
+            raise ValueError(
+                "key must be non-negative (represents high priority behaviors)"
+            )
         self.client = client
         self.hash_fn = hash_function
         self.ecc = error_correction
@@ -122,16 +126,17 @@ class UnitSummarySystem:
             for i in range(0, len(encoded_bits), self.hash_output_length)
         ]
         chunks = [
-            chunk + [0] * (self.hash_output_length - len(chunk))
-            for chunk in chunks
+            chunk + [0] * (self.hash_output_length - len(chunk)) for chunk in chunks
         ]
         self.message_length = len(chunks)
 
         total_behaviors = self.key + self.message_length
+        print(f"total behaviors: \n{total_behaviors}")
+        print(f"article: \n{article}")
         behavior_plan = self._plan_behaviors(
-            problem=article,
-            total_behaviors=total_behaviors,
+            problem=article, total_behaviors=total_behaviors
         )
+        print(f"initial behavior plan: \n{behavior_plan}")
 
         tests: List[str] = []
         if len(behavior_plan.high) < self.key:
@@ -152,6 +157,8 @@ class UnitSummarySystem:
             )
             tests.append(test_code)
 
+        print(f"tests: \n{tests}")
+
         # Step 3+: steganographic payload.
         payload_behaviors = behavior_plan.payload_behaviors()
         if len(payload_behaviors) < self.message_length:
@@ -159,7 +166,9 @@ class UnitSummarySystem:
                 "Planner did not provide enough medium/low behaviors to encode the payload."
             )
 
-        for idx, (chunk, (priority, behavior)) in enumerate(zip(chunks, payload_behaviors)):
+        for idx, (chunk, (priority, behavior)) in enumerate(
+            zip(chunks, payload_behaviors)
+        ):
             target_bits = np.array(chunk)
             test_code = self._generate_test(
                 problem=article,
@@ -171,6 +180,8 @@ class UnitSummarySystem:
             )
             tests.append(test_code)
 
+        print(f"payload tests: \n{tests}")
+
         test_file = "\n\n\n".join(tests).rstrip() + "\n"
         return test_file
 
@@ -180,7 +191,9 @@ class UnitSummarySystem:
         then decode the payload from all tests after the first H entries.
         """
         if self.message_length is None or self.error_encoded_length is None:
-            raise ValueError("No encoded message metadata available; run hide_message first.")
+            raise ValueError(
+                "No encoded message metadata available; run hide_message first."
+            )
 
         if self.message_length == 0:
             decoded_bits = self.ecc.decode([], self.error_encoded_length)
@@ -189,7 +202,9 @@ class UnitSummarySystem:
         sorted_tests = self._sort_tests_by_priority(stego_text)
         payload_tests = sorted_tests[self.key : self.key + self.message_length]
         if len(payload_tests) < self.message_length:
-            raise ValueError("Insufficient payload tests recovered from the stego file.")
+            raise ValueError(
+                "Insufficient payload tests recovered from the stego file."
+            )
 
         embeddings = get_embeddings_in_batch(self.client, payload_tests)
         hashed_chunks = [self.hash_fn(emb.reshape(1, -1)) for emb in embeddings]
@@ -315,7 +330,7 @@ class UnitSummarySystem:
                 conversation_history=history,
                 system_prompt=system_prompt,
                 max_length=800,
-                temperature=0.7,
+                temperature=1,
             ).strip()
             if not response:
                 raise ValueError("Model returned an empty test case.")
@@ -330,10 +345,12 @@ class UnitSummarySystem:
                 if self.message_length and chunk_index is not None
                 else ""
             )
+            print(f"behavior: {behavior}")
             print(
-                f"{chunk_label}attempt {attempt}: "
-                f"hash={sampled_bits.tolist()} target={target_bits.tolist()}"
+                f"{chunk_label}attempt {attempt}: ",
+                f"hash={sampled_bits.tolist()} target={target_bits.tolist()}",
             )
+            print(f"response:\n{response}")
             if np.array_equal(sampled_bits, target_bits):
                 return response
 
@@ -344,12 +361,10 @@ class UnitSummarySystem:
         self, problem: str, existing_tests: Sequence[str]
     ) -> List[str]:
         history = [f"HumanEval problem statement:\n{problem.strip()}"]
+
         if existing_tests:
             rendered_tests = "\n\n".join(existing_tests)
-            history.append(
-                "Existing pytest tests for this problem:\n"
-                + rendered_tests
-            )
+            history.append("Existing pytest tests for this problem:\n" + rendered_tests)
         return history
 
     def _format_prohibited_tests(self, prohibited: Sequence[str]) -> str:
@@ -385,4 +400,6 @@ class UnitSummarySystem:
         tests = parsed.get("tests", [])
         if not isinstance(tests, list):
             raise ValueError("Sorted tests JSON missing 'tests' list.")
-        return [test.strip() for test in tests if isinstance(test, str) and test.strip()]
+        return [
+            test.strip() for test in tests if isinstance(test, str) and test.strip()
+        ]

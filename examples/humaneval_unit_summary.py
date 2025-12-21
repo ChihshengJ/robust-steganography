@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, override
 
-from datasets import load_dataset
+from datasets import Dataset, load_dataset
 from openai import OpenAI
 
+from embeddings import Encoder
 from embeddings.core.error_correction import RepetitionCode
 from embeddings.core.hash_functions import RandomProjectionHash
 from embeddings.core.unit_summary import UnitSummarySystem
@@ -50,7 +51,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--hash-bits",
         type=int,
-        default=4,
+        default=1,
         help="Number of bits produced by the hash function (controls chunk size).",
     )
     parser.add_argument(
@@ -72,6 +73,19 @@ def parse_args() -> argparse.Namespace:
         help="Random seed for the projection matrix (change to vary hash behavior).",
     )
     return parser.parse_args()
+
+
+class BypassEncoder(Encoder):
+    def __init__(self):
+        pass
+
+    @override
+    def encode(self, data: list[int]) -> list[int]:
+        return data
+
+    @override
+    def decode(self, bits: list[int]) -> list[int]:
+        return bits
 
 
 def prepare_system(
@@ -97,12 +111,14 @@ def prepare_system(
         key=high_priority,
         hash_function=hash_fn,
         error_correction=ecc,
+        encoder=BypassEncoder(),
         bit_prefix=prefix_bits,
     )
 
 
 def iter_humaneval_prompts(limit: int) -> Iterable[dict]:
     dataset = load_dataset("openai/openai_humaneval", split="test")
+    assert isinstance(dataset, Dataset)
     take = min(limit, len(dataset))
     for example in dataset.select(range(take)):
         yield example
@@ -128,11 +144,11 @@ def main():
         output_path = args.output_dir / f"{task_id}_tests.py"
         print(f"Encoding task {task_id} -> {output_path}")
         test_suite = system.hide_message(
-            data=args.message,
+            data=[0, 1, 1],
             article=problem_statement,
         )
         output_path.write_text(test_suite, encoding="utf-8")
-        print(f"  Wrote {output_path}")
+        print(f"Wrote {output_path}")
 
 
 if __name__ == "__main__":
