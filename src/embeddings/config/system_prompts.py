@@ -165,7 +165,7 @@ Guidelines:
 - The user message provides previously approved tests. Do not duplicate them.
 - If the section "Tests NOT to write" contains entries, avoid generating any of those tests or trivial permutations.
 
-Output only the Python test code.
+Output only the Python test code. DO NOT write python code block tags.
 Tests NOT to write:
 {prohibited_tests}
 """

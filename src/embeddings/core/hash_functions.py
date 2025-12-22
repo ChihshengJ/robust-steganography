@@ -35,7 +35,7 @@ class RandomProjectionHash(HashFunction):
         return self.output_length
 
 
-class PCAHash(HashFunction):
+class NaivePCAHash(HashFunction):
     def __init__(self, pca_model, start=0, end=1):
         super().__init__()
         self.pca = pca_model
@@ -47,6 +47,32 @@ class PCAHash(HashFunction):
         emb = self._to_numpy_array(emb)
         transformed = self.pca.transform(emb.reshape(1, -1))
         return (transformed[:, self.start : self.end] > 0).astype(int).ravel()
+
+    def get_output_length(self):
+        return self.output_length
+
+
+class PCAHash(HashFunction):
+    def __init__(self, pca_dir: str, model_length: int, start: int, end: int):
+        super().__init__()
+        self.components = np.load(
+            f"{pca_dir}/pca_components.npy"
+        )  # (embed_dim, n_components)
+        self.mean = np.load(f"{pca_dir}/pca_mean.npy")  # (n_componenets, )
+        self.thresholds = np.load(f"{pca_dir}/pca_thresholds.npy")  # (n_components, )
+        self.output_length = abs(start - end)
+        assert self.output_length <= model_length
+        assert start < end
+        self.interval = (start, end)
+
+    def __call__(self, emb):
+        emb = self._to_numpy_array(emb)
+        z = (emb - self.mean) @ self.components.T  # (n_components,)
+        bits = (z > self.thresholds).astype(np.int8).ravel()
+        print(f"actual hash: {bits}")
+        # slice out the bits to use
+        capped_bits = bits[self.interval[0] : self.interval[1]]
+        return capped_bits
 
     def get_output_length(self):
         return self.output_length
