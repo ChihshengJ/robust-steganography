@@ -14,10 +14,9 @@ from typing import Iterable, override
 from datasets import Dataset, load_dataset
 from openai import OpenAI
 
-from embeddings import Encoder
+from embeddings import Encoder, PCAHash
 from embeddings.core.error_correction import RepetitionCode
-from embeddings.core.hash_functions import RandomProjectionHash
-from embeddings.core.unit_summary import UnitSummarySystem
+from embeddings.core.unit_test_system import UnitSummarySystem
 
 
 def parse_args() -> argparse.Namespace:
@@ -51,7 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--hash-bits",
         type=int,
-        default=2,
+        default=1,
         help="Number of bits produced by the hash function (controls chunk size).",
     )
     parser.add_argument(
@@ -96,7 +95,11 @@ def prepare_system(
     bit_prefix: str,
     hash_seed: int,
 ) -> UnitSummarySystem:
-    hash_fn = RandomProjectionHash(num_bits=hash_bits, seed=hash_seed)
+    # hash_fn = RandomProjectionHash(num_bits=hash_bits, seed=hash_seed)
+    hash_fn = PCAHash(
+        pca_dir="src/pca/unit_test/artifacts", model_length=5, start=4, end=5
+    )
+    # currently the PCA is trained for maximum 5-bits hash
     ecc = RepetitionCode(repetitions=repetitions)
     prefix_bits: list[int] = []
     cleaned = bit_prefix.strip()

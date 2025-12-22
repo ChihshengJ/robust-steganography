@@ -1,0 +1,31 @@
+# Ignore Python virtual environments
+.venv/
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# ignore environment files
+.env
+
+# ignore enron email data files
+src/pca/**/*.json
+src/pca/**/*.npy
+src/pca/**/*.pkl
+
+
+# ignore measurement checkpoints
+measurements/checkpoints/
+measurements/watermarked_texts/
+measurements/figures/embedding_recovery_test/summaries/
+
+__pycache__/
+.pytest_cache/
+
+# macOS system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
