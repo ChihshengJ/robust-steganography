@@ -97,7 +97,7 @@ def prepare_system(
 ) -> UnitSummarySystem:
     # hash_fn = RandomProjectionHash(num_bits=hash_bits, seed=hash_seed)
     hash_fn = PCAHash(
-        pca_dir="src/pca/unit_test/artifacts", model_length=5, start=4, end=5
+        pca_dir="src/pca/unit_test/artifacts", model_length=5, start=0, end=5
     )
     # currently the PCA is trained for maximum 5-bits hash
     ecc = RepetitionCode(repetitions=repetitions)
@@ -116,6 +116,7 @@ def prepare_system(
         error_correction=ecc,
         encoder=BypassEncoder(),
         bit_prefix=prefix_bits,
+        sampled_hash=True,
     )
 
 
