@@ -7,7 +7,7 @@ import openai
 from ..config.constants import STEGO_GEN_MODEL
 
 
-def clean_response(text):
+def clean_response(text) -> str:
     # Regex to find the last full sentence ending with ., !, or ?
     match = re.search(r"([.!?])[^.!?]*$", text)
     if match:
@@ -24,7 +24,7 @@ def generate_response(
     temperature=1.0,
     top_p=1.0,
     decomp_mode=False,
-):
+) -> str:
     # Prepare the prompt from the conversation history
     # adding datetime noise to disable prompt caching
     if not decomp_mode:

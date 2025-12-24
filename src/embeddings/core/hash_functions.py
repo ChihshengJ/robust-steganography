@@ -69,7 +69,6 @@ class PCAHash(HashFunction):
         emb = self._to_numpy_array(emb)
         z = (emb - self.mean) @ self.components.T  # (n_components,)
         bits = (z > self.thresholds).astype(np.int8).ravel()
-        print(f"actual hash: {bits}")
         # slice out the bits to use
         capped_bits = bits[self.interval[0] : self.interval[1]]
         return capped_bits
