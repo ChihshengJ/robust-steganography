@@ -8,7 +8,6 @@ import requests
 from datasets import Dataset, load_dataset
 from tqdm import tqdm
 
-
 API_BASE = "https://api.openai.com/v1"
 API_KEY = os.getenv("OPENAI_API_KEY")
 
@@ -80,7 +79,6 @@ def embed_texts_chunked(texts, batch_size=512):
     return np.array(all_embeddings)
 
 
-
 def build_prompt(problem):
     return f"""
 Generate {N_TESTS_PER_PROBLEM} Python unit test functions for the problem below.
@@ -123,7 +121,6 @@ def split_tests(code_block):
 
 
 def main():
-
     problems = load_dataset("openai/openai_humaneval", split="test")
     assert isinstance(problems, Dataset)
 
@@ -133,10 +130,7 @@ def main():
     else:
         dataset = []
 
-    existing_keys = {
-        (item["problem_id"], item["test_index"])
-        for item in dataset
-    }
+    existing_keys = {(item["problem_id"], item["test_index"]) for item in dataset}
 
     print(f"Loaded {len(dataset)} existing tests")
 
@@ -169,12 +163,14 @@ def main():
             if key in existing_keys:
                 continue
 
-            dataset.append({
-                "problem_id": pid,
-                "test_index": i,
-                "importance_rank": i + 1,
-                "text": test_code,
-            })
+            dataset.append(
+                {
+                    "problem_id": pid,
+                    "test_index": i,
+                    "importance_rank": i + 1,
+                    "text": test_code,
+                }
+            )
 
         with open(TESTS_JSON, "w") as f:
             json.dump(dataset, f, indent=2)
@@ -189,6 +185,6 @@ def main():
     np.save(EMBED_NPY, embeddings)
     print(f"Saved embeddings: {embeddings.shape}")
 
+
 if __name__ == "__main__":
     main()
-

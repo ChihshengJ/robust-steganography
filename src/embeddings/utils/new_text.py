@@ -23,17 +23,17 @@ def generate_response(
     max_length=300,
     temperature=1.0,
     top_p=1.0,
-    decomp_mode=False,
+    json_mode=False,
 ) -> str:
     # Prepare the prompt from the conversation history
     # adding datetime noise to disable prompt caching
-    if not decomp_mode:
+    if not json_mode:
         prompt = "\n".join(conversation_history) + "\n"
     else:
         prompt = conversation_history
     # print(f"prompt: {prompt}")
 
-    format = {"type": "json_object"} if decomp_mode else None
+    format = {"type": "json_object"} if json_mode else None
 
     try:
         # Generate a response using GPT-4o mini
