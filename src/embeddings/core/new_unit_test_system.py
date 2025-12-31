@@ -1,13 +1,14 @@
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pprint import pprint
 from typing import Any, Iterable, List, Sequence, Tuple
 
 import numpy as np
 
 from ..config.system_prompts import (
-    UNIT_BEHAVIOR_PLAN,
-    UNIT_TEST_GENERATION,
+    UNIT_TEST_BEHAVIOR_CONTINUATION,
+    UNIT_TEST_GENERATION_ALT,
+    UNIT_TEST_H_BEHAVIOR_GENERATION,
     UNIT_TEST_SORT,
 )
 from ..utils.get_embedding import get_embeddings_in_batch
@@ -19,9 +20,9 @@ from .hash_functions import HashFunction
 
 @dataclass
 class BehaviorPlan:
-    high: List[str]
-    medium: List[str]
-    low: List[str]
+    high: List[str] = []
+    medium: List[str] = []
+    low: List[str] = []
 
     @staticmethod
     def _parse_payload(payload: str) -> dict:
@@ -51,6 +52,10 @@ class BehaviorPlan:
 
         raise ValueError("Model returned invalid behavior JSON")
 
+    def items(self):
+        for field in fields(self):
+            yield field.name, getattr(self, field.name)
+
     @classmethod
     def from_json(cls, payload: str) -> "BehaviorPlan":
         data = cls._parse_payload(payload)
@@ -71,6 +76,14 @@ class BehaviorPlan:
         payload = [("Medium", behavior) for behavior in self.medium]
         payload.extend(("Low", behavior) for behavior in self.low)
         return payload
+
+    def update_behaviors(self, text: str):
+        data = self._parse_payload(text)
+        key = next(iter(data.keys()))
+        new_items = [
+            item.strip() for item in data[key] if isinstance(item, str) and item.strip()
+        ]
+        getattr(self, key).extend(new_items)
 
 
 class UnitSummarySystem:
@@ -109,7 +122,7 @@ class UnitSummarySystem:
             1 if sampled_hash else getattr(hash_function, "output_length")
         )
         self.key = key
-        self.message_length: int | None = None
+        self.message_length: int = 0
         self.bit_prefix = (
             [int(bit) for bit in bit_prefix] if bit_prefix is not None else []
         )
@@ -117,14 +130,14 @@ class UnitSummarySystem:
             if bit not in (0, 1):
                 raise ValueError("bit_prefix must only contain 0 or 1 values.")
 
-    def hide_message(self, data: Any, article: str) -> str:
+    def hide_message(self, data: Any, problem: str) -> str:
         """
         Given a HumanEval problem statement (`article`), generate:
           1. H high-priority tests that anchor the suite behaviorally.
           2. Additional tests whose embeddings hash to the encoded message bits.
         """
 
-        # Pre-processing secret bits
+        # Preprocessing secret bits
         prefix = self.bit_prefix if self.bit_prefix else []
         m_bits = prefix + self.encoder.encode(data)
         encoded_bits: List[int] = self.ecc.encode(m_bits)
@@ -138,70 +151,19 @@ class UnitSummarySystem:
         ]
         self.message_length = len(chunks)
 
-        # Generate a list of behaviors for generation
+        # Generate a list of key behaviors for generation
         total_behaviors = self.key + self.message_length
-        print(f"total behaviors: \n{total_behaviors}")
-        print(f"article: \n{article}")
+        print(f"article: \n{problem}")
         print(f"key: {self.key}; message_length: {self.message_length}")
-        behavior_plan = self._plan_behaviors(
-            problem=article, total_behaviors=total_behaviors
-        )
+        behavior_plan = self._plan_high_behaviors(problem=problem, key=self.key)
         print("initial behavior plan:")
         pprint(behavior_plan)
 
-        tests: List[str] = []
-        if len(behavior_plan.high) < self.key:
-            raise ValueError(
-                f"Planner only produced {len(behavior_plan.high)} high priority behaviors, "
-                f"but {self.key} were requested."
-            )
+        # Generate behaviors for steganographic payload.
+        behavior_plan = self._generate_behaviors(problem, chunks, behavior_plan)
 
-        # Generate deterministic high-priority tests.
-        for behavior in behavior_plan.high[: self.key]:
-            test_code = self._generate_test(
-                problem=article,
-                behavior=behavior,
-                priority="High",
-                existing_tests=tests,
-                target_bits=None,
-                chunk_index=None,
-            )
-            tests.append(test_code)
-
-        # Generate tests for steganographic payload.
-        payload_behaviors = behavior_plan.payload_behaviors()
-        if len(payload_behaviors) < self.message_length:
-            raise ValueError(
-                "Planner did not provide enough medium/low behaviors to encode the payload."
-            )
-        print("payload behaviors:")
-        pprint(payload_behaviors)
-
-        for idx, (chunk, (priority, behavior)) in enumerate(
-            zip(chunks, payload_behaviors)
-        ):
-            target_bits = np.array(chunk)
-            if self.sampled_hash:
-                test_code = self._generate_test_by_sampling(
-                    problem=article,
-                    behavior=behavior,
-                    priority=priority,
-                    existing_tests=tests,
-                    target_bits=target_bits,
-                    chunk_index=idx,
-                )
-            else:
-                test_code = self._generate_test(
-                    problem=article,
-                    behavior=behavior,
-                    priority=priority,
-                    existing_tests=tests,
-                    target_bits=target_bits,
-                    chunk_index=idx,
-                )
-            tests.append(test_code)
-
-        print(f"payload tests: \n{tests}")
+        # Generate tests for behaviors
+        tests = self._generate_tests(problem, behavior_plan)
 
         test_file = "\n\n\n".join(tests).rstrip() + "\n"
         return test_file
@@ -227,259 +189,105 @@ class UnitSummarySystem:
                 "Insufficient payload tests recovered from the stego file."
             )
 
+        # Get behaviors from tests
+
+        # Get embeddings from behavior descriptions
         embeddings = get_embeddings_in_batch(self.client, payload_tests)
         hashed_chunks = [self.hash_fn(emb.reshape(1, -1)) for emb in embeddings]
         decoded_bits = self.ecc.decode(hashed_chunks, self.error_encoded_length)
         return self.encoder.decode(decoded_bits)
 
-    # ------------------------------------------------------------------ #
-    # Internal helpers
-    # ------------------------------------------------------------------ #
-
-    def _plan_behaviors(self, problem: str, total_behaviors: int) -> BehaviorPlan:
-        payload_needed = max(total_behaviors - self.key, 0)
-        high_behaviors: List[str] = []
-        medium_behaviors: List[str] = []
-        low_behaviors: List[str] = []
-
-        remaining_high = self.key
-        high_attempts = 0
-        while remaining_high > 0:
-            high_attempts += 1
-            if high_attempts > self.PLAN_RETRY_LIMIT * 5:
-                raise ValueError("Could not obtain enough high-priority behaviors.")
-            batch = min(remaining_high, self.MAX_BEHAVIORS_PER_REQUEST)
-            plan_chunk = self._request_behavior_batch(
-                problem=problem,
-                total=batch,
-                expected_high=batch,
-                expected_payload=0,
-            )
-            new_items = plan_chunk.high[:batch]
-            if not new_items:
-                continue
-            take = min(batch, len(new_items))
-            high_behaviors.extend(new_items[:take])
-            remaining_high -= take
-
-        remaining_payload = payload_needed
-        payload_attempts = 0
-        while remaining_payload > 0:
-            payload_attempts += 1
-            if payload_attempts > self.PLAN_RETRY_LIMIT * 10:
-                raise ValueError("Could not obtain enough medium/low behaviors.")
-            batch = min(remaining_payload, self.MAX_BEHAVIORS_PER_REQUEST)
-            plan_chunk = self._request_behavior_batch(
-                problem=problem,
-                total=batch,
-                expected_high=0,
-                expected_payload=batch,
-            )
-            available_medium = plan_chunk.medium
-            available_low = plan_chunk.low
-            if not available_medium and not available_low:
-                continue
-
-            take_medium = min(remaining_payload, len(available_medium))
-            medium_behaviors.extend(available_medium[:take_medium])
-            remaining_payload -= take_medium
-
-            if remaining_payload > 0 and available_low:
-                take_low = min(remaining_payload, len(available_low))
-                low_behaviors.extend(available_low[:take_low])
-                remaining_payload -= take_low
-
-        return BehaviorPlan(
-            high=high_behaviors,
-            medium=medium_behaviors,
-            low=low_behaviors,
-        )
-
-    def _request_behavior_batch(
-        self,
-        problem: str,
-        total: int,
-        expected_high: int,
-        expected_payload: int,
-    ) -> BehaviorPlan:
-        prompt = UNIT_BEHAVIOR_PLAN.format(
-            total_behaviors=total,
-            high_count=expected_high,
-            remaining_count=expected_payload,
-        )
-        errors: list[str] = []
+    def _plan_high_behaviors(self, problem: str, key: int) -> BehaviorPlan:
+        """
+        Plan {key} high priority behaviors.
+        """
+        prompt = UNIT_TEST_H_BEHAVIOR_GENERATION.format(key)
+        plan = BehaviorPlan()
         for _ in range(self.PLAN_RETRY_LIMIT):
             response = generate_response(
                 client=self.client,
                 conversation_history=f"HumanEval problem:\n{problem}",
-                system_prompt=prompt,
-                max_length=3500,
+                max_length=500,
                 temperature=0,
-                decomp_mode=True,
+                json_mode=True,
             )
-            try:
-                plan = BehaviorPlan.from_json(response)
+            plan.update_behaviors(response)
+            if len(plan.high) == key:
                 return plan
-            except ValueError as err:
-                errors.append(f"{err}: {response!r}")
+        raise ValueError("Failed to parse behavior plan after multiple attempts. ")
 
-        raise ValueError(
-            "Failed to parse behavior plan after multiple attempts. "
-            + " | ".join(errors[-2:])
+    def _generate_behaviors(
+        self,
+        problem: str,
+        chunks: list[list[int]],
+        existing_plan: BehaviorPlan,
+    ) -> BehaviorPlan:
+        for idx, chunk in enumerate(chunks):
+            if chunk is None:
+                raise ValueError("No chunk specified")
+            prohibited: list[str] = []
+            history = self._build_conversation_history(problem, existing_plan)
+            attempt = 0
+            while True:
+                system_prompt = UNIT_TEST_BEHAVIOR_CONTINUATION.format(
+                    prohibited_behaviors=prohibited
+                )
+                response = generate_response(
+                    client=self.client,
+                    conversation_history=history,
+                    system_prompt=system_prompt,
+                    max_length=500,
+                    temperature=0.8,
+                ).strip()
+                if not response:
+                    raise ValueError("Model returned an empty behavior description.")
+                sampled_bits = self._hash_text(response)
+                attempt += 1
+
+                chunk_label = (
+                    f"[payload {idx + 1}/{self.message_length}] "
+                    if self.message_length and idx is not None
+                    else ""
+                )
+                print("\n\n")
+                print(f"response:\n{response}")
+                print(
+                    f"{chunk_label}attempt {attempt}: ",
+                    f"hash={sampled_bits.tolist()} target={chunk}",
+                )
+
+                if np.array_equal(sampled_bits, chunk):
+                    existing_plan.update_behaviors(response)
+                    break
+                if response not in prohibited:
+                    prohibited.append(response.split("\n")[0])
+        return existing_plan
+
+    def _generate_tests(self, problem: str, existing_plan: BehaviorPlan) -> list[str]:
+        if self.message_length == 0:
+            raise ValueError("message length == 0, system not initialized correctly")
+        # Build a single prompt from a behavior plan
+        behaviors = [b for _, b in existing_plan.items()]
+        prompt = f"HumanEval problem:\n{problem}\nBehavior plan (list of behaviors for testing):\n{'\n'.join(behaviors)}"
+        system_prompt = UNIT_TEST_GENERATION_ALT.format(length=self.message_length)
+        response = generate_response(
+            client=self.client,
+            conversation_history=prompt,
+            system_prompt=system_prompt,
+            max_length=3000,
+            temperature=0,
         )
+        tests = response.strip().split("[sep]")
+        if len(tests) != (self.message_length + self.key):
+            raise ValueError("Tests does not line up with the behaviors")
+        return tests
 
-    def _generate_test(
-        self,
-        problem: str,
-        behavior: str,
-        priority: str,
-        existing_tests: Sequence[str],
-        target_bits: np.ndarray | None,
-        chunk_index: int | None,
-    ) -> str:
-        prohibited: List[str] = []
-        history = self._build_conversation_history(problem, existing_tests)
-        attempt = 0
-        while True:
-            system_prompt = UNIT_TEST_GENERATION.format(
-                behavior_description=behavior,
-                priority=priority,
-                prohibited_tests=self._format_prohibited_tests(prohibited),
-            )
-            response = generate_response(
-                client=self.client,
-                conversation_history=history,
-                system_prompt=system_prompt,
-                max_length=500,
-                temperature=0.3,
-            ).strip()
-            if not response:
-                raise ValueError("Model returned an empty test case.")
-
-            if target_bits is None:
-                return response
-
-            sampled_bits = self._hash_text(response)
-            attempt += 1
-            chunk_label = (
-                f"[payload {chunk_index + 1}/{self.message_length}] "
-                if self.message_length and chunk_index is not None
-                else ""
-            )
-            print("\n\n")
-            print(f"behavior: {behavior}")
-            print(f"response:\n{response}")
-            print(
-                f"{chunk_label}attempt {attempt}: ",
-                f"hash={sampled_bits.tolist()} target={target_bits.tolist()}",
-            )
-            if np.array_equal(sampled_bits, target_bits):
-                return response
-
-            if response not in prohibited:
-                prohibited.append(response.split("\n")[0])
-
-    def _generate_test_by_sampling(
-        self,
-        problem: str,
-        behavior: str,
-        priority: str,
-        existing_tests: Sequence[str],
-        target_bits: np.ndarray | None,
-        chunk_index: int | None,
-    ):
-        prohibited: List[str] = []
-        history = self._build_conversation_history(problem, existing_tests)
-        sampled_hash = []
-
-        def get_majority(samples):
-            candidate = np.nan
-            count = 0
-            for i in samples:
-                if count == 0:
-                    candidate = i
-                    count = 1
-                elif np.array_equal(i, candidate):
-                    count += 1
-                else:
-                    count -= 1
-            return candidate
-
-        for _ in range(self.HASH_SAMPLE_SIZE):
-            system_prompt = UNIT_TEST_GENERATION.format(
-                behavior_description=behavior,
-                priority=priority,
-                prohibited_tests=self._format_prohibited_tests(prohibited),
-            )
-            response = generate_response(
-                client=self.client,
-                conversation_history=history,
-                system_prompt=system_prompt,
-                max_length=500,
-                temperature=0.3,
-            ).strip()
-            print(f"response: {response}")
-            hash_bits = self._hash_text(response)
-            print(f"hash: {hash_bits}")
-            sampled_hash.append(hash_bits)
-            if response not in prohibited:
-                prohibited.append(response.split("\n")[0])
-
-        majority_hash = get_majority(sampled_hash)
-        print(f"majority: {majority_hash}")
-
-        prohibited = []
-        history = self._build_conversation_history(problem, existing_tests)
-        attempt = 0
-        while True:
-            system_prompt = UNIT_TEST_GENERATION.format(
-                behavior_description=behavior,
-                priority=priority,
-                prohibited_tests=self._format_prohibited_tests(prohibited),
-            )
-            response = generate_response(
-                client=self.client,
-                conversation_history=history,
-                system_prompt=system_prompt,
-                max_length=500,
-                temperature=0.3,
-            ).strip()
-            if not response:
-                raise ValueError("Model returned an empty test case.")
-
-            if target_bits is None:
-                print("target bits is none!!!")
-                return response
-
-            actual_hash = self._hash_text(response)
-            sampled_bits = (
-                np.array([0])
-                if np.array_equal(actual_hash, majority_hash)
-                else np.array([1])
-            )
-            attempt += 1
-            chunk_label = (
-                f"[payload {chunk_index + 1}/{self.message_length}] "
-                if self.message_length and chunk_index is not None
-                else ""
-            )
-            print("\n\n")
-            print(f"behavior: {behavior}")
-            print(f"response:\n{response}")
-            print(
-                f"{chunk_label}attempt {attempt}: ",
-                f"actual_hash={actual_hash.tolist()}, hash={sampled_bits.tolist()} target={target_bits.tolist()}",
-            )
-            if np.array_equal(sampled_bits, target_bits):
-                return response
-
-    def _build_conversation_history(
-        self, problem: str, existing_tests: Sequence[str]
-    ) -> str:
+    def _build_conversation_history(self, problem: str, curr_plan: BehaviorPlan) -> str:
         history = f"HumanEval problem statement:\n{problem.strip()}\n"
+        existing_behaviors = [b for _, b in curr_plan.items()]
 
-        if existing_tests:
-            rendered_tests = "\n\n".join(existing_tests)
+        if existing_behaviors:
+            rendered_tests = "\n\n".join(existing_behaviors)
             history += "Existing pytest tests for this problem:\n" + rendered_tests
         return history
 
@@ -507,7 +315,7 @@ class UnitSummarySystem:
             system_prompt=UNIT_TEST_SORT,
             max_length=2000,
             temperature=0,
-            decomp_mode=True,
+            json_mode=True,
         )
         try:
             parsed = json.loads(response)

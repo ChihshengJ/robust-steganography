@@ -93,7 +93,7 @@ class UnitSummarySystem:
         error_correction: ErrorCorrection,
         encoder: Encoder | None = None,
         bit_prefix: Sequence[int] | None = None,
-        sampled_hash: bool = False
+        sampled_hash: bool = False,
     ):
         if key < 0:
             raise ValueError(
@@ -105,7 +105,9 @@ class UnitSummarySystem:
         self.ecc = error_correction
         self.encoder = encoder or CharacterEncoder()
         self.error_encoded_length: int | None = None
-        self.hash_output_length = 1 if sampled_hash else getattr(hash_function, "output_length")
+        self.hash_output_length = (
+            1 if sampled_hash else getattr(hash_function, "output_length")
+        )
         self.key = key
         self.message_length: int | None = None
         self.bit_prefix = (
@@ -313,7 +315,7 @@ class UnitSummarySystem:
                 system_prompt=prompt,
                 max_length=3500,
                 temperature=0,
-                decomp_mode=True,
+                json_mode=True,
             )
             try:
                 plan = BehaviorPlan.from_json(response)
@@ -378,7 +380,7 @@ class UnitSummarySystem:
                 prohibited.append(response.split("\n")[0])
 
     def _generate_test_by_sampling(
-        self, 
+        self,
         problem: str,
         behavior: str,
         priority: str,
@@ -449,9 +451,12 @@ class UnitSummarySystem:
                 print("target bits is none!!!")
                 return response
 
-
             actual_hash = self._hash_text(response)
-            sampled_bits = np.array([0]) if np.array_equal(actual_hash, majority_hash) else np.array([1])
+            sampled_bits = (
+                np.array([0])
+                if np.array_equal(actual_hash, majority_hash)
+                else np.array([1])
+            )
             attempt += 1
             chunk_label = (
                 f"[payload {chunk_index + 1}/{self.message_length}] "
@@ -468,7 +473,6 @@ class UnitSummarySystem:
             if np.array_equal(sampled_bits, target_bits):
                 return response
 
-
     def _build_conversation_history(
         self, problem: str, existing_tests: Sequence[str]
     ) -> str:
@@ -476,13 +480,13 @@ class UnitSummarySystem:
 
         if existing_tests:
             rendered_tests = "\n\n".join(existing_tests)
-            history += ("Existing pytest tests for this problem:\n" + rendered_tests)
+            history += "Existing pytest tests for this problem:\n" + rendered_tests
         return history
 
     def _format_prohibited_tests(self, prohibited: Sequence[str]) -> str:
         if not prohibited:
             return "None."
-        
+
         return "\n".join(prohibited)
 
     def _hash_text(self, test_code: str) -> np.ndarray:
@@ -503,7 +507,7 @@ class UnitSummarySystem:
             system_prompt=UNIT_TEST_SORT,
             max_length=2000,
             temperature=0,
-            decomp_mode=True,
+            json_mode=True,
         )
         try:
             parsed = json.loads(response)

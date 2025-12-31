@@ -1,15 +1,36 @@
 import numpy as np
 from openai import OpenAI
+import requests
+import os
+import time
 
-from .embedding_utils import compute_embeddings
+API_BASE = "https://api.openai.com/v1"
+API_KEY = os.getenv("OPENAI_API_KEY")
 
+HEADERS = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json",
+}
 
-def get_embedding(client, text):
-    # Get the embedding for the text
-    embedding = compute_embeddings(
-        text, True, "text-embedding-3-large", client)
-    emb = np.array(embedding[0])
-    return emb
+def get_embedding(text):
+    payload = {
+        "model": "text-embedding-3-large",
+        "input": text,
+    }
+
+    r = requests.post(
+        f"{API_BASE}/embeddings",
+        headers=HEADERS,
+        json=payload,
+        timeout=60,
+    )
+    r.raise_for_status()
+
+    data = r.json()["data"]
+    embeddings = [d["embedding"] for d in data]
+
+    return np.array(embeddings[0])
+
 
 def get_embeddings_in_batch(client, texts):
     # Using the embeddings.create method to fetch embeddings for multiple texts in one request
@@ -22,8 +43,4 @@ def get_embeddings_in_batch(client, texts):
     return embeddings
 
 if __name__ == "__main__":
-    client = OpenAI()  # automatically uses OPENAI_API_KEY env var
-    text = "What are you up to today?"
-    embedding = get_embedding(client, text)
-    print(embedding)
-    print(type(embedding))
+    pass

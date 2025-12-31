@@ -61,7 +61,7 @@ class StegSystem:
             nested + [0] * (self.hash_output_length - len(nested))
             for nested in m_chunks
         ]
-            
+
         # normally system only get the chunk length after hiding a message
 
         if self.simulator:
@@ -126,7 +126,7 @@ class StegSystem:
             max_length=5000,
             temperature=0.0,
             # top_p=0.6,
-            decomp_mode=True
+            json_mode=True,
         )
         # chunks = [chunk.strip() for chunk in chunks.split("[sep]")]
         print(f"========chunks=======\n{response}")

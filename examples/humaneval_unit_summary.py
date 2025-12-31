@@ -16,7 +16,7 @@ from openai import OpenAI
 
 from embeddings import Encoder, PCAHash
 from embeddings.core.error_correction import RepetitionCode
-from embeddings.core.unit_test_system import UnitSummarySystem
+from embeddings.core.new_unit_test_system import UnitSummarySystem
 
 
 def parse_args() -> argparse.Namespace:
@@ -149,7 +149,7 @@ def main():
         print(f"Encoding task {task_id} -> {output_path}")
         test_suite = system.hide_message(
             data=[0, 1, 1],
-            article=problem_statement,
+            problem=problem_statement,
         )
         output_path.write_text(test_suite, encoding="utf-8")
         print(f"Wrote {output_path}")

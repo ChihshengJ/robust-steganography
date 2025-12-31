@@ -9,39 +9,41 @@ from openai import (
     RateLimitError,
     Timeout,
 )
-from sentence_transformers import SentenceTransformer
 
 
-def compute_embeddings_local_pair(texts1, texts2, normalize, engine):
-    # Load model
-    model = SentenceTransformer(engine)
-
-    # compute embeddings
-    embeddings_1 = model.encode(texts1)
-    embeddings_2 = model.encode(texts2)
-
-    # Normalize embeddings if normalize is True
-    if normalize:
-        embeddings_1 = [normalize_embedding(e) for e in embeddings_1]
-        embeddings_2 = [normalize_embedding(e) for e in embeddings_2]
-
-    return [embeddings_1, embeddings_2]
-
-
-def compute_embeddings_local(texts, normalize, engine):
-    # Load model
-    model = SentenceTransformer(engine)
-
-    # compute embeddings
-    embeddings = model.encode(texts)
-
-    # Normalize embeddings if normalize is True
-    if normalize:
-        embeddings = [normalize_embedding(e) for e in embeddings]
-
-    return embeddings
-
-
+# from sentence_transformers import SentenceTransformer
+#
+#
+# def compute_embeddings_local_pair(texts1, texts2, normalize, engine):
+#     # Load model
+#     model = SentenceTransformer(engine)
+#
+#     # compute embeddings
+#     embeddings_1 = model.encode(texts1)
+#     embeddings_2 = model.encode(texts2)
+#
+#     # Normalize embeddings if normalize is True
+#     if normalize:
+#         embeddings_1 = [normalize_embedding(e) for e in embeddings_1]
+#         embeddings_2 = [normalize_embedding(e) for e in embeddings_2]
+#
+#     return [embeddings_1, embeddings_2]
+#
+#
+# def compute_embeddings_local(texts, normalize, engine):
+#     # Load model
+#     model = SentenceTransformer(engine)
+#
+#     # compute embeddings
+#     embeddings = model.encode(texts)
+#
+#     # Normalize embeddings if normalize is True
+#     if normalize:
+#         embeddings = [normalize_embedding(e) for e in embeddings]
+#
+#     return embeddings
+#
+#
 def compute_embeddings(texts, normalize, engine, client):
     embeddings = compute_embeddings_concurrently(texts, engine, client)
 
@@ -52,16 +54,19 @@ def compute_embeddings(texts, normalize, engine, client):
     return embeddings
 
 
+#
+
+
 # Get the embedding for a single text from the OpenAI API
-# def get_embedding(text, model, client):
-#     # Using the embeddings.create method to fetch the embedding
-#     response = client.embeddings.create(
-#         input=[text],  # Ensure input is a list of text
-#         model=model    # Specify the model you are using
-#     )
-#     # Extracting the embedding from the response object
-#     embedding = response.data[0].embedding
-#     return embedding
+def get_embedding(text, model, client):
+    # Using the embeddings.create method to fetch the embedding
+    response = client.embeddings.create(
+        input=[text],  # Ensure input is a list of text
+        model=model,  # Specify the model you are using
+    )
+    # Extracting the embedding from the response object
+    embedding = response.data[0].embedding
+    return embedding
 
 
 def get_embedding(text, model, client, max_retries=5, backoff_factor=1.5):
