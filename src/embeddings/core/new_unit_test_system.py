@@ -4,12 +4,14 @@ from pprint import pprint
 from typing import Any, Iterable, List, Sequence, Tuple
 
 import numpy as np
+from pyarrow import system_memory_pool
 
 from ..config.system_prompts import (
     UNIT_TEST_BEHAVIOR_CONTINUATION,
     UNIT_TEST_GENERATION_ALT,
     UNIT_TEST_H_BEHAVIOR_GENERATION,
     UNIT_TEST_SORT,
+    UNIT_TEST_TO_BEHAVIOR,
 )
 from ..utils.get_embedding import get_embeddings_in_batch
 from ..utils.new_text import generate_response
@@ -20,9 +22,9 @@ from .hash_functions import HashFunction
 
 @dataclass
 class BehaviorPlan:
-    high: List[str] = []
-    medium: List[str] = []
-    low: List[str] = []
+    high: List[str]
+    medium: List[str]
+    low: List[str]
 
     @staticmethod
     def _parse_payload(payload: str) -> dict:
@@ -95,8 +97,7 @@ class UnitSummarySystem:
     """
 
     MAX_BEHAVIORS_PER_REQUEST = 50
-    PLAN_RETRY_LIMIT = 4
-    HASH_SAMPLE_SIZE = 15
+    PLAN_RETRY_LIMIT = 30
 
     def __init__(
         self,
@@ -156,8 +157,8 @@ class UnitSummarySystem:
         print(f"article: \n{problem}")
         print(f"key: {self.key}; message_length: {self.message_length}")
         behavior_plan = self._plan_high_behaviors(problem=problem, key=self.key)
-        print("initial behavior plan:")
-        pprint(behavior_plan)
+        # print("initial behavior plan:")
+        # pprint(behavior_plan)
 
         # Generate behaviors for steganographic payload.
         behavior_plan = self._generate_behaviors(problem, chunks, behavior_plan)
@@ -165,34 +166,34 @@ class UnitSummarySystem:
         # Generate tests for behaviors
         tests = self._generate_tests(problem, behavior_plan)
 
-        test_file = "\n\n\n".join(tests).rstrip() + "\n"
-        return test_file
+        stego = f"Problem:\n{problem}\nTests:\n{"[sep]".join(tests).rstrip()}\n"
+        return stego
 
     def recover_message(self, stego_text: str) -> Any:
         """
         Undo the paraphrase attack by letting the LLM re-order tests by importance,
-        then decode the payload from all tests after the first H entries.
+        then decode the payload behaviors from all tests after first {key} tests.
         """
         if self.message_length is None or self.error_encoded_length is None:
             raise ValueError(
                 "No encoded message metadata available; run hide_message first."
             )
-
         if self.message_length == 0:
             decoded_bits = self.ecc.decode([], self.error_encoded_length)
             return self.encoder.decode(decoded_bits)
 
-        sorted_tests = self._sort_tests_by_priority(stego_text)
-        payload_tests = sorted_tests[self.key : self.key + self.message_length]
+        problem, tests, *_ = stego_text.split("Tests:")
+        payload_tests = self._sort_tests_by_priority(tests)[self.key : self.key + self.message_length]
         if len(payload_tests) < self.message_length:
             raise ValueError(
                 "Insufficient payload tests recovered from the stego file."
             )
-
+        print(f"sorted tests: {payload_tests}")
         # Get behaviors from tests
-
+        payload_behaviors = self._translate_tests_to_behaviors(problem, payload_tests)
+        print(f"translated behaviors: {payload_behaviors}")
         # Get embeddings from behavior descriptions
-        embeddings = get_embeddings_in_batch(self.client, payload_tests)
+        embeddings = get_embeddings_in_batch(self.client, payload_behaviors)
         hashed_chunks = [self.hash_fn(emb.reshape(1, -1)) for emb in embeddings]
         decoded_bits = self.ecc.decode(hashed_chunks, self.error_encoded_length)
         return self.encoder.decode(decoded_bits)
@@ -201,16 +202,18 @@ class UnitSummarySystem:
         """
         Plan {key} high priority behaviors.
         """
-        prompt = UNIT_TEST_H_BEHAVIOR_GENERATION.format(key)
-        plan = BehaviorPlan()
+        system_prompt = UNIT_TEST_H_BEHAVIOR_GENERATION.format(key=key)
+        plan = BehaviorPlan([], [], [])
         for _ in range(self.PLAN_RETRY_LIMIT):
             response = generate_response(
                 client=self.client,
                 conversation_history=f"HumanEval problem:\n{problem}",
+                system_prompt=system_prompt,
                 max_length=500,
                 temperature=0,
                 json_mode=True,
             )
+            print(f"plan high behavior response:\n {response}")
             plan.update_behaviors(response)
             if len(plan.high) == key:
                 return plan
@@ -237,7 +240,7 @@ class UnitSummarySystem:
                     conversation_history=history,
                     system_prompt=system_prompt,
                     max_length=500,
-                    temperature=0.8,
+                    temperature=0.3,
                 ).strip()
                 if not response:
                     raise ValueError("Model returned an empty behavior description.")
@@ -249,8 +252,6 @@ class UnitSummarySystem:
                     if self.message_length and idx is not None
                     else ""
                 )
-                print("\n\n")
-                print(f"response:\n{response}")
                 print(
                     f"{chunk_label}attempt {attempt}: ",
                     f"hash={sampled_bits.tolist()} target={chunk}",
@@ -267,9 +268,9 @@ class UnitSummarySystem:
         if self.message_length == 0:
             raise ValueError("message length == 0, system not initialized correctly")
         # Build a single prompt from a behavior plan
-        behaviors = [b for _, b in existing_plan.items()]
+        behaviors = [b for _, behaviors in existing_plan.items() for b in behaviors]
         prompt = f"HumanEval problem:\n{problem}\nBehavior plan (list of behaviors for testing):\n{'\n'.join(behaviors)}"
-        system_prompt = UNIT_TEST_GENERATION_ALT.format(length=self.message_length)
+        system_prompt = UNIT_TEST_GENERATION_ALT.format(length=self.message_length+self.key)
         response = generate_response(
             client=self.client,
             conversation_history=prompt,
@@ -284,7 +285,7 @@ class UnitSummarySystem:
 
     def _build_conversation_history(self, problem: str, curr_plan: BehaviorPlan) -> str:
         history = f"HumanEval problem statement:\n{problem.strip()}\n"
-        existing_behaviors = [b for _, b in curr_plan.items()]
+        existing_behaviors = [b for _, behaviors in curr_plan.items() for b in behaviors]
 
         if existing_behaviors:
             rendered_tests = "\n\n".join(existing_behaviors)
@@ -297,10 +298,10 @@ class UnitSummarySystem:
 
         return "\n".join(prohibited)
 
-    def _hash_text(self, test_code: str) -> np.ndarray:
+    def _hash_text(self, text: str) -> np.ndarray:
         embedding = (
             self.client.embeddings.create(
-                input=[test_code],
+                input=[text],
                 model="text-embedding-3-large",
             )
             .data[0]
@@ -328,3 +329,16 @@ class UnitSummarySystem:
         return [
             test.strip() for test in tests if isinstance(test, str) and test.strip()
         ]
+
+    def _translate_tests_to_behaviors(self, problem: str, tests: list[str]) -> list[str]:
+        system_prompt = UNIT_TEST_TO_BEHAVIOR
+        prompt = f"HumanEval problem:\n {problem}\nList of unit tests:\n{tests}"
+        response = generate_response(
+            client=self.client,
+            conversation_history=prompt,
+            system_prompt=system_prompt,
+            max_length=1000,
+            temperature=0,
+            json_mode=True
+        )
+        return json.loads(response.strip())["behaviors"]

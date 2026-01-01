@@ -14,7 +14,7 @@ from typing import Iterable, override
 from datasets import Dataset, load_dataset
 from openai import OpenAI
 
-from embeddings import Encoder, PCAHash
+from embeddings import Encoder, RandomProjectionHash
 from embeddings.core.error_correction import RepetitionCode
 from embeddings.core.new_unit_test_system import UnitSummarySystem
 
@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--count",
         type=int,
-        default=5,
+        default=2,
         help="Number of HumanEval problems to process (default: 5).",
     )
     parser.add_argument(
@@ -95,11 +95,12 @@ def prepare_system(
     bit_prefix: str,
     hash_seed: int,
 ) -> UnitSummarySystem:
-    # hash_fn = RandomProjectionHash(num_bits=hash_bits, seed=hash_seed)
-    hash_fn = PCAHash(
-        pca_dir="src/pca/unit_test/artifacts", model_length=5, start=0, end=5
-    )
+    hash_fn = RandomProjectionHash(num_bits=hash_bits, seed=hash_seed)
+    # hash_fn = PCAHash(
+    #     pca_dir="src/pca/unit_test/artifacts", model_length=5, start=0, end=5
+    # )
     # currently the PCA is trained for maximum 5-bits hash
+
     ecc = RepetitionCode(repetitions=repetitions)
     prefix_bits: list[int] = []
     cleaned = bit_prefix.strip()
@@ -147,13 +148,14 @@ def main():
         problem_statement = example["prompt"]
         output_path = args.output_dir / f"{task_id}_tests.py"
         print(f"Encoding task {task_id} -> {output_path}")
-        test_suite = system.hide_message(
+        stego = system.hide_message(
             data=[0, 1, 1],
             problem=problem_statement,
         )
-        output_path.write_text(test_suite, encoding="utf-8")
-        print(f"Wrote {output_path}")
+        recovered = system.recover_message(stego)
 
+        # output_path.write_text(test_suite, encoding="utf-8")
+        print(f"data: {[0, 1, 1]}, recovered: {recovered}")
 
 if __name__ == "__main__":
     main()
