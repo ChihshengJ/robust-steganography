@@ -52,20 +52,16 @@ def main():
     embeddings = np.load(EMBED_NPY)
     print(f"Loaded embeddings: {embeddings.shape}")
 
-    # centering
     mean = embeddings.mean(axis=0)
     X = embeddings - mean
 
-    X = embeddings
     sanity_checks(X, PCA_COMPONENTS)
 
     # train pca
     pca = PCA(n_components=PCA_COMPONENTS)
     Z = pca.fit_transform(X)
 
-    # find median thresholds
     thresholds = np.median(Z, axis=0)
-    #
     np.save(OUT_DIR / "naive_pca_components.npy", pca.components_)
     np.save(OUT_DIR / "pca_components.npy", pca.components_)
     np.save(OUT_DIR / "pca_mean.npy", mean)

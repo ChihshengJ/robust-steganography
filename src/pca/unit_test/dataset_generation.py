@@ -19,8 +19,8 @@ PCA_COMPONENTS = 3
 OUT_DIR = Path("./src/pca/unit_test/artifacts/")
 OUT_DIR.mkdir(exist_ok=True)
 
-TESTS_JSON = OUT_DIR / "generated_tests.json"
-EMBED_NPY = OUT_DIR / "embeddings.npy"
+TESTS_JSON = OUT_DIR / "generated_behaviors.json"
+EMBED_NPY = OUT_DIR / "behavior_embeddings.npy"
 
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
@@ -28,7 +28,7 @@ HEADERS = {
 }
 
 
-def chat_completion(messages, temperature=0.8):
+def chat_completion(messages, temperature=0.3):
     payload = {
         "model": CHAT_MODEL,
         "messages": messages,
@@ -81,16 +81,14 @@ def embed_texts_chunked(texts, batch_size=512):
 
 def build_prompt(problem):
     return f"""
-Generate {N_TESTS_PER_PROBLEM} Python unit test functions for the problem below.
+Produce exactly {N_TESTS_PER_PROBLEM} behaviors that any correct solution for the HumanEval problem should be tested for.
+Structure them in descending order of importance.
 
 Requirements:
-- Each test must be a standalone Python function
 - Ordered from MOST IMPORTANT to LEAST IMPORTANT
-- Vary test function names meaningfully
-- Do NOT include explanations
-- Separate tests by a blank line
-- Output ONLY Python code.
-- Do NOT wrap it in a code block.
+- Separate behaviors by a separator "[sep]"
+- Do not number the behaviors
+- Output ONLY descriptions of behaviors, NO code allowed
 
 Problem:
 {problem["prompt"]}
@@ -145,12 +143,13 @@ def main():
 
         raw_code = chat_completion(
             [
-                {"role": "system", "content": "Write precise Python unit tests."},
+                {"role": "system", "content": "Write precise program behaviors a solution to a HumanEval problem should be tested for."},
                 {"role": "user", "content": build_prompt(problem)},
             ]
         )
 
-        tests = split_tests(raw_code)
+        # tests = split_tests(raw_code)
+        tests = raw_code.replace("\n", "").split("[sep]")
 
         if len(tests) != N_TESTS_PER_PROBLEM:
             print(
