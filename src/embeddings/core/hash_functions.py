@@ -109,7 +109,7 @@ class MajorityVoteHash(HashFunction):
         self.n_samples = n_samples
         self.output_length = 1
 
-    def calibrate(self, ctx: GenerationContext) -> None:
+    def calibrate(self, ctx: GenerationContext) -> tuple[int]:
         """
         Call each time before hashing to calibrate for the context
         """
@@ -128,6 +128,7 @@ class MajorityVoteHash(HashFunction):
                 emb = self._to_numpy_array(self._embed_fn(ctx.client, response))
                 z = (emb - self.mean) @ self.components.T
                 bits = (z > self.thresholds).astype(np.int8).ravel()
+                print(f"calibrating bits:{bits}")
                 hashes.append(bits)
                 key = tuple(bits.tolist())
                 hash_counts[key] = hash_counts.get(key, 0) + 1
@@ -137,14 +138,16 @@ class MajorityVoteHash(HashFunction):
 
         majority_key = max(hash_counts, key=lambda k: hash_counts[k])
         self._majority = np.array(majority_key)
+        print(self._majority)
+        return majority_key
 
     def __call__(self, emb):
-        if not self._majority:
+        if self._majority is None:
             raise RuntimeError("Hash not calibrated by sampling.")
         emb = self._to_numpy_array(emb)
         z = (emb - self.mean) @ self.components.T  # (n_components,)
         bits = (z > self.thresholds).astype(np.int8).ravel()
-        bit = 1 if np.equal(bits, self._majority) else 0
+        bit = 1 if np.array_equal(bits, self._majority) else 0
 
         self._majority = None
 

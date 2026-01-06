@@ -133,17 +133,7 @@ class UnitTestSystem(StegSystem):
         """
 
         # Preprocessing secret bits
-        m_bits = self.encoder.encode(data)
-        encoded_bits: List[int] = self.ecc.encode(m_bits)
-        self.error_encoded_length = len(encoded_bits)
-        chunks = [
-            encoded_bits[i : i + self.hash_output_length]
-            for i in range(0, len(encoded_bits), self.hash_output_length)
-        ]
-        chunks = [
-            chunk + [0] * (self.hash_output_length - len(chunk)) for chunk in chunks
-        ]
-        self.message_length = len(chunks)
+        chunks, self.message_length = self._encode_to_chunks(data)
 
         # Generate a list of key behaviors for generation
         print(f"article: \n{seed}")
@@ -151,7 +141,7 @@ class UnitTestSystem(StegSystem):
         behavior_plan = self._plan_high_behaviors(problem=seed, key=self.key)
 
         # Generate behaviors for steganographic payload.
-        behavior_plan = self._generate_behaviors(seed, chunks, behavior_plan)
+        behavior_plan = self.encode(chunks, behavior_plan, seed)
 
         # Generate tests for behaviors
         tests = self._generate_tests(seed, behavior_plan)
@@ -238,6 +228,15 @@ class UnitTestSystem(StegSystem):
             prohibited: list[str] = []
             history = self._build_conversation_history(problem, existing_plan)
             attempt = 0
+            
+            if self.majority_vote:
+                assert isinstance(self.hash_fn, MajorityVoteHash)
+                system_prompt = UNIT_TEST_BEHAVIOR_CONTINUATION.format(
+                    prohibited_behaviors=[]
+                )
+                ctx = GenerationContext(self.client, history, system_prompt)
+                self.hash_fn.calibrate(ctx)
+            
             while True:
                 system_prompt = UNIT_TEST_BEHAVIOR_CONTINUATION.format(
                     prohibited_behaviors=prohibited
@@ -251,13 +250,9 @@ class UnitTestSystem(StegSystem):
                 ).strip()
                 if not response:
                     raise ValueError("Model returned an empty behavior description.")
-                if not self.majority_vote:
-                    sampled_bits = self._hash_text(response)
-                else:
-                    sampled_bits = self._hash_text(response, history, system_prompt)
+                sampled_bits = self._hash_text(response)
                 print(f"raw response: {response}")
                 attempt += 1
-
                 chunk_label = (
                     f"[payload {idx + 1}/{self.message_length}] "
                     if self.message_length and idx is not None
@@ -267,7 +262,6 @@ class UnitTestSystem(StegSystem):
                     f"{chunk_label}attempt {attempt}: ",
                     f"hash={sampled_bits.tolist()} target={chunk}",
                 )
-
                 if np.array_equal(sampled_bits, chunk):
                     existing_plan.update_behaviors(response)
                     history = self._build_conversation_history(problem, existing_plan)
@@ -275,6 +269,19 @@ class UnitTestSystem(StegSystem):
                 if response not in prohibited:
                     prohibited.append(response.split("\n")[0])
         return existing_plan
+
+    def encode(
+        self,
+        chunks: list[list[int]],
+        history: Any,
+        system_prompt: str = "You are having a casual conversation.",
+        max_length=200,
+        **kwargs,
+    ) -> Any:
+        """
+        Probably need to get rid of the BehaviorPlan class in order to make this method abide to the abstract methods.
+        """
+        return self._generate_behaviors(system_prompt, chunks, history)
 
     def _generate_tests(self, problem: str, existing_plan: BehaviorPlan) -> list[str]:
         if self.message_length == 0:
@@ -314,7 +321,7 @@ class UnitTestSystem(StegSystem):
 
         return "\n".join(prohibited)
 
-    def _hash_text(self, text: str, *args) -> np.ndarray:
+    def _hash_text(self, text: str) -> np.ndarray:
         embedding = (
             self.client.embeddings.create(
                 input=[text],
@@ -323,17 +330,6 @@ class UnitTestSystem(StegSystem):
             .data[0]
             .embedding
         )
-        if not self.majority_vote:
-            return self.hash_fn(embedding)
-
-        # Use the majority vote hash
-        assert isinstance(self.hash_fn, MajorityVoteHash), "only SampledPCAHash can use majority vote mode"
-        ctx = GenerationContext(
-            self.client,
-            args[1],
-            args[2]
-        )
-        self.hash_fn.calibrate(ctx)
         return self.hash_fn(embedding)
 
     def _sort_tests_by_priority(self, test_file: str) -> List[str]:
