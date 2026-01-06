@@ -18,7 +18,7 @@ def clean_response(text) -> str:
 
 def generate_response(
     client,
-    conversation_history,
+    prompt,
     system_prompt="You are a highly dynamic conversational model tasked with generating responses that are extremely varied in tone, content, and structure.",
     max_length=300,
     temperature=1.0,
@@ -28,9 +28,7 @@ def generate_response(
     # Prepare the prompt from the conversation history
     # adding datetime noise to disable prompt caching
     if not json_mode:
-        prompt = "\n".join(conversation_history) + "\n"
-    else:
-        prompt = conversation_history
+        prompt = "\n".join(prompt) + "\n"
     # print(f"prompt: {prompt}")
 
     format = {"type": "json_object"} if json_mode else None
@@ -56,7 +54,7 @@ def generate_response(
 
         # Extract and return the generated response text
         text = response.choices[0].message.content.strip()
-        if isinstance(conversation_history, list):
+        if isinstance(prompt, list):
             text = clean_response(text)
         return text
 

@@ -6,9 +6,9 @@ from sklearn.decomposition import PCA
 OUT_DIR = Path("./src/pca/unit_test/artifacts")
 OUT_DIR.mkdir(exist_ok=True)
 
-EMBED_NPY = OUT_DIR / "embeddings.npy"
+EMBED_NPY = OUT_DIR / "behavior_embeddings.npy"
 
-PCA_COMPONENTS = 5
+PCA_COMPONENTS = 6
 EPS = 1e-8
 
 
