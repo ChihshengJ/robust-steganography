@@ -311,7 +311,7 @@ class UnitSummarySystem:
         for _ in range(self.PLAN_RETRY_LIMIT):
             response = generate_response(
                 client=self.client,
-                conversation_history=f"HumanEval problem:\n{problem}",
+                prompt=f"HumanEval problem:\n{problem}",
                 system_prompt=prompt,
                 max_length=3500,
                 temperature=0,
@@ -348,7 +348,7 @@ class UnitSummarySystem:
             )
             response = generate_response(
                 client=self.client,
-                conversation_history=history,
+                prompt=history,
                 system_prompt=system_prompt,
                 max_length=500,
                 temperature=0.3,
@@ -413,7 +413,7 @@ class UnitSummarySystem:
             )
             response = generate_response(
                 client=self.client,
-                conversation_history=history,
+                prompt=history,
                 system_prompt=system_prompt,
                 max_length=500,
                 temperature=0.3,
@@ -439,7 +439,7 @@ class UnitSummarySystem:
             )
             response = generate_response(
                 client=self.client,
-                conversation_history=history,
+                prompt=history,
                 system_prompt=system_prompt,
                 max_length=500,
                 temperature=0.3,
@@ -503,7 +503,7 @@ class UnitSummarySystem:
     def _sort_tests_by_priority(self, test_file: str) -> List[str]:
         response = generate_response(
             client=self.client,
-            conversation_history=test_file,
+            prompt=test_file,
             system_prompt=UNIT_TEST_SORT,
             max_length=2000,
             temperature=0,

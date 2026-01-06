@@ -3,7 +3,11 @@ Embeddings-based steganography system for hiding messages in text
 """
 
 # Core system
-from .core.steg_system import StegSystem
+from .core.steg_system import (
+    StegSystem,
+    SentenceStegSystem,
+    StoryStegSystem
+)
 
 # Encoders
 from .core.encoder import (
@@ -40,6 +44,8 @@ __version__ = "0.1.0"
 __all__ = [
     # Core
     'StegSystem',
+    'SentenceStegSystem',
+    'StoryStegSystem',
     
     # Encoders
     'Encoder',  # Include base class for extension

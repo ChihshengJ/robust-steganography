@@ -14,9 +14,8 @@ from typing import Iterable, override
 from datasets import Dataset, load_dataset
 from openai import OpenAI
 
-from embeddings import Encoder, RandomProjectionHash
+from embeddings import Encoder, PCAHash
 from embeddings.core.error_correction import RepetitionCode
-from embeddings.core.new_unit_test_system import UnitSummarySystem
 
 
 def parse_args() -> argparse.Namespace:
@@ -95,10 +94,10 @@ def prepare_system(
     bit_prefix: str,
     hash_seed: int,
 ) -> UnitSummarySystem:
-    hash_fn = RandomProjectionHash(num_bits=hash_bits, seed=hash_seed)
-    # hash_fn = PCAHash(
-    #     pca_dir="src/pca/unit_test/artifacts", model_length=5, start=0, end=5
-    # )
+    # hash_fn = RandomProjectionHash(num_bits=hash_bits, seed=hash_seed)
+    hash_fn = PCAHash(
+        pca_dir="src/pca/unit_test/artifacts", model_length=6, start=2, end=3
+    )
     # currently the PCA is trained for maximum 5-bits hash
 
     ecc = RepetitionCode(repetitions=repetitions)
@@ -156,6 +155,7 @@ def main():
 
         # output_path.write_text(test_suite, encoding="utf-8")
         print(f"data: {[0, 1, 1]}, recovered: {recovered}")
+
 
 if __name__ == "__main__":
     main()
