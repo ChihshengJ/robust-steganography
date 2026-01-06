@@ -88,7 +88,7 @@ class StegSystem(ABC):
         system_prompt: str = "You are having a casual conversation.",
         max_length=200,
         **kwargs,
-    ) -> list:
+    ) -> Any:
         """Encode the chunks into template items."""
         ...
 

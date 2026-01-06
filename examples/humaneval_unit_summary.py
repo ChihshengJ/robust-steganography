@@ -14,8 +14,7 @@ from typing import Iterable, override
 from datasets import Dataset, load_dataset
 from openai import OpenAI
 
-from embeddings import Encoder, MajorityVoteHash, PCAHash, UnitTestSystem
-from embeddings.core.error_correction import RepetitionCode
+from embeddings import Encoder, MajorityVoteHash, PCAHash, UnitTestSystem, RepetitionCode
 
 
 def parse_args() -> argparse.Namespace:
@@ -116,7 +115,7 @@ def prepare_system(
         error_correction=ecc,
         encoder=BypassEncoder(),
         bit_prefix=prefix_bits,
-        sampled_hash=True,
+        majority_vote=True,
     )
 
 
@@ -149,7 +148,7 @@ def main():
         print(f"Encoding task {task_id} -> {output_path}")
         stego = system.hide_message(
             data=[0, 1, 1],
-            problem=problem_statement,
+            seed=problem_statement,
         )
         recovered = system.recover_message(stego)
 
