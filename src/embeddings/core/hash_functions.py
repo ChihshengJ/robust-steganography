@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
+from openai import OpenAI
 
 from embeddings.utils.new_text import generate_response
 
@@ -95,7 +96,6 @@ class MajorityVoteHash(HashFunction):
     def __init__(
         self,
         pca_dir: str,
-        embed_fn: Callable,
         n_samples: int = 15,
         n_components: int = 0,
     ):
@@ -107,17 +107,15 @@ class MajorityVoteHash(HashFunction):
         self.thresholds = np.load(f"{pca_dir}/pca_thresholds.npy")  # (n_components, )
         self.n_components = n_components or self.components.shape[0]
         self.n_samples = n_samples
-        self.embed_fn = embed_fn
         self.output_length = 1
 
-    def calibrate(self, ctx: GenerationContext, n_samples: int | None = None) -> None:
+    def calibrate(self, ctx: GenerationContext) -> None:
         """
         Call each time before hashing to calibrate for the context
         """
-        n = n_samples or self.n_samples
         hashes: list[np.ndarray] = []
         hash_counts: dict[tuple[int], int] = dict()
-        for _ in range(n):
+        for _ in range(self.n_samples):
             response = generate_response(
                 client=ctx.client,
                 prompt=ctx.history,
@@ -127,7 +125,7 @@ class MajorityVoteHash(HashFunction):
             ).strip()
 
             if response:
-                emb = self._to_numpy_array(self.embed_fn(response))
+                emb = self._to_numpy_array(self._embed_fn(ctx.client, response))
                 z = (emb - self.mean) @ self.components.T
                 bits = (z > self.thresholds).astype(np.int8).ravel()
                 hashes.append(bits)
@@ -153,6 +151,17 @@ class MajorityVoteHash(HashFunction):
         # slice out the bits to use
         print(f"actual bits: {bits}, hashed bit: {bit}")
         return np.array(bit)
+
+    def _embed_fn(self, client: OpenAI, text: str):
+        embedding = (
+            client.embeddings.create(
+                input=[text],
+                model="text-embedding-3-large",
+            )
+            .data[0]
+            .embedding
+        )
+        return embedding
 
     def get_output_length(self):
         return 1

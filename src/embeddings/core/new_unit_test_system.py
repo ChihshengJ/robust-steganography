@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass, fields
-from typing import Any, Iterable, List, Sequence, Tuple, override
+from typing import Any, Iterable, List, Sequence, Tuple
 
 from embeddings import StegSystem
 import numpy as np
@@ -173,20 +173,35 @@ class UnitTestSystem(StegSystem):
             return self.encoder.decode(decoded_bits)
 
         problem, tests, *_ = stego_text.split("Tests:")
-        payload_tests = self._sort_tests_by_priority(tests)[
+
+        sorted_tests = self._sort_tests_by_priority(tests)
+        payload_tests = sorted_tests[
             self.key : self.key + self.message_length
         ]
+
         if len(payload_tests) < self.message_length:
             raise ValueError(
                 "Insufficient payload tests recovered from the stego file."
             )
         print(f"sorted tests: {payload_tests}")
+
         # Get behaviors from tests
-        payload_behaviors = self._translate_tests_to_behaviors(problem, payload_tests)
+        behaviors = self._translate_tests_to_behaviors(problem, sorted_tests)
+        payload_behaviors = behaviors[self.key: self.key + self.message_length]
         print(f"translated behaviors: {payload_behaviors}")
+
         # Get embeddings from behavior descriptions
         embeddings = get_embeddings_in_batch(self.client, payload_behaviors)
-        hashed_chunks = [self.hash_fn(emb.reshape(1, -1)) for emb in embeddings]
+        if not self.majority_vote:
+            hashed_chunks = [self.hash_fn(emb.reshape(1, -1)) for emb in embeddings]
+        else:
+            assert isinstance(self.hash_fn, MajorityVoteHash), "Must use MajorityVoteHash to use this mode"
+            hashed_chunks  = []
+            payload_contexts = self._parse_stego_text_to_contexts(problem, behaviors)[self.key: self.key + self.message_length]
+            for emb, ctx in zip(embeddings, payload_contexts):
+                self.hash_fn.calibrate(ctx)
+                hashed_chunks.append(self.hash_fn(emb.reshape(1, -1)))
+                
         decoded_bits = self.ecc.decode(hashed_chunks, self.error_encoded_length)
         return self.encoder.decode(decoded_bits)
 
@@ -318,7 +333,7 @@ class UnitTestSystem(StegSystem):
             args[1],
             args[2]
         )
-        self.hash_fn.calibrate(ctx, 15)
+        self.hash_fn.calibrate(ctx)
         return self.hash_fn(embedding)
 
     def _sort_tests_by_priority(self, test_file: str) -> List[str]:
@@ -356,3 +371,17 @@ class UnitTestSystem(StegSystem):
             json_mode=True,
         )
         return json.loads(response.strip())["behaviors"]
+
+    def _parse_stego_text_to_contexts(self, problem, behaviors) -> list[GenerationContext]:
+        contexts = []
+        system_prompt = UNIT_TEST_BEHAVIOR_CONTINUATION
+        for be in behaviors:
+            history = f"HumanEval problem statement:\n{problem.strip()}\n Behaviors to test:\n"
+            history += be
+            contexts.append(GenerationContext(
+                client=self.client,
+                history=history,
+                system_prompt=system_prompt,
+            ))
+        return contexts
+
