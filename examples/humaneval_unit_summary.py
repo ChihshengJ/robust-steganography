@@ -14,7 +14,7 @@ from typing import Iterable, override
 from datasets import Dataset, load_dataset
 from openai import OpenAI
 
-from embeddings import Encoder, PCAHash
+from embeddings import Encoder, MajorityVoteHash, PCAHash, UnitTestSystem
 from embeddings.core.error_correction import RepetitionCode
 
 
@@ -93,10 +93,10 @@ def prepare_system(
     repetitions: int,
     bit_prefix: str,
     hash_seed: int,
-) -> UnitSummarySystem:
+) -> UnitTestSystem:
     # hash_fn = RandomProjectionHash(num_bits=hash_bits, seed=hash_seed)
-    hash_fn = PCAHash(
-        pca_dir="src/pca/unit_test/artifacts", model_length=6, start=2, end=3
+    hash_fn = MajorityVoteHash(
+        pca_dir="src/pca/unit_test/artifacts", n_samples=15, n_components=5
     )
     # currently the PCA is trained for maximum 5-bits hash
 
@@ -109,7 +109,7 @@ def prepare_system(
                 raise ValueError("--bit-prefix must only contain 0/1 characters")
             prefix_bits.append(int(char))
 
-    return UnitSummarySystem(
+    return UnitTestSystem(
         client=client,
         key=high_priority,
         hash_function=hash_fn,

@@ -6,7 +6,8 @@ Embeddings-based steganography system for hiding messages in text
 from .core.steg_system import (
     StegSystem,
     SentenceStegSystem,
-    StoryStegSystem
+    StoryStegSystem,
+    UnitTestSystem,
 )
 
 # Encoders
@@ -30,7 +31,8 @@ from .core.hash_functions import (
     HashFunction,  # Abstract base class
     RandomProjectionHash,
     PCAHash,
-    OracleHash
+    OracleHash,
+    MajorityVoteHash
 )
 
 # Simulation
@@ -46,6 +48,7 @@ __all__ = [
     'StegSystem',
     'SentenceStegSystem',
     'StoryStegSystem',
+    'UnitTestSystem',
     
     # Encoders
     'Encoder',  # Include base class for extension
@@ -64,6 +67,7 @@ __all__ = [
     'RandomProjectionHash', 
     'PCAHash',
     'OracleHash',
+    'MajorityVoteHash',
     
     # Simulation
     'Simulator',
