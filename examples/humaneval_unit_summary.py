@@ -14,7 +14,12 @@ from typing import Iterable, override
 from datasets import Dataset, load_dataset
 from openai import OpenAI
 
-from embeddings import Encoder, MajorityVoteHash, PCAHash, UnitTestSystem, RepetitionCode
+from embeddings import (
+    Encoder,
+    MajorityVoteHash,
+    RepetitionCode,
+    UnitTestSystem,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -94,9 +99,7 @@ def prepare_system(
     hash_seed: int,
 ) -> UnitTestSystem:
     # hash_fn = RandomProjectionHash(num_bits=hash_bits, seed=hash_seed)
-    hash_fn = MajorityVoteHash(
-        pca_dir="src/pca/unit_test/artifacts", n_samples=15, n_components=5
-    )
+    hash_fn = MajorityVoteHash(pca_dir="src/pca/unit_test/artifacts", n_samples=8)
     # currently the PCA is trained for maximum 5-bits hash
 
     ecc = RepetitionCode(repetitions=repetitions)
@@ -140,6 +143,7 @@ def main():
         bit_prefix=args.bit_prefix,
         hash_seed=args.hash_seed,
     )
+    data = [0, 1, 0]
 
     for example in iter_humaneval_prompts(args.count):
         task_id = example["task_id"]
@@ -147,13 +151,13 @@ def main():
         output_path = args.output_dir / f"{task_id}_tests.py"
         print(f"Encoding task {task_id} -> {output_path}")
         stego = system.hide_message(
-            data=[0, 1, 1],
+            data=data,
             seed=problem_statement,
         )
         recovered = system.recover_message(stego)
 
         # output_path.write_text(test_suite, encoding="utf-8")
-        print(f"data: {[0, 1, 1]}, recovered: {recovered}")
+        print(f"data: {data}, recovered: {recovered}")
 
 
 if __name__ == "__main__":

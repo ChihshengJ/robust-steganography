@@ -147,9 +147,7 @@ class MajorityVoteHash(HashFunction):
         emb = self._to_numpy_array(emb)
         z = (emb - self.mean) @ self.components.T  # (n_components,)
         bits = (z > self.thresholds).astype(np.int8).ravel()
-        bit = 1 if np.array_equal(bits, self._majority) else 0
-
-        self._majority = None
+        bit = [0] if np.array_equal(bits, self._majority) else [1]
 
         # slice out the bits to use
         print(f"actual bits: {bits}, hashed bit: {bit}")
