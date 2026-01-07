@@ -2,8 +2,9 @@ import json
 from dataclasses import dataclass, fields
 from typing import Any, Iterable, List, Sequence, Tuple
 
-from embeddings import StegSystem
 import numpy as np
+
+from embeddings import StegSystem
 
 from ..config.system_prompts import (
     UNIT_TEST_BEHAVIOR_CONTINUATION,
@@ -14,9 +15,9 @@ from ..config.system_prompts import (
 )
 from ..utils.get_embedding import get_embeddings_in_batch
 from ..utils.new_text import generate_response
-from .encoder import CharacterEncoder, Encoder
+from .encoder import Encoder
 from .error_correction import ErrorCorrection
-from .hash_functions import HashFunction, GenerationContext, MajorityVoteHash
+from .hash_functions import GenerationContext, HashFunction, MajorityVoteHash
 
 
 @dataclass
@@ -154,20 +155,15 @@ class UnitTestSystem(StegSystem):
         Undo the paraphrase attack by letting the LLM re-order tests by importance,
         then decode the payload behaviors from all tests after first {key} tests.
         """
-        if self.message_length is None or self.error_encoded_length is None:
+        if self.message_length is None:
             raise ValueError(
                 "No encoded message metadata available; run hide_message first."
             )
-        if self.message_length == 0:
-            decoded_bits = self.ecc.decode([], self.error_encoded_length)
-            return self.encoder.decode(decoded_bits)
 
         problem, tests, *_ = stego_text.split("Tests:")
 
         sorted_tests = self._sort_tests_by_priority(tests)
-        payload_tests = sorted_tests[
-            self.key : self.key + self.message_length
-        ]
+        payload_tests = sorted_tests[self.key : self.key + self.message_length]
 
         if len(payload_tests) < self.message_length:
             raise ValueError(
@@ -177,21 +173,27 @@ class UnitTestSystem(StegSystem):
 
         # Get behaviors from tests
         behaviors = self._translate_tests_to_behaviors(problem, sorted_tests)
-        payload_behaviors = behaviors[self.key: self.key + self.message_length]
+        payload_behaviors = behaviors[self.key : self.key + self.message_length]
         print(f"translated behaviors: {payload_behaviors}")
 
-        # Get embeddings from behavior descriptions
+        # Get embeddings from payload behavior descriptions
         embeddings = get_embeddings_in_batch(self.client, payload_behaviors)
         if not self.majority_vote:
             hashed_chunks = [self.hash_fn(emb.reshape(1, -1)) for emb in embeddings]
         else:
-            assert isinstance(self.hash_fn, MajorityVoteHash), "Must use MajorityVoteHash to use this mode"
-            hashed_chunks  = []
-            payload_contexts = self._parse_stego_text_to_contexts(problem, behaviors)[self.key: self.key + self.message_length]
+            assert isinstance(self.hash_fn, MajorityVoteHash), (
+                "Must use MajorityVoteHash to use this mode"
+            )
+            hashed_chunks = []
+            payload_contexts = self._parse_stego_text_to_contexts(problem, behaviors)[
+                self.key : self.key + self.message_length
+            ]
             for emb, ctx in zip(embeddings, payload_contexts):
+                print(ctx.system_prompt)
+                print(ctx.history)
                 self.hash_fn.calibrate(ctx)
                 hashed_chunks.append(self.hash_fn(emb.reshape(1, -1)))
-                
+
         decoded_bits = self.ecc.decode(hashed_chunks, self.error_encoded_length)
         return self.encoder.decode(decoded_bits)
 
@@ -228,15 +230,16 @@ class UnitTestSystem(StegSystem):
             prohibited: list[str] = []
             history = self._build_conversation_history(problem, existing_plan)
             attempt = 0
-            
+
             if self.majority_vote:
+                print("calibrating hash")
                 assert isinstance(self.hash_fn, MajorityVoteHash)
                 system_prompt = UNIT_TEST_BEHAVIOR_CONTINUATION.format(
-                    prohibited_behaviors=[]
+                    prohibited_behaviors=""
                 )
                 ctx = GenerationContext(self.client, history, system_prompt)
                 self.hash_fn.calibrate(ctx)
-            
+
             while True:
                 system_prompt = UNIT_TEST_BEHAVIOR_CONTINUATION.format(
                     prohibited_behaviors=prohibited
@@ -368,16 +371,20 @@ class UnitTestSystem(StegSystem):
         )
         return json.loads(response.strip())["behaviors"]
 
-    def _parse_stego_text_to_contexts(self, problem, behaviors) -> list[GenerationContext]:
+    def _parse_stego_text_to_contexts(
+        self, problem, behaviors
+    ) -> list[GenerationContext]:
         contexts = []
         system_prompt = UNIT_TEST_BEHAVIOR_CONTINUATION
+        history = f"HumanEval problem statement:\n{problem.strip()}\n Behaviors to test:\n"
         for be in behaviors:
-            history = f"HumanEval problem statement:\n{problem.strip()}\n Behaviors to test:\n"
-            history += be
-            contexts.append(GenerationContext(
-                client=self.client,
-                history=history,
-                system_prompt=system_prompt,
-            ))
+            history += be + "\n"
+            print(f"stego to context history: {history}")
+            contexts.append(
+                GenerationContext(
+                    client=self.client,
+                    history=history,
+                    system_prompt=system_prompt,
+                )
+            )
         return contexts
-

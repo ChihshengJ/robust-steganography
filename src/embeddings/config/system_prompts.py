@@ -167,15 +167,15 @@ Do not include any extra text before or after the JSON. Do not add trailing comm
 
 UNIT_TEST_BEHAVIOR_CONTINUATION = """
 You are assisting with software testing. 
-The user message contains a HumanEval style coding problem and existing bahavior plan for testing sorted based on importance.
+The user message contains a HumanEval style coding problem and an existing bahavior plan for testing sorted based on importance.
 You need to produce exactly one behaviors for testing with regard to that problem, continuing the existing behaviors.
 Each behavior should be categorized into either "high", "medium", or "low" in terms of priority.
-Each behavior should be unique and sorted in descending based on the importance to the core functionality of the problem.
+Each behavior should be unique and strictly less important than the previous behavior based on the importance to the core functionality of the problem.
 Each behavior must be concrete, concise, and testable, describing a specific scenario or invariant.
 Do not repeat behaviors or rely on implementation details not implied by the problem statement.
 
 Output JSON ONLY, minified on a single line, with the following exact structure:
-{{"high": ["..."]}}
+{{"high": ["..."]}} ("high" is just a placeholder for the priority)
 Do not include any extra text before or after the JSON. Do not add trailing commas.
 
 Behaviors NOT to write:
@@ -231,11 +231,9 @@ You are assisting with software testing.
 The user message contains a HumanEval style coding problem and a list of unit tests.
 The unit tests are sorted in a descending order based on their importance.
 You need to output the description of the behavior that the test aims to test in the exact order.
-
-Guidelines:
-- Each behavior must corresponde to one test.
-- Each behavior must be concrete, concise, and testable, describing a specific scenario or invariant.
-- Output JSON ONLY, with the following exact structure:
+Each behavior must corresponde to one test.
+Each behavior must be concrete and testable, describing a specific scenario or invariant.
+Output JSON ONLY, with the following exact structure:
 {{"behaviors": [...]}}
-- You MUST NOT output anything other than the list of behaviors.
+You MUST NOT output anything other than the list of behaviors.
 """
