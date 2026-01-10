@@ -15,8 +15,8 @@ def sample_concurrent(
     k=4,
     system_prompt="You are having a casual conversation.",
     max_length=200,
-):
-    sampled_bits = None
+) -> str | None:
+    sampled_bits = np.nan
 
     while not np.array_equal(sampled_bits, desired_bits):
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -42,7 +42,7 @@ def sample_concurrent(
 
                 # print("message:", message)
                 # print(f"sampled_bits: {sampled_bits}, desired bits: {desired_bits}")
-                #
+
                 #! Ensure matching shapes for all combinations of inputs and settings
                 if np.array_equal(sampled_bits, desired_bits):
                     return message

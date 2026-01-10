@@ -7,7 +7,7 @@ import openai
 from ..config.constants import STEGO_GEN_MODEL
 
 
-def clean_response(text):
+def clean_response(text) -> str:
     # Regex to find the last full sentence ending with ., !, or ?
     match = re.search(r"([.!?])[^.!?]*$", text)
     if match:
@@ -18,22 +18,20 @@ def clean_response(text):
 
 def generate_response(
     client,
-    conversation_history,
+    prompt,
     system_prompt="You are a highly dynamic conversational model tasked with generating responses that are extremely varied in tone, content, and structure.",
     max_length=300,
     temperature=1.0,
     top_p=1.0,
-    decomp_mode=False,
-):
+    json_mode=False,
+) -> str:
     # Prepare the prompt from the conversation history
     # adding datetime noise to disable prompt caching
-    if not decomp_mode:
-        prompt = "\n".join(conversation_history) + "\n"
-    else:
-        prompt = conversation_history
+    if not json_mode:
+        prompt = "\n".join(prompt) + "\n"
     # print(f"prompt: {prompt}")
 
-    format = {"type": "json_object"} if decomp_mode else None
+    format = {"type": "json_object"} if json_mode else None
 
     try:
         # Generate a response using GPT-4o mini
@@ -43,7 +41,7 @@ def generate_response(
             messages=[
                 {
                     "role": "system",
-                    "content": f"{random.uniform(1.0, 10000.0)}\n" + system_prompt,
+                    "content": f"{random.uniform(1.0, 100000.0)}\n" + system_prompt,
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -56,7 +54,7 @@ def generate_response(
 
         # Extract and return the generated response text
         text = response.choices[0].message.content.strip()
-        if isinstance(conversation_history, list):
+        if isinstance(prompt, list):
             text = clean_response(text)
         return text
 

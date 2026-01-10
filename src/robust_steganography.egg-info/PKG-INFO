@@ -8,13 +8,12 @@ Project-URL: Homepage, https://github.com/NeilAPerry/robust_steganography
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
-Requires-Python: >=3.7
+Requires-Python: >=3.12
 Description-Content-Type: text/markdown
 License-File: LICENSE.txt
 Requires-Dist: numpy
 Requires-Dist: openai
 Requires-Dist: torch
-Requires-Dist: sentence-transformers
 Requires-Dist: tqdm
 Requires-Dist: scikit-learn
 Requires-Dist: pycryptodome

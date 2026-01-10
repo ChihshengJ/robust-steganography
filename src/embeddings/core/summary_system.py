@@ -62,7 +62,7 @@ class SummarySystem:
         # base facts generation
         base_facts = generate_response(
             client=self.client,
-            conversation_history=article,
+            prompt=article,
             system_prompt=FACT_GENERATION.format(k=self.key),
             max_length=1000,
             temperature=0,
@@ -90,7 +90,7 @@ class SummarySystem:
 
         cover_text = generate_response(
             client=self.client,
-            conversation_history=prompt_for_summary,
+            prompt=prompt_for_summary,
             system_prompt=FACT_SUMMARY,
             max_length=1000,
             temperature=0,
@@ -123,7 +123,7 @@ class SummarySystem:
                 # print(f"system prompt for optional facts: {system_prompt}")
                 response = generate_response(
                     client=self.client,
-                    conversation_history=history,
+                    prompt=history,
                     system_prompt=system_prompt,
                     max_length=1000,
                     temperature=0.7,
@@ -155,7 +155,7 @@ class SummarySystem:
     def _decompose_summary(self, stego_text: str):
         response = generate_response(
             client=self.client,
-            conversation_history=stego_text,
+            prompt=stego_text,
             system_prompt=FACT_DECOMPOSE.format(num=self.key + self.message_length),
             max_length=1000,
             temperature=0,

@@ -1,7 +1,6 @@
 numpy
 openai
 torch
-sentence-transformers
 tqdm
 scikit-learn
 pycryptodome

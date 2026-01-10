@@ -1,6 +1,10 @@
-from typing import Dict, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
 import numpy as np
+from openai import OpenAI
+
+from embeddings.utils.new_text import generate_response
 
 
 class HashFunction:
@@ -35,7 +39,7 @@ class RandomProjectionHash(HashFunction):
         return self.output_length
 
 
-class PCAHash(HashFunction):
+class NaivePCAHash(HashFunction):
     def __init__(self, pca_model, start=0, end=1):
         super().__init__()
         self.pca = pca_model
@@ -50,6 +54,118 @@ class PCAHash(HashFunction):
 
     def get_output_length(self):
         return self.output_length
+
+
+class PCAHash(HashFunction):
+    def __init__(self, pca_dir: str, start: int, end: int):
+        super().__init__()
+        self.components = np.load(
+            f"{pca_dir}/pca_components.npy"
+        )  # (n_components, embed_dim)
+        self.mean = np.load(f"{pca_dir}/pca_mean.npy")  # (embed_dim, )
+        self.thresholds = np.load(f"{pca_dir}/pca_thresholds.npy")  # (n_components, )
+        self.n = self.components.shape[0]
+        self.output_length = abs(start - end)
+        assert start < end
+        assert end <= self.n
+        self.interval = (start, end)
+
+    def __call__(self, emb):
+        emb = self._to_numpy_array(emb)
+        z = (emb - self.mean) @ self.components.T  # (n_components,)
+        bits = (z > self.thresholds).astype(np.int8).ravel()
+        # slice out the bits to use
+        print(f"actual bits: {bits}")
+        capped_bits = bits[self.interval[0] : self.interval[1]]
+        return capped_bits
+
+    def get_output_length(self):
+        return self.output_length
+
+
+@dataclass
+class GenerationContext:
+    client: Any
+    history: str
+    system_prompt: str
+    max_length: int = 500
+    temperature: float = 1.0
+
+
+class MajorityVoteHash(HashFunction):
+    def __init__(
+        self,
+        pca_dir: str,
+        n_samples: int = 15,
+        n_components: int = 0,
+    ):
+        super().__init__()
+        self.components = np.load(
+            f"{pca_dir}/pca_components.npy"
+        )  # (embed_dim, n_components)
+        self.mean = np.load(f"{pca_dir}/pca_mean.npy")  # (n_components, )
+        self.thresholds = np.load(f"{pca_dir}/pca_thresholds.npy")  # (n_components, )
+        self.n_components = n_components or self.components.shape[0]
+        self.n_samples = n_samples
+        self.output_length = 1
+
+    def calibrate(self, ctx: GenerationContext) -> tuple[int]:
+        """
+        Call each time before hashing to calibrate for the context
+        """
+        hashes: list[np.ndarray] = []
+        hash_counts: dict[tuple[int], int] = dict()
+        for _ in range(self.n_samples):
+            response = generate_response(
+                client=ctx.client,
+                prompt=ctx.history,
+                system_prompt=ctx.system_prompt,
+                max_length=ctx.max_length,
+                temperature=ctx.temperature,
+            ).strip()
+
+            if response:
+                emb = self._to_numpy_array(self._embed_fn(ctx.client, response))
+                z = (emb - self.mean) @ self.components.T
+                bits = (z > self.thresholds).astype(np.int8).ravel()
+                print(f"calibrating bits:{bits}")
+                hashes.append(bits)
+                key = tuple(bits.tolist())
+                hash_counts[key] = hash_counts.get(key, 0) + 1
+
+        if not hashes:
+            raise ValueError("Calibration failed: Error in response generation")
+
+        majority_key = max(hash_counts, key=lambda k: hash_counts[k])
+        self._majority = np.array(majority_key)
+        print(self._majority)
+        return majority_key
+
+    def __call__(self, emb):
+        if self._majority is None:
+            raise RuntimeError("Hash not calibrated by sampling.")
+        emb = self._to_numpy_array(emb)
+        z = (emb - self.mean) @ self.components.T  # (n_components,)
+        bits = (z > self.thresholds).astype(np.int8).ravel()
+        bit = [0] if np.array_equal(bits, self._majority) else [1]
+
+        # slice out the bits to use
+        print(f"actual bits: {bits}, hashed bit: {bit}")
+        return np.array(bit)
+
+    def _embed_fn(self, client: OpenAI, text: str):
+        embedding = (
+            client.embeddings.create(
+                input=[text],
+                model="text-embedding-3-large",
+            )
+            .data[0]
+            .embedding
+        )
+        return embedding
+
+    def get_output_length(self):
+        return 1
 
 
 class OracleHash(HashFunction):
