@@ -13,6 +13,7 @@ src/embeddings/core/hash_functions.py
 src/embeddings/core/new_unit_test_system.py
 src/embeddings/core/simulation.py
 src/embeddings/core/steg_system.py
+src/embeddings/core/story_system.py
 src/embeddings/core/summary_system.py
 src/embeddings/core/unit_test_system.py
 src/embeddings/utils/__init__.py

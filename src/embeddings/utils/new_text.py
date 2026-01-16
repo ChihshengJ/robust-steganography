@@ -18,18 +18,17 @@ def clean_response(text) -> str:
 
 def generate_response(
     client,
-    prompt,
-    system_prompt="You are a highly dynamic conversational model tasked with generating responses that are extremely varied in tone, content, and structure.",
-    max_length=300,
-    temperature=1.0,
-    top_p=1.0,
-    json_mode=False,
+    prompt: str | list[str],
+    system_prompt: str,
+    max_length: int = 300,
+    temperature: float = 1.0,
+    top_p: float = 1.0,
+    json_mode: bool = False,
 ) -> str:
     # Prepare the prompt from the conversation history
     # adding datetime noise to disable prompt caching
     if not json_mode:
         prompt = "\n".join(prompt) + "\n"
-    # print(f"prompt: {prompt}")
 
     format = {"type": "json_object"} if json_mode else None
 
@@ -71,5 +70,5 @@ if __name__ == "__main__":
     ]
 
     client = openai.OpenAI()
-    response = generate_response(client, conversation_history)
+    response = generate_response(client, conversation_history, system_prompt="")
     print("Generated response:", response)

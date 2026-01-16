@@ -43,6 +43,7 @@ from .core.steg_system import (
     StegSystem,
     StoryStegSystem,
 )
+from .core.summary_system import SummarySystem
 from .core.new_unit_test_system import UnitTestSystem
 
 __version__ = "0.1.0"
@@ -52,6 +53,7 @@ __all__ = [
     "StegSystem",
     "SentenceStegSystem",
     "StoryStegSystem",
+    "SummarySystem",
     "UnitTestSystem",
     # Encoders
     "Encoder",  # Include base class for extension

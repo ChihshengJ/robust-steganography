@@ -59,8 +59,7 @@ class TranslationAttack(Attack):
                 messages=[
                     {
                         "role": "system",
-                        "content": f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                        + SYSTEM_PROMPT.format(language_1=lang_1, language_2=lang_2),
+                        "content": SYSTEM_PROMPT.format(language_1=lang_1, language_2=lang_2),
                     },
                     {"role": "user", "content": text},
                 ],
@@ -80,30 +79,37 @@ class TranslationAttack(Attack):
         return result
 
     def _local_attack(self, text: str, tampering: float) -> str:
-        """Translate each sentence independently while preserving structure."""
+        """Translate each sentence independently while preserving structure.
+        
+        Args:
+            text: Input text to attack
+            tampering: Probability (0.0-1.0) of translating each sentence
+        
+        Returns:
+            Text with randomly selected sentences back-translated
+        """
         # Split text into sentences while preserving separators
-        parts = re.split(r"([.!?]+(?:\s+|$))", text)
+        parts = re.split(r"([.!?]+\s*)", text)
         new_parts = []
-
+        
         # parts[::2] are sentences, parts[1::2] are separators
         for i in range(0, len(parts), 2):
             sentence = parts[i]
-
+            separator = parts[i + 1] if i + 1 < len(parts) else ""
+            
             # Skip empty sentences
             if not sentence.strip():
                 new_parts.append(sentence)
+                new_parts.append(separator)
+                continue
+            
             if random.random() < tampering:
-                result = self._translate(sentence, True)
-                result = self._translate(result, False)
-                new_parts.append(result)
+                translated = self._translate(sentence, direction=True)
+                back_translated = self._translate(translated, direction=False)
+                new_parts.append(back_translated)
             else:
                 new_parts.append(sentence)
-
-            # Add the separator if it exists
-            if i + 1 < len(parts):
-                new_parts.append(parts[i + 1])
-
-        result = "".join(new_parts)
-        # print("Debug local paraphrase:")
-        # print(f"parts:\n{parts}\nnew_parts:\n{result}")
-        return result
+            
+            new_parts.append(separator)
+        
+        return "".join(new_parts)

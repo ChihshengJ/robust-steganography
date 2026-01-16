@@ -1,3 +1,4 @@
+from watermarks.attacks.translation import TranslationAttack
 import json
 import logging
 import pickle
@@ -12,8 +13,8 @@ import openai
 # from src.embeddings.utils.get_embedding import client
 from tqdm import tqdm
 
-from embeddings import Encoder, RandomProjectionHash, RepetitionCode, StegSystem
-from embeddings.config.system_prompts import STORY_GENERATION
+from embeddings import Encoder, RandomProjectionHash, ConvolutionalCode, RepetitionCode, StegSystem, StoryStegSystem, SummarySystem
+from embeddings.config.system_prompts import STORY_GENERATION, STORY_SEGMENTATION_NOCUE, STORY_SEGMENTATION
 from watermarks import (
     Attack,
     GPT2Model,
@@ -63,6 +64,7 @@ def init_attacks(model: LanguageModel, client) -> dict[str, Attack]:
         "paraphrase": ParaphraseAttack(
             client=client, model="gpt-4o-mini", temperature=0
         ),
+        "translate": TranslationAttack(client=client, model="gpt-4o-mini", temperature=0)
     }
 
 
@@ -174,7 +176,7 @@ def generate_recovery_accuracy_resumable(
         checkpoint = load_pickle(checkpoint_file)
         LOGGER.info(f"[resume] loaded checkpoint from {checkpoint_file}")
     else:
-        checkpoint = {
+        checkpoint: dict[str, Any] = {
             "message_index": 0,
             "current_message_stego_complete": False,
             "stego_gen_index": 0,
@@ -303,8 +305,7 @@ def generate_recovery_accuracy_resumable(
                             tp=tp,
                             local=mode,
                         )
-                        # print(f"===========\nattacked text:\n{attacked_text}")
-                        system.set_chunk_length(len(stego_text))
+                        print(f"===========\nattacked text:\n{attacked_text}")
                         recovered = system.recover_message(attacked_text)
                         print(f"message: {message}, recovered: {recovered}")
                         if recovered == message:
@@ -524,7 +525,7 @@ def plot_recovery_results(tp, attack_types, results, output_path):
 
 def main():
     # tp = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-    tp = [0.7, 1.0]
+    tp: list[float] = [1.0]
 
     # Initialize components
     client = openai.OpenAI()
@@ -539,7 +540,7 @@ def main():
     # Convolution: 4 * (num_bits + K -1)
     ##############################################################################
 
-    # ecc = ConvolutionalCode(block_size=1, K=3)
+    # ecc = ConvolutionalCode(block_size=1, K=2)
     ecc = RepetitionCode(5)
     system_prompt = STORY_GENERATION.format(
         items="spy, weapons, embassy",
@@ -553,14 +554,13 @@ def main():
     #     "Given the complexity of these changes, I believe it would be beneficial to schedule a stakeholder review meeting. We should include representatives from Risk Management, IT Operations, and the Trading desk to ensure all requirements are being met. I've asked Sarah to coordinate calendars for next Tuesday afternoon.",
     # ]
     history = []
-    system = StegSystem(
-        client=client,
-        hash_function=hash_fn,
-        error_correction=ecc,
-        encoder=BypassEncoder(),
-        system_prompt=system_prompt,
-        max_length=200,
-        story_mode=True,
+    system = StoryStegSystem(
+        client,
+        hash_fn,
+        ecc,
+        system_prompt,
+        BypassEncoder(),
+        segmentation_prompt=STORY_SEGMENTATION
     )
 
     # Right now we treat tp == 1 as global so there is no need to switch modes
@@ -573,29 +573,27 @@ def main():
 
     attack_keys = [t[0] for t in attack_configurations]
 
-    params = {
-        "tampering_levels": tp,
-        "attack_configurations": attack_configurations,
-        "system": system,
-        "num_bits": 3,
-        "num_messages": 3,
-        "num_stego_per_message": 10,
-        "runs": 5,
-        "history": history,
-        "seed": 38,
-        "checkpoint_path": "checkpoints/test/exp_checkpoint.pkl",
-        "output_path": "figures/test/embedding_recovery_test",
-        "save_texts": True,
-        "max_saved_examples": 200,
-        "resume": True,
-        "checkpoint_after_each_stego": True,
-    }
-
-    results = generate_recovery_accuracy_resumable(**params)
+    results = generate_recovery_accuracy_resumable(
+        tampering_levels= tp,
+        attack_configurations= attack_configurations,
+        system= system,
+        num_bits= 5,
+        num_messages= 3,
+        num_stego_per_message= 1,
+        runs= 1,
+        history= history,
+        seed= 128,
+        checkpoint_path= "checkpoints/test/exp_checkpoint.pkl",
+        output_path= "figures/test/embedding_recovery_test",
+        save_texts= False,
+        max_saved_examples= 200,
+        resume= False,
+        checkpoint_after_each_stego= False,
+    )
     print(results)
 
-    output_path = "./figures/embedding_recovery_test/"
-    plot_recovery_results(tp, attack_keys, results, output_path)
+    # output_path = "./figures/embedding_recovery_test/"
+    # plot_recovery_results(tp, attack_keys, results, output_path)
 
 
 if __name__ == "__main__":

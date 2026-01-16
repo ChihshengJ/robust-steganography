@@ -376,7 +376,9 @@ class UnitTestSystem(StegSystem):
     ) -> list[GenerationContext]:
         contexts = []
         system_prompt = UNIT_TEST_BEHAVIOR_CONTINUATION
-        history = f"HumanEval problem statement:\n{problem.strip()}\n Behaviors to test:\n"
+        history = (
+            f"HumanEval problem statement:\n{problem.strip()}\n Behaviors to test:\n"
+        )
         for be in behaviors:
             history += be + "\n"
             print(f"stego to context history: {history}")

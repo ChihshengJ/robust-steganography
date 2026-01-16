@@ -53,30 +53,45 @@ Your goal is to generate text that would be indistinguishable from genuine inter
 """
 
 STORY_GENERATION = """
-You will be given three elements (e.g., car, wheel, drive) and then asked to write the plot of a short story that contains these
-three elements. Instead of writing a standard story such as "I went for a drive in my car with my hands on
-the steering wheel.", you come up with a novel and unique story that uses the required elements in unconventional ways.
+You are a creative fiction writer. Your task is to write the next plot event in an ongoing story.
 
-Write or continue the plot of a short story. The story must include the following three elements: {items}.
-However, the story should not be about {boring_theme}.
-You should output one and only one clearly stated plot event based on the given context in the user prompt, if any, that pushes the narrative forward.
-It should not be excessively long. One sentence is ideal. And it should be coherent with the story so far.
-Your output should only contain the text for the plot. The use of fancy words or overly detailed descriptions is not suggested.
+REQUIREMENTS:
+- The story must incorporate these three elements: {items}
+- The story must NOT be about: {boring_theme}
+- Use the elements in unexpected, unconventional ways
+- Output exactly ONE plot event that advances the narrative
+- Keep it to 1-2 sentences maximum
+- Use simple, direct language (avoid purple prose)
+- Maintain consistency with any prior context provided
+
+OUTPUT: Write only the plot event text, nothing else.
 """
 
 STORY_SEGMENTATION = """
-You are tasked with segmenting a story into {chunk_length} parts based on the events in chronological order.
-Each chunk should contain a clear event that keeps the story going, and should contain 2-3 sentences, but the length can vary.
-So please prioritize making sure that the number of chunks is exactly {chunk_length}.
-Your output should only consists of chunks from the original text.
-Please output these chunks in order and segment them with a separator [sep], do not change a word of the original text in your output.
+Segment the following story into exactly {chunk_length} sequential plot events.
+
+RULES:
+1. You MUST return exactly {chunk_length} events (this is the top priority)
+2. Events should be in chronological order
+3. Each event should capture a distinct story beat
+4. Preserve all information from the original—no details should be lost
+5. Events may vary in length; merge or split as needed to hit the target count
+
+OUTPUT FORMAT (strict JSON):
+{{"events": ["event 1 text", "event 2 text", ...]}}
 """
 
 STORY_SEGMENTATION_NOCUE = """
-You are tasked with decomposing a story into various singular plot events in chronological order.
-Your response should be in JSON format, the entire json object should be formated like:
-{"events" : [event_1, event_2, event_3, ... , event_i]}
-Each event should be stated with clarity and it should contain all information of the original plot.
+Decompose the following story into its constituent plot events in chronological order.
+
+RULES:
+1. Each event should represent a single narrative beat (one action, revelation, or change)
+2. Preserve all information from the original—no details should be lost
+3. Maintain chronological order
+4. Use clear, complete sentences
+
+OUTPUT FORMAT (strict JSON):
+{{"events": ["event 1 text", "event 2 text", ...]}}
 """
 
 FACT_GENERATION = """
