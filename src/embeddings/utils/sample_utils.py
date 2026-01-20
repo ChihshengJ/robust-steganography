@@ -52,8 +52,11 @@ class RejectionSampler:
     ) -> SampleResult:
         matches: list[tuple[str, np.ndarray]] = []
         attempts = 0
+        prohibitions = []
 
         while attempts < max_attempts:
+            if len(prohibitions):
+                system_prompt = system_prompt + f'You must not include these outputs:\n {"\n".join(prohibitions)}'
             response = generate_response(
                 client,
                 history,
@@ -76,6 +79,7 @@ class RejectionSampler:
                         matches=matches,
                         attempts_used=attempts,
                     )
+            prohibitions.append(response)
 
         return SampleResult(
             success=len(matches) > 0,

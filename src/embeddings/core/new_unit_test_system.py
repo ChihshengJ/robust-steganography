@@ -4,8 +4,6 @@ from typing import Any, Iterable, List, Sequence, Tuple
 
 import numpy as np
 
-from embeddings import StegSystem
-
 from ..config.system_prompts import (
     UNIT_TEST_BEHAVIOR_CONTINUATION,
     UNIT_TEST_GENERATION_ALT,
@@ -18,6 +16,7 @@ from ..utils.new_text import generate_response
 from .encoder import Encoder
 from .error_correction import ErrorCorrection
 from .hash_functions import GenerationContext, HashFunction, MajorityVoteHash
+from .steg_system import StegSystem
 
 
 @dataclass

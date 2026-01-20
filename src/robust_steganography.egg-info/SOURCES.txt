@@ -24,7 +24,7 @@ src/embeddings/utils/minimal_character_encoding.py
 src/embeddings/utils/new_text.py
 src/embeddings/utils/paraphrase.py
 src/embeddings/utils/pca_utils.py
-src/embeddings/utils/steg.py
+src/embeddings/utils/sample_utils.py
 src/pca/enron_emails/combine_embedding_chunks.py
 src/pca/enron_emails/combine_paraphrase_chunks.py
 src/pca/enron_emails/compute_embeddings.py

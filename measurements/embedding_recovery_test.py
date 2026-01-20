@@ -146,6 +146,7 @@ def generate_recovery_accuracy_resumable(
     - resume: if True and checkpoint exists, resume from it
     - checkpoint_after_each_stego: if True, checkpoint after each stego generation
     """
+
     out_dir = Path(output_path)
     checkpoint_file = Path(checkpoint_path)
     texts_log_path = out_dir / "texts_log.jsonl"
@@ -162,9 +163,6 @@ def generate_recovery_accuracy_resumable(
             "Want to grab coffee and discuss it?",
         ]
 
-    # paraphrase_instance = ParaphraseAttack(
-    #     client=system.client, model="gpt-4.1-nano", temperature=0.5, local=False
-    # )
     model = GPT2Model()
 
     messages: list[list[int]] = [

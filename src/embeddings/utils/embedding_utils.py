@@ -44,6 +44,7 @@ from openai import (
 #     return embeddings
 #
 #
+
 def compute_embeddings(texts, normalize, engine, client):
     embeddings = compute_embeddings_concurrently(texts, engine, client)
 
@@ -53,8 +54,6 @@ def compute_embeddings(texts, normalize, engine, client):
 
     return embeddings
 
-
-#
 
 
 # Get the embedding for a single text from the OpenAI API

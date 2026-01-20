@@ -14,6 +14,7 @@ src/pca/**/*.pkl
 
 
 # ignore measurement checkpoints
+./checkpoints/
 measurements/checkpoints/
 measurements/watermarked_texts/
 measurements/figures/embedding_recovery_test/summaries/

@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robust_steganography"
-version = "0.1.0"
+version = "0.2.0"
 description = "Embeddings-based steganography system for hiding messages in text"
 authors = [
-  { name = "Neil Perry", email = "naperry@stanford.edu" },
+  { name = "Chihsheng Jin", email = "chihsheng3421@gmail.com" },
 ]
 
 readme = "README.md"
@@ -42,7 +42,7 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/NeilAPerry/robust_steganography"
+Homepage = "https://github.com/ChihshengJ/robust_steganography"
 
 [dependency-groups]
 dev = [

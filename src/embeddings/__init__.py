@@ -13,17 +13,17 @@ from .config.system_prompts import (
 
 # Encoders
 from .core.encoder import (
-    CharacterEncoder,  # Abstract base class
-    CiphertextEncoder,
     Encoder,  # Abstract base class
+    CharacterEncoder,
+    CiphertextEncoder,
     MinimalEncoder,
     StandardEncoder,
 )
 
 # Error correction
 from .core.error_correction import (
-    ConvolutionalCode,
     ErrorCorrection,  # Abstract base class
+    ConvolutionalCode,
     RepetitionCode,
 )
 
@@ -39,10 +39,11 @@ from .core.hash_functions import (
 # Simulation
 from .core.simulation import Simulator
 from .core.steg_system import (
+    StegSystem, # Abstract base class
+    OracleStegSystem,
     SentenceStegSystem,
-    StegSystem,
-    StoryStegSystem,
 )
+from .core.story_system import StoryStegSystem
 from .core.summary_system import SummarySystem
 from .core.new_unit_test_system import UnitTestSystem
 
@@ -51,22 +52,23 @@ __version__ = "0.1.0"
 __all__ = [
     # Core
     "StegSystem",
+    "OracleStegSystem",
     "SentenceStegSystem",
     "StoryStegSystem",
     "SummarySystem",
     "UnitTestSystem",
     # Encoders
-    "Encoder",  # Include base class for extension
-    "CharacterEncoder",  # Include base class for extension
+    "Encoder",
+    "CharacterEncoder",
     "StandardEncoder",
     "MinimalEncoder",
     "CiphertextEncoder",
     # Error correction
-    "ErrorCorrection",  # Include base class for extension
+    "ErrorCorrection",
     "RepetitionCode",
     "ConvolutionalCode",
     # Hash functions
-    "HashFunction",  # Include base class for extension
+    "HashFunction",
     "RandomProjectionHash",
     "PCAHash",
     "OracleHash",
