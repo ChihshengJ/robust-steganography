@@ -46,7 +46,7 @@ class StoryStegSystem(StegSystem):
         history: list[str],
         system_prompt: str,
         max_length: int = 200,
-        temperature: float = 0.5,
+        temperature: float = 0.7,
         **kwargs,
     ) -> tuple[list[str], list]:
         cover_texts, embeddings = self._backtracking_encoder.encode(
@@ -57,6 +57,7 @@ class StoryStegSystem(StegSystem):
             system_prompt=system_prompt,
             max_length=max_length,
             temperature=temperature,
+            use_prohibitions=False,
         )
         return cover_texts, embeddings
 
@@ -71,6 +72,7 @@ class StoryStegSystem(StegSystem):
             initial_history,
             system_prompt=self.system_prompt,
             max_length=self.max_length,
+            temperature=0.5
         )
         return " ".join(cover_texts)
 

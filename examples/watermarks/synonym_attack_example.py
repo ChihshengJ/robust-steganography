@@ -1,86 +1,130 @@
-"""
-Example demonstrating how the synonym attack affects watermark recovery.
-"""
+import re
+from random import choice, random
 
-from watermark import (
-    ShakespeareNanoGPTModel,
-    HMACPRF,
-    SmoothPerturb,
-    SmoothCovertextCalculator,
-    Embedder,
-    Extractor
+from textattack.augmentation import Augmenter
+from textattack.transformations.word_swaps import (
+    WordSwapEmbedding,
+    WordSwapHowNet,
+    WordSwapMaskedLM,
+    WordSwapWordNet,
 )
-from watermark.attacks.synonym import SynonymAttack
-from watermark.utils import detect
 
-def main():
-    # Setup parameters
-    n_bits = 3  # Length of message to hide
-    epsilon = 0.05  # 95% success probability
-    delta = 0.2  # Perturbation strength
-    safety_factor = 10
-    
-    # Calculate required covertext length
-    calculator = SmoothCovertextCalculator()
-    required_length = calculator.get_covertext_length(
-        n=n_bits,
-        epsilon=epsilon,
-        delta=delta,
-        safety_factor=safety_factor
-    )
-    # required_length = 100
-    
-    # Initialize components
-    model = ShakespeareNanoGPTModel()
-    prf = HMACPRF(vocab_size=model.vocab_size, max_token_id=model.vocab_size-1)
-    perturb = SmoothPerturb()
-    embedder = Embedder(model, model.tokenizer, prf, perturb)
-    extractor = Extractor(model, model.tokenizer, prf)
-    attack = SynonymAttack(method="wordnet", probability=0.2)
+from .attack import Attack
 
-    # Setup watermarking parameters
-    message = [1, 0, 1]  # 3-bit message to hide
-    keys = [b'\x00' * 32, b'\x01' * 32, b'\x02' * 32]  # One key per bit
-    history = ["To be, or not to be- that is the question:"]  # Shakespeare-style context
-    c = 5  # Length of n-grams used by PRF for watermarking
-    
-    print("\nGenerating watermarked text...")
-    watermarked_text, _, _ = embedder.embed(
-        keys=keys,
-        h=history,
-        m=message,
-        delta=delta,
-        c=c,
-        covertext_length=required_length
-    )
-    
-    print(f"\nWatermarked text ({len(watermarked_text)} characters):")
-    print(watermarked_text)
-    
-    # Apply synonym attack
-    attacked_text = attack(watermarked_text)
-    print("\nText after synonym attack:")
-    print(attacked_text)
-    
-    # Extract watermark from attacked text
-    print("\nExtracting watermark from attacked text...")
-    recovered_counters, _ = extractor.extract(
-        keys=keys,
-        h=history,
-        ct=attacked_text,
-        c=c
-    )
-    
-    # Detect watermark bits
-    recovered_message = []
-    for counter in recovered_counters:
-        bit = detect(required_length, counter, len(message), epsilon)
-        recovered_message.append(1 if bit else 0)
-    
-    print("\nResults:")
-    print(f"Original message: {message}")
-    print(f"Recovered message: {recovered_message}")
-    print(f"Success: {message == recovered_message}")
 
-if __name__ == "__main__":
-    main() 
+class SynonymAttack(Attack):
+    """Attack that replaces words with synonyms while preserving formatting."""
+
+    def __init__(
+        self,
+        method="wordnet",
+        local_mode: bool | None = None,
+    ):
+        """
+        Initialize the synonym attack with a specified method and swap probability.
+
+        Args:
+            method (str): The synonym replacement method to use. Options are:
+                - "wordnet" (default): Uses WordNet for synonyms
+                - "embedding": Uses word embeddings for similar words
+                - "maskedlm": Uses masked language model for replacements
+                - "hownet": Uses HowNet for synonyms
+            local_mode: Controls local vs global attack behavior.
+                - None (default): Use legacy behavior where tampering >= 0.99 forces global mode.
+                - True: Force local mode (sentence-level) even at 100% tampering.
+                - False: Force global mode regardless of tampering level.
+                Note: For synonym attack, local mode processes each sentence independently,
+                while global mode processes all words at once.
+        """
+        super().__init__(local_mode=local_mode)
+        self.method = method
+
+        # Select transformation based on the method
+        if method == "wordnet":
+            transformation = WordSwapWordNet()
+        elif method == "embedding":
+            transformation = WordSwapEmbedding()
+        elif method == "maskedlm":
+            transformation = WordSwapMaskedLM()
+        elif method == "hownet":
+            transformation = WordSwapHowNet()
+        else:
+            raise ValueError(f"Unsupported method: {method}")
+
+        self.augmenter = Augmenter(transformation=transformation)
+
+    def __call__(self, text: str, tampering: float, local: bool) -> str:
+        """Apply the synonym replacement attack."""
+        if not 0 <= tampering <= 1:
+            raise ValueError("Probability must be between 0 and 1")
+        if tampering == 0:
+            return text
+
+        use_local = self._resolve_local_mode(local, tampering)
+
+        if use_local:
+            return self._local_synonym(text, tampering)
+        else:
+            return self._global_synonym(text, tampering)
+
+    def _replace_words_in_text(self, text: str, tampering: float) -> str:
+        """Replace words with synonyms based on tampering probability."""
+        # Split text into words and whitespace, keeping both
+        tokens = re.split(r"(\s+)", text)
+
+        # Process only non-whitespace tokens
+        new_tokens = []
+        for token in tokens:
+            if token.strip():  # If token is not whitespace
+                # Randomly decide whether to try replacing this word
+                if random() < tampering:
+                    augmented_texts = self.augmenter.augment(token)
+                    if augmented_texts:
+                        single_word_synonyms = [
+                            t for t in augmented_texts if len(t.split()) == 1
+                        ]
+                        if single_word_synonyms:
+                            # Randomly select a synonym if available
+                            new_tokens.append(choice(single_word_synonyms))
+                            continue
+                new_tokens.append(
+                    token
+                )  # Keep original if no replacement or probability check fails
+            else:
+                new_tokens.append(token)  # Keep whitespace as is
+
+        return "".join(new_tokens)
+
+    def _global_synonym(self, text: str, tampering: float) -> str:
+        """Apply synonym replacement to the entire text at once."""
+        result = self._replace_words_in_text(text, tampering)
+        print("Debug global synonym:")
+        print(f"in:\n{text}\nout:\n{result}")
+        return result
+
+    def _local_synonym(self, text: str, tampering: float) -> str:
+        """Apply synonym replacement sentence by sentence."""
+        # Split text into sentences while preserving separators
+        parts = re.split(r"([.!?]+(?:\s+|$))", text)
+        new_parts = []
+
+        # parts[::2] are sentences, parts[1::2] are separators
+        for i in range(0, len(parts), 2):
+            sentence = parts[i]
+
+            # Skip empty sentences
+            if not sentence.strip():
+                new_parts.append(sentence)
+            else:
+                # Apply synonym replacement to this sentence
+                new_parts.append(self._replace_words_in_text(sentence, tampering))
+
+            # Add the separator if it exists
+            if i + 1 < len(parts):
+                new_parts.append(parts[i + 1])
+
+        result = "".join(new_parts)
+        # print("Debug local synonym:")
+        # print(f"parts:\n{parts}\nnew_parts:\n{result}")
+        return result
+

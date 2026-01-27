@@ -1,11 +1,13 @@
-from dataclasses import dataclass, field
-from typing import Protocol, Any, Callable
-import numpy as np
 import concurrent.futures
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Callable, Protocol
 
+import numpy as np
+
+from ..config.constants import BacktrackConfig
 from .get_embedding import get_embeddings_in_batch
 from .new_text import generate_response
-from ..config.constants import BacktrackConfig
 
 
 @dataclass
@@ -32,8 +34,8 @@ class Sampler(Protocol):
         max_attempts: int,
         collect_alternatives: bool,
         max_alternatives: int,
-    ) -> SampleResult:
-        ...
+        use_prohibitions: bool,
+    ) -> SampleResult: ...
 
 
 class RejectionSampler:
@@ -49,17 +51,24 @@ class RejectionSampler:
         max_attempts: int = 50,
         collect_alternatives: bool = True,
         max_alternatives: int = 3,
+        use_prohibitions: bool = False,
     ) -> SampleResult:
         matches: list[tuple[str, np.ndarray]] = []
         attempts = 0
-        prohibitions = []
+        if use_prohibitions:
+            prohibitions: set[str] = set()
 
         while attempts < max_attempts:
-            if len(prohibitions):
-                system_prompt = system_prompt + f'You must not include these outputs:\n {"\n".join(prohibitions)}'
+            if use_prohibitions and len(prohibitions):
+                system_prompt = (
+                    system_prompt
+                    + f"\nPROHIBITION: You must not include these outputs:\n {'\n'.join(list(prohibitions))}"
+                )
+            prompt = f"{datetime.now()}{' '.join(history)}"
+            # print(f"prompt: {prompt}")
             response = generate_response(
                 client,
-                history,
+                prompt,
                 system_prompt,
                 max_length,
                 temperature,
@@ -69,6 +78,8 @@ class RejectionSampler:
             embeddings = get_embeddings_in_batch(client, [response])
             embedding = np.array(embeddings[0]).reshape(1, -1)
             sampled_bits = hash_fn(embedding)
+            # print(f"response: {response}")
+            # print(f"desired_bits: {desired_bits}, sampled_bits: {sampled_bits}")
 
             if np.array_equal(sampled_bits, desired_bits):
                 matches.append((response, embedding))
@@ -79,7 +90,9 @@ class RejectionSampler:
                         matches=matches,
                         attempts_used=attempts,
                     )
-            prohibitions.append(response)
+            else:
+                if use_prohibitions:
+                    prohibitions.add(response)
 
         return SampleResult(
             success=len(matches) > 0,
@@ -132,13 +145,21 @@ class BacktrackingEncoder:
         system_prompt: str,
         max_length: int,
         temperature: float = 0.5,
+        use_prohibitions: bool = False,
     ) -> tuple[list[str], list[np.ndarray]]:
-        choices: list[StepChoice] = []
+        steps: list[StepChoice] = []
         i = 0
         backtracks_used = 0
 
         while i < len(chunks):
-            history = self._build_history(initial_history, choices)
+            history = self._build_history(initial_history, steps)
+
+            collect_alternatives = (
+                False if i == (len(chunks) - 1) else self.config.collect_alternatives
+            )
+            max_attemps = self.config.max_attempts_per_step
+            if i == 0:
+                max_attemps = int(max_attemps*1.5)
 
             result = self.sampler.sample(
                 client=client,
@@ -148,17 +169,18 @@ class BacktrackingEncoder:
                 system_prompt=system_prompt,
                 max_length=max_length,
                 temperature=temperature,
-                max_attempts=self.config.max_attempts_per_step,
-                collect_alternatives=self.config.collect_alternatives,
+                max_attempts=max_attemps,
+                collect_alternatives=collect_alternatives,
                 max_alternatives=self.config.max_alternatives,
+                use_prohibitions=use_prohibitions,
             )
 
             if result.success:
                 self._log_success(i, len(chunks), result)
-                if i < len(choices):
-                    choices[i] = StepChoice(result.matches)
+                if i < len(steps):
+                    steps[i] = StepChoice(result.matches)
                 else:
-                    choices.append(StepChoice(result.matches))
+                    steps.append(StepChoice(result.matches))
                 i += 1
             else:
                 backtracks_used += 1
@@ -167,35 +189,35 @@ class BacktrackingEncoder:
                         f"Exceeded maximum backtracks ({self.config.max_backtracks})"
                     )
 
-                target = self._find_backtrack_target(choices, i)
+                target = self._find_backtrack_target(steps, i)
                 if target < 0:
                     raise EncodingError(
                         f"No backtrack target available at position {i}"
                     )
 
                 self._log_backtrack(i, target, backtracks_used)
-                choices[target].use_next_alternative()
-                choices = choices[: target + 1]
+                steps[target].use_next_alternative()
+                steps = steps[: target + 1]
                 i = target + 1
 
-        cover_texts = [choice.message for choice in choices]
-        embeddings = [choice.embedding for choice in choices]
+        cover_texts = [choice.message for choice in steps]
+        embeddings = [choice.embedding for choice in steps]
         return cover_texts, embeddings
 
     def _build_history(
         self,
         initial_history: list[str],
-        choices: list[StepChoice],
+        steps: list[StepChoice],
     ) -> list[str]:
-        return initial_history + [choice.message for choice in choices]
+        return initial_history + [choice.message for choice in steps]
 
     def _find_backtrack_target(
         self,
-        choices: list[StepChoice],
+        steps: list[StepChoice],
         current_position: int,
     ) -> int:
-        for i in range(len(choices) - 1, -1, -1):
-            if choices[i].has_alternatives():
+        for i in range(len(steps) - 1, -1, -1):
+            if steps[i].has_alternatives():
                 return i
         return -1
 
@@ -203,11 +225,12 @@ class BacktrackingEncoder:
         alt_info = ""
         if len(result.matches) > 1:
             alt_info = f" (+{len(result.matches) - 1} alternatives)"
-        print(f"[{position + 1}/{total}] Encoded in {result.attempts_used} attempts{alt_info}")
+        print(
+            f"[{position + 1}/{total}] Encoded in {result.attempts_used} attempts{alt_info}"
+        )
 
     def _log_backtrack(self, from_pos: int, to_pos: int, total_backtracks: int) -> None:
-        print(f"[Backtrack #{total_backtracks}] {from_pos} -> {to_pos}")
-
+        print(f"[Backtrack #{total_backtracks}] {from_pos + 1} -> {to_pos + 1}")
 
 
 ### Legacy ###
@@ -256,4 +279,3 @@ def sample_concurrent(
                 #! Ensure matching shapes for all combinations of inputs and settings
                 if np.array_equal(sampled_bits, desired_bits):
                     return message
-

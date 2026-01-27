@@ -1,6 +1,5 @@
 import random
 import re
-from datetime import datetime
 
 from openai import OpenAI
 
@@ -22,27 +21,32 @@ class TranslationAttack(Attack):
         model: str = "gpt-4o-mini",
         temperature: float = 0.0,
         language: str = "French",
+        local_mode: bool | None = None,
     ):
         """
-        Initialize the paraphrase attack.
+        Initialize the translation attack.
 
         Args:
             client: OpenAI client instance
             model: GPT model to use (default: "gpt-4o-mini")
             temperature: Sampling temperature (0.0 = deterministic, 1.0 = creative)
-            local: If True, paraphrases each sentence independently.
-                  If False, paraphrases entire text at once (default: True)
-            language: the medium language used
+            language: the medium language used for back-translation
+            local_mode: Controls local vs global attack behavior.
+                - None (default): Use legacy behavior where tampering >= 0.99 forces global mode.
+                - True: Force local mode (sentence-level) even at 100% tampering.
+                - False: Force global mode regardless of tampering level.
         """
-        super().__init__()
+        super().__init__(local_mode=local_mode)
         self.client = client
         self.model = model
         self.temperature = temperature
         self.language = language
 
     def __call__(self, text: str, tampering: float, local: bool) -> str:
-        """Apply the paraphrase attack."""
-        if local and tampering < 0.99:
+        """Apply the translation attack."""
+        use_local = self._resolve_local_mode(local, tampering)
+
+        if use_local:
             return self._local_attack(text, tampering)
         else:
             return self._global_attack(text)
@@ -59,7 +63,9 @@ class TranslationAttack(Attack):
                 messages=[
                     {
                         "role": "system",
-                        "content": SYSTEM_PROMPT.format(language_1=lang_1, language_2=lang_2),
+                        "content": SYSTEM_PROMPT.format(
+                            language_1=lang_1, language_2=lang_2
+                        ),
                     },
                     {"role": "user", "content": text},
                 ],
@@ -80,36 +86,36 @@ class TranslationAttack(Attack):
 
     def _local_attack(self, text: str, tampering: float) -> str:
         """Translate each sentence independently while preserving structure.
-        
+
         Args:
             text: Input text to attack
             tampering: Probability (0.0-1.0) of translating each sentence
-        
+
         Returns:
             Text with randomly selected sentences back-translated
         """
         # Split text into sentences while preserving separators
         parts = re.split(r"([.!?]+\s*)", text)
         new_parts = []
-        
+
         # parts[::2] are sentences, parts[1::2] are separators
         for i in range(0, len(parts), 2):
             sentence = parts[i]
             separator = parts[i + 1] if i + 1 < len(parts) else ""
-            
+
             # Skip empty sentences
             if not sentence.strip():
                 new_parts.append(sentence)
                 new_parts.append(separator)
                 continue
-            
+
             if random.random() < tampering:
                 translated = self._translate(sentence, direction=True)
                 back_translated = self._translate(translated, direction=False)
                 new_parts.append(back_translated)
             else:
                 new_parts.append(sentence)
-            
+
             new_parts.append(separator)
-        
+
         return "".join(new_parts)

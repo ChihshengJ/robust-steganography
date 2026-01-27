@@ -12,11 +12,27 @@ from embeddings import Encoder, StegSystem
 
 @dataclass
 class AttackConfig:
-    """Configuration for a single attack type."""
+    """Configuration for an attack in the experiment.
+
+    Attributes:
+        label: Name for this attack configuration (used in plots/logs)
+        attack_type: The type of attack ("n-gram", "synonym", "paraphrase", "translate")
+        mode: Local mode flag passed to __call__ (legacy parameter)
+        local_mode: Override for local/global mode behavior during attack initialization.
+            - None (default): Use legacy behavior where `mode and tampering < 0.99`
+              determines local mode. At 100% tampering, global mode is used.
+            - True: Force local mode (sentence-level) regardless of tampering level.
+              Even at 100% tampering, each sentence is processed individually.
+            - False: Force global mode regardless of tampering level and mode parameter.
+        use_simple_prompt: For paraphrase attack only. If True, use simpler prompt
+            without marker extraction. May work better with some models.
+    """
 
     label: str
     attack_type: str
     mode: bool
+    local_mode: bool | None = None
+    use_simple_prompt: bool = False
 
 
 @dataclass
@@ -28,9 +44,10 @@ class ExperimentConfig:
     system: StegSystem
     num_bits: int
     num_messages: int
+    messages: list[list[int]]
     num_stego_per_message: int
     runs: int = 5
-    history: list[str] = field(default_factory=list)
+    history: list[str] | str = field(default_factory=list)
     seed: int | None = None
     checkpoint_path: Path = Path("checkpoints/exp_checkpoint.pkl")
     output_path: Path = Path("exp_results")

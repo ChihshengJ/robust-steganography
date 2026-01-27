@@ -6,32 +6,51 @@ from openai import OpenAI
 
 from .attack import Attack
 
-SYSTEM_PROMPT_LOCAL = """
-You are an assistant tasked with paraphrasing text. For each input, your goal 
-is to rephrase it using different wording and sentence structures while ensuring 
-that the original meaning, intent, and nuances are completely preserved. Do not 
-omit or add new information. The paraphrased output should be clear, concise, 
-and faithful to the original message.
+SYSTEM_PROMPT_LOCAL = """You are a paraphrasing assistant. Rewrite the given sentence using completely different words and phrasing while preserving the exact meaning.
 
-Important: Preserve all formatting including newlines, spaces, and punctuation 
-placement. Return only the paraphrased text with no additional commentary.
+Rules:
+1. Use synonyms and alternative expressions wherever possible
+2. Change the sentence structure (e.g., active to passive, reorder clauses)
+3. Preserve all factual information exactly - do not add, remove, or alter any details
+4. Maintain the same tone and register
+5. Output ONLY the paraphrased sentence with no explanation or commentary
+
+Example:
+Input: "The scientist discovered a new species in the rainforest."
+Output: "A previously unknown species was found by the researcher in the tropical jungle."
 """
 
-SYSTEM_PROMPT = """
-You are an assistant tasked with paraphrasing text.
-You are encouraged to reword and reorganize the input text entirely to increase the difference between the input text and the paraphrased text.
-Apart from word choice, you should try to rearrange the sentence order and the structure of the text.
-However, do not omit any existing information or add new information.
-The paraphrased output should be clear and faithful to the original message, but significantly different from the original text.
+SYSTEM_PROMPT_GLOBAL = """You are an expert paraphrasing assistant tasked with completely rewriting text while preserving its meaning.
+
+Your objective is to transform the text as dramatically as possible while keeping all information intact.
+
+Techniques to apply:
+1. **Vocabulary**: Replace words with synonyms throughout. Avoid reusing any distinctive phrases from the original.
+2. **Sentence structure**: Convert between active/passive voice, change clause order, split long sentences or combine short ones.
+3. **Paragraph organization**: Reorder information where logically possible. Lead with different points than the original.
+4. **Expression style**: If the original is formal, stay formal but use different formal expressions. Same for informal text.
+
+Critical constraints:
+- Every fact, name, number, and detail from the original MUST appear in your output
+- Do NOT add any new information or interpretations
+- Do NOT omit anything, no matter how minor it seems
+
+Output format:
+First, silently identify the key information that must be preserved.
+Then output your paraphrase after the marker "[paraphrased message]".
+Output only the paraphrased text after the marker - no bullet points, no explanations.
 """
 
-SYSTEM_PROMPT_STRONG = """
-You are an assistant tasked with paraphrasing text.
-Your objective is to alter the original message as much as possible, while perserving all the crucial information in the original text.
-In order to do so, you can first list all important information in the original text that you think should not be omitted, and then write a completely new message based on those key points.
-Use a marker "[paraphrased message]" to mark your output.
-It is encouraged to structurally change the origianl text entirely.
-Overall, the paraphrased output should be clear and faithful to the original message, but significantly different from the original text.
+SYSTEM_PROMPT_GLOBAL_SIMPLE = """Completely rewrite the following text using different words, sentence structures, and organization. 
+
+Requirements:
+- Change as much of the wording as possible
+- Restructure sentences and reorder information where logical
+- Preserve ALL facts, names, numbers, and details exactly
+- Do not add or remove any information
+- Maintain the same overall meaning and tone
+
+Output only your rewritten version, nothing else.
 """
 
 
@@ -42,7 +61,9 @@ class ParaphraseAttack(Attack):
         self,
         client: OpenAI,
         model: str = "gpt-4o-mini",
-        temperature: float = 0.0,
+        temperature: float = 0.7,
+        local_mode: bool | None = None,
+        use_simple_prompt: bool = False,
     ):
         """
         Initialize the paraphrase attack.
@@ -50,54 +71,86 @@ class ParaphraseAttack(Attack):
         Args:
             client: OpenAI client instance
             model: GPT model to use (default: "gpt-4o-mini")
-            temperature: Sampling temperature (0.0 = deterministic, 1.0 = creative)
-            local: If True, paraphrases each sentence independently.
-                  If False, paraphrases entire text at once (default: True)
+            temperature: Sampling temperature (default: 0.7 for variety in paraphrasing)
+            local_mode: Controls local vs global attack behavior.
+                - None (default): Use legacy behavior where tampering >= 0.99 forces global mode.
+                - True: Force local mode (sentence-level) even at 100% tampering.
+                - False: Force global mode regardless of tampering level.
+            use_simple_prompt: If True, use the simpler global prompt without the
+                marker extraction step. May work better with some models.
         """
-        super().__init__()
+        super().__init__(local_mode=local_mode)
         self.client = client
         self.model = model
         self.temperature = temperature
+        self.use_simple_prompt = use_simple_prompt
 
     def __call__(self, text: str, tampering: float, local: bool) -> str:
         """Apply the paraphrase attack."""
-        if local and tampering < 0.99:
+        use_local = self._resolve_local_mode(local, tampering)
+
+        if use_local:
             return self._local_paraphrase(text, tampering)
         else:
             return self._global_paraphrase(text)
 
     def _global_paraphrase(self, text: str) -> str:
         """Paraphrase entire text at once."""
+        if self.use_simple_prompt:
+            return self._global_paraphrase_simple(text)
+        
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {
                         "role": "system",
-                        "content": f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                        + SYSTEM_PROMPT_STRONG,
+                        "content": SYSTEM_PROMPT_GLOBAL,
                     },
-                    {"role": "user", "content": text},
+                    {"role": "user", "content": f"Paraphrase this text:\n\n{text}"},
                 ],
                 temperature=self.temperature,
-                top_p=1.0,
-                frequency_penalty=0.0,
-                presence_penalty=0.0,
+                top_p=0.95,
             )
             result = response.choices[0].message.content.strip()
-            match = re.search(r"\[paraphrased message\](.*)", result, re.DOTALL)
+            
+            # Extract content after the marker
+            match = re.search(r"\[paraphrased message\]\s*(.*)", result, re.DOTALL | re.IGNORECASE)
             if match:
-                # print("\nattack successed\n")
-                result = match.group(1).strip().replace("\n", "")
+                result = match.group(1).strip()
+                # Clean up any remaining newlines for consistency
+                result = " ".join(result.split())
             else:
-                print("\n attack failed\n")
-                pass
-            # print("Debug glbal paraphrase:")
-            # print(f"in:\n{text}\nout:\n{result}")
+                # Fallback: if marker not found, use the whole response
+                # but try to clean it up
+                print("Warning: Marker not found in paraphrase response, using full output")
+                result = " ".join(result.split())
 
             return result
         except Exception as e:
             print(f"Global paraphrase attack failed: {e}")
+            return text
+
+    def _global_paraphrase_simple(self, text: str) -> str:
+        """Paraphrase entire text using the simpler prompt."""
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": SYSTEM_PROMPT_GLOBAL_SIMPLE,
+                    },
+                    {"role": "user", "content": text},
+                ],
+                temperature=self.temperature,
+                top_p=0.95,
+            )
+            result = response.choices[0].message.content.strip()
+            result = " ".join(result.split())
+            return result
+        except Exception as e:
+            print(f"Global paraphrase (simple) attack failed: {e}")
             return text
 
     def _local_paraphrase(self, text: str, tampering: float) -> str:
@@ -113,20 +166,26 @@ class ParaphraseAttack(Attack):
             # Skip empty sentences
             if not sentence.strip():
                 new_parts.append(sentence)
+                if i + 1 < len(parts):
+                    new_parts.append(parts[i + 1])
+                continue
+                
             if random.random() < tampering:
                 try:
                     response = self.client.chat.completions.create(
                         model=self.model,
                         messages=[
                             {"role": "system", "content": SYSTEM_PROMPT_LOCAL},
-                            {"role": "user", "content": sentence},
+                            {"role": "user", "content": sentence.strip()},
                         ],
                         temperature=self.temperature,
-                        top_p=1.0,
-                        frequency_penalty=0.0,
-                        presence_penalty=0.0,
+                        top_p=0.95,
                     )
-                    new_parts.append(response.choices[0].message.content.strip())
+                    paraphrased = response.choices[0].message.content.strip()
+                    # Remove any accidentally added punctuation at the end
+                    # since we'll add the separator back
+                    paraphrased = paraphrased.rstrip(".!?")
+                    new_parts.append(paraphrased)
                 except Exception as e:
                     print(f"Local paraphrase attack failed for sentence: {e}")
                     new_parts.append(sentence)
@@ -137,7 +196,7 @@ class ParaphraseAttack(Attack):
             if i + 1 < len(parts):
                 new_parts.append(parts[i + 1])
 
-        result = "".join(new_parts).replace("..", ".")
-        # print("Debug local paraphrase:")
-        # print(f"parts:\n{parts}\nnew_parts:\n{result}")
+        result = "".join(new_parts)
+        # Clean up any double punctuation
+        result = re.sub(r'([.!?])\1+', r'\1', result)
         return result

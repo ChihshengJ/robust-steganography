@@ -1,20 +1,20 @@
-from embeddings import StegSystem
-import re
-from typing import Any, List
+from typing import Any
 
 import numpy as np
 
+from embeddings import StegSystem
+
+from ..config.constants import BacktrackConfig
 from ..config.system_prompts import (
     FACT_CONTINUATION,
     FACT_DECOMPOSE,
     FACT_GENERATION,
     FACT_SUMMARY,
 )
-from ..config.constants import BacktrackConfig
-from ..utils.sample_utils import BacktrackingEncoder, RejectionSampler
 from ..utils.get_embedding import get_embeddings_in_batch
 from ..utils.new_text import generate_response
-from .encoder import CharacterEncoder, Encoder
+from ..utils.sample_utils import BacktrackingEncoder, RejectionSampler
+from .encoder import Encoder
 from .error_correction import ErrorCorrection
 from .hash_functions import HashFunction
 
@@ -27,7 +27,7 @@ class SummarySystem(StegSystem):
         hash_function: HashFunction,
         error_correction: ErrorCorrection,
         encoder: Encoder | None = None,
-        backtrack_config: BacktrackConfig | None = None
+        backtrack_config: BacktrackConfig | None = None,
     ):
         if key < 0:
             raise ValueError(
@@ -44,50 +44,14 @@ class SummarySystem(StegSystem):
         )
 
     def encode(
-            self, 
-            chunks: list[list[int]],
-            history: Any,
-            system_prompt: str,
-            max_length: int=200,
-            temperature: float = 0.5,
-            **kwargs) -> tuple[list[str], list]:
-        # facts = []
-        # prohibited = set()
-        # sampled_bits = np.nan
-        # for chunk in chunks:
-        #     while not np.array_equal(sampled_bits, chunk):
-        #         system_prompt = system_prompt.format(prohibited_facts=prohibited)
-        #         # print(f"system prompt for optional facts: {system_prompt}")
-        #         response = generate_response(
-        #             client=self.client,
-        #             prompt=history,
-        #             system_prompt=system_prompt,
-        #             max_length=1000,
-        #             temperature=0.7,
-        #         )
-        #         processed_response = re.sub(r"\[\d+\]", "", response)
-        #         print(f"optional fact: {processed_response}")
-        #         embedding = (
-        #             self.client.embeddings.create(
-        #                 input=[processed_response], model="text-embedding-3-large"
-        #             )
-        #             .data[0]
-        #             .embedding
-        #         )
-        #         sampled_bits = self.hash_fn(np.array(embedding).reshape(1, -1))
-        #         print(f"sampled bits: {sampled_bits}, desired_bits: {chunk}")
-        #         if np.array_equal(sampled_bits, chunk):
-        #             history += response + "\n"
-        #             facts.append(response)
-        #             print(f"updated history: {history}")
-        #             sampled_bits = np.nan
-        #             prohibited.clear()
-        #             break
-        #         else:
-        #             if processed_response not in prohibited:
-        #                 prohibited.add(processed_response)
-        #             print(f"updated prohibited_facts: {prohibited}")
-        # return facts
+        self,
+        chunks: list[list[int]],
+        history: Any,
+        system_prompt: str,
+        max_length: int = 200,
+        temperature: float = 1.0,
+        **kwargs,
+    ) -> tuple[list[str], list]:
         facts, embeddings = self._backtracking_encoder.encode(
             client=self.client,
             chunks=[np.array(lst) for lst in chunks],
@@ -96,6 +60,7 @@ class SummarySystem(StegSystem):
             system_prompt=system_prompt,
             max_length=max_length,
             temperature=temperature,
+            use_prohibitions=False,
         )
         return facts, embeddings
 
@@ -129,7 +94,7 @@ class SummarySystem(StegSystem):
             history=prompt_for_optional_facts,
             system_prompt=FACT_CONTINUATION,
             max_length=1000,
-            temperature=0.7
+            temperature=1,
         )
 
         print(f"optional facts: {optional_facts}")
@@ -139,7 +104,7 @@ class SummarySystem(StegSystem):
 
         print(f"prompt for summary: {prompt_for_summary}")
 
-        cover_text = generate_response(
+        stego_text = generate_response(
             client=self.client,
             prompt=prompt_for_summary,
             system_prompt=FACT_SUMMARY,
@@ -147,9 +112,9 @@ class SummarySystem(StegSystem):
             temperature=0,
         ).strip()
 
-        print(f"cover_text: {cover_text}")
+        print(f"cover_text: {stego_text}")
 
-        return cover_text
+        return stego_text
 
     def recover_message(self, stego_text: str):
         """

@@ -139,13 +139,13 @@ class ConvolutionalCode(ErrorCorrection):
     def _int_to_bin_list(self, num):
         return [int(b) for b in format(num, f"0{self.width}b")]
 
-    def encode(self, input_bits):
+    def encode(self, bits):
         n = 4  # Code rate denominator
         total_tail_bits = self.K - 1
 
         # Pad the input bits
         padded_input_bits, num_padding_bits, num_padding_bits_field_size = (
-            self._pad_input(input_bits, n, self.K)
+            self._pad_input(bits, n, self.K)
         )
 
         # Initialize shift register
@@ -205,9 +205,9 @@ class ConvolutionalCode(ErrorCorrection):
 
         return padded_input_bits, num_padding_bits, num_padding_bits_field_size
 
-    def decode(self, received_bits, actual_length):
+    def decode(self, bits, actual_length):
         # Flatten input array
-        received_bits = np.array(received_bits).flatten()[:actual_length]
+        bits = np.array(bits).flatten()[:actual_length]
 
         n = 4  # Code rate denominator
         total_tail_bits = self.K - 1
@@ -215,12 +215,12 @@ class ConvolutionalCode(ErrorCorrection):
         # Viterbi algorithm implementation
         # Initialize path metrics
         num_output_bits = n
-        num_time_steps = len(received_bits) // num_output_bits
+        num_time_steps = len(bits) // num_output_bits
         path_metrics = [{} for _ in range(num_time_steps + 1)]
         path_metrics[0][0] = {"metric": 0, "path": []}
 
         for time in range(num_time_steps):
-            received_symbols = received_bits[
+            received_symbols = bits[
                 num_output_bits * time : num_output_bits * (time + 1)
             ]
             current_metrics = {}

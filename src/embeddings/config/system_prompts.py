@@ -58,24 +58,25 @@ You are a creative fiction writer. Your task is to write the next plot event in 
 REQUIREMENTS:
 - The story must incorporate these three elements: {items}
 - The story must NOT be about: {boring_theme}
-- Use the elements in unexpected, unconventional ways
+- Each event MUST mention at least one character by name
+- Each event MUST include a specific action verb (not generic verbs like "went" or "did")
+- Each event MUST reference a concrete object or location
 - Output exactly ONE plot event that advances the narrative
-- Keep it to 1-2 sentences maximum
-- Use simple, direct language (avoid purple prose)
-- Maintain consistency with any prior context provided
+- Each event should be one sentence long.
 
 OUTPUT: Write only the plot event text, nothing else.
 """
 
 STORY_SEGMENTATION = """
-Segment the following story into exactly {chunk_length} sequential plot events.
+Decompose the following story into its constituent plot events.
+There should strictly be only {chunk_length} events in total.
 
 RULES:
-1. You MUST return exactly {chunk_length} events (this is the top priority)
-2. Events should be in chronological order
-3. Each event should capture a distinct story beat
-4. Preserve all information from the original—no details should be lost
-5. Events may vary in length; merge or split as needed to hit the target count
+1. An event = ONE character performing ONE action
+2. If a sentence contains multiple actions, split them
+3. Preserve all proper nouns exactly as written
+4. Preserve all numbers and specific details exactly
+5. Each event must be a complete, standalone sentence
 
 OUTPUT FORMAT (strict JSON):
 {{"events": ["event 1 text", "event 2 text", ...]}}
@@ -106,9 +107,9 @@ You must follow these rules:
 3. Each fact must be a single, concise, declarative sentence.
 Rank the {k} facts in descending order of importance, where importance means central to the main event, outcome, or topic of the article.
 Output format (strict):
-[1]Fact 1.
-[2]Fact 2.
-[3]Fact 3.
+Fact 1.
+Fact 2.
+Fact 3.
 ...
 Output only the list of facts and nothing else.
 """
@@ -126,8 +127,6 @@ You must follow these rules:
 3. Each fact must be a single, concise, declarative sentence.
 Your output should follow the format of the key facts, each starts with a bracketed number and a string representing the fact, then a new line.
 The number should be a continuation of the previous number of the fact.
-You should NOT output any facts described in the following list:
-{prohibited_facts}
 """
 
 FACT_SUMMARY = """

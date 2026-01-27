@@ -13,6 +13,7 @@ class NGramShuffleAttack(Attack):
         self,
         model: LanguageModel,
         n: int = 3,
+        local_mode: bool | None = None,
     ):
         """
         Initialize the n-gram shuffle attack.
@@ -20,14 +21,12 @@ class NGramShuffleAttack(Attack):
         Args:
             model: Language model whose tokenizer will be used
             n (int): Size of n-grams to use (default: 3)
-            probability (float): Probability of shuffling each n-gram (0.0 to 1.0).
-                               1.0 means shuffle all n-grams (default)
-                               0.0 means no shuffling
-                               0.5 means 50% of n-grams will be shuffled
-            local (bool): If True, preserves sentence structure.
-                         If False, shuffles token n-grams globally (default: True)
+            local_mode: Controls local vs global attack behavior.
+                - None (default): Use legacy behavior where tampering >= 0.99 forces global mode.
+                - True: Force local mode (sentence-level) even at 100% tampering.
+                - False: Force global mode regardless of tampering level.
         """
-        super().__init__()
+        super().__init__(local_mode=local_mode)
         if n < 1:
             raise ValueError("n must be at least 1")
 
@@ -67,7 +66,9 @@ class NGramShuffleAttack(Attack):
         if tampering == 0:
             return text
 
-        if local and tampering < 0.99:
+        use_local = self._resolve_local_mode(local, tampering)
+
+        if use_local:
             return self._local_shuffle(text, tampering)
         else:
             return self._global_shuffle(text, tampering)

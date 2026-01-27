@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import openai
 
 from embeddings import (
-    RandomProjectionHash,
+    PCAHash,
     RepetitionCode,
     StoryStegSystem,
 )
@@ -39,30 +39,93 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
 
-def init_attacks(model: LanguageModel, client) -> dict[str, Attack]:
-    """Initialize all available attack types."""
-    return {
-        "n-gram": NGramShuffleAttack(model=model, n=3),
-        "synonym": SynonymAttack(method="wordnet"),
-        "paraphrase": ParaphraseAttack(
-            client=client, model="gpt-4o-mini", temperature=0
-        ),
-        "translate": TranslationAttack(
-            client=client, model="gpt-4o-mini", temperature=0
-        ),
-    }
+def init_attacks(
+    model: LanguageModel,
+    client,
+    attack_configs: list[AttackConfig] | None = None,
+) -> dict[str, Attack]:
+    """
+    Initialize attack instances.
+
+    Args:
+        model: Language model for tokenization (used by n-gram attack)
+        client: OpenAI client for API-based attacks
+        attack_configs: Optional list of attack configs. If provided, creates one attack
+            per config with the specified local_mode. If None, creates default attacks
+            with local_mode=None (legacy behavior).
+
+    Returns:
+        Dictionary mapping attack labels to Attack instances.
+        - If attack_configs is provided: keyed by config.label
+        - If attack_configs is None: keyed by attack type (legacy behavior)
+    """
+    if attack_configs is None:
+        # Legacy behavior: create one attack per type with default settings
+        return {
+            "n-gram": NGramShuffleAttack(model=model, n=3),
+            "synonym": SynonymAttack(method="wordnet"),
+            "paraphrase": ParaphraseAttack(
+                client=client, model="gpt-4o-mini", temperature=0
+            ),
+            "translate": TranslationAttack(
+                client=client, model="gpt-4o-mini", temperature=0
+            ),
+        }
+
+    # New behavior: create one attack per config with specified local_mode
+    attacks = {}
+    for cfg in attack_configs:
+        local_mode = getattr(cfg, "local_mode", None)
+
+        if cfg.attack_type == "n-gram":
+            attacks[cfg.label] = NGramShuffleAttack(
+                model=model, n=3, local_mode=local_mode
+            )
+        elif cfg.attack_type == "synonym":
+            attacks[cfg.label] = SynonymAttack(
+                method="wordnet", local_mode=local_mode
+            )
+        elif cfg.attack_type == "paraphrase":
+            use_simple = getattr(cfg, "use_simple_prompt", False)
+            attacks[cfg.label] = ParaphraseAttack(
+                client=client,
+                model="gpt-4o-mini",
+                temperature=0.7,
+                local_mode=local_mode,
+                use_simple_prompt=use_simple,
+            )
+        elif cfg.attack_type == "translate":
+            attacks[cfg.label] = TranslationAttack(
+                client=client, model="gpt-4o-mini", temperature=0, local_mode=local_mode
+            )
+        else:
+            raise ValueError(f"Unknown attack type: {cfg.attack_type}")
+
+    return attacks
 
 
 def apply_attack(
     attacks: dict[str, Attack],
-    attack_type: str,
+    attack_key: str,
     stego_text: str,
     tampering: float,
     local: bool,
 ) -> str:
-    """Apply an attack to stego text and return the result."""
+    """
+    Apply an attack to stego text and return the result.
+
+    Args:
+        attacks: Dictionary of attack instances
+        attack_key: Key to look up the attack (label if using configs, type otherwise)
+        stego_text: The steganographic text to attack
+        tampering: Tampering percentage (0.0 to 1.0)
+        local: Local mode flag (may be overridden by attack's local_mode setting)
+
+    Returns:
+        Attacked text
+    """
     print(f"======stego_text======\n{stego_text}")
-    result = attacks[attack_type](stego_text, tampering, local)
+    result = attacks[attack_key](stego_text, tampering, local)
     print(f"======attacked_text======\n{result}")
     return result
 
@@ -111,6 +174,7 @@ class StegoExperiment:
         self.progress = ProgressTracker()
         self.model = GPT2Model()
         self.attacks: dict[str, Attack] = {}
+        self.messages = config.messages
 
         # Set up output paths
         self.output_dir = Path(config.output_path)
@@ -133,7 +197,7 @@ class StegoExperiment:
             state = CheckpointState()
 
         # Generate messages
-        messages = generate_random_messages(
+        messages = self.messages if self.messages is not None else generate_random_messages(
             self.config.num_messages, self.config.num_bits, self.config.seed
         )
         print(f"messages: {messages}")
@@ -142,8 +206,12 @@ class StegoExperiment:
         state.random_state = random.getstate()
         self.checkpoint_mgr.save(state)
 
-        # Initialize attacks
-        self.attacks = init_attacks(self.model, self.config.system.client)
+        # Initialize attacks with configs to support local_mode
+        self.attacks = init_attacks(
+            self.model,
+            self.config.system.client,
+            self.config.attack_configs,
+        )
 
         LOGGER.info("Starting experiment")
 
@@ -362,8 +430,9 @@ class StegoExperiment:
         self, message: list[int], stego_text: str, attack_cfg: AttackConfig, tp: float
     ) -> tuple[int, float, list[int], str]:
         """Execute a single attack-and-recover run."""
+        # Use attack label as key since we're now keying by label
         attacked = apply_attack(
-            self.attacks, attack_cfg.attack_type, stego_text, tp, attack_cfg.mode
+            self.attacks, attack_cfg.label, stego_text, tp, attack_cfg.mode
         )
 
         recovered = self.config.system.recover_message(attacked)
@@ -518,19 +587,20 @@ def plot_recovery_results(
 
 
 def main():
-    tp = [0.7]
+    tp = [0.9, 1.0]
 
     client = openai.OpenAI()
-    hash_fn = RandomProjectionHash(embedding_dim=3072, seed=42)
+    # hash_fn = RandomProjectionHash(embedding_dim=3072, seed=37)
+    hash_fn = PCAHash(pca_dir="./src/pca/creative_stories/artifacts", start=3, end=4)
 
     # Error correction: controls stegotext length
     # - Repetition: repetition * num_bits
     # - Convolution: 4 * (num_bits + K - 1)
-    ecc = RepetitionCode(5)
+    ecc = RepetitionCode(7)
 
     system_prompt = STORY_GENERATION.format(
-        items="spy, weapons, embassy",
-        boring_theme="A spy trying to smuggle weapons into the embassy",
+        items="Professor Elara Chen (a marine biologist), a malfunctioning Soviet submarine named K-278, the Mariana Trench in December 1991",
+        boring_theme="A scientist explores the ocean in a submarine.",
     )
 
     system = StoryStegSystem(
@@ -542,10 +612,23 @@ def main():
         segmentation_prompt=STORY_SEGMENTATION,
     )
 
+    # Example attack configs demonstrating the new local_mode parameter:
+    # - local_mode=None: legacy behavior (global at 100% tampering)
+    # - local_mode=True: force local mode even at 100% tampering
+    # - local_mode=False: force global mode regardless of tampering
     attack_configs = [
-        # AttackConfig("NGram Shuffle", "n-gram", True),
+        # Legacy behavior: will use global mode at 100% tampering
+        # AttackConfig("NGram Shuffle (legacy)", "n-gram", True),
+
+        # Force local mode: will use sentence-level processing even at 100%
+        # AttackConfig("NGram Shuffle (local)", "n-gram", True, local_mode=True),
+
+        # Force global mode: will always process entire text at once
+        # AttackConfig("NGram Shuffle (global)", "n-gram", True, local_mode=False),
+
         # AttackConfig("Synonym Attack", "synonym", False),
-        AttackConfig("Paraphrase Attack", "paraphrase", True),
+        # AttackConfig("Paraphrase Attack", "paraphrase", True),
+        AttackConfig("Paraphrase Attack (local)", "paraphrase", True, local_mode=True),
         # AttackConfig("Translate Attack", "translate", True),
     ]
 
@@ -553,18 +636,19 @@ def main():
         tampering_levels=tp,
         attack_configs=attack_configs,
         system=system,
-        num_bits=3,
-        num_messages=1,
+        num_bits=2,
+        num_messages=2,
+        messages=[[1, 0], [0,1]],
         num_stego_per_message=1,
-        runs=1,
+        runs=3,
         history=[],
-        seed=128,
+        seed=1228,
         checkpoint_path=Path("checkpoints/test/exp_checkpoint.pkl"),
         output_path=Path("figures/test/embedding_recovery_test"),
-        save_texts=False,
+        save_texts=True,
         max_saved_examples=200,
-        resume=False,
-        checkpoint_after_each_stego=False,
+        resume=True,
+        checkpoint_after_each_stego=True,
     )
 
     experiment = StegoExperiment(config)
@@ -572,8 +656,10 @@ def main():
     print(results)
 
     # Uncomment to generate plots:
-    # attack_labels = [cfg.label for cfg in attack_configs]
-    # plot_recovery_results(tp, attack_labels, results, "./figures/embedding_recovery_test/")
+    attack_labels = [cfg.label for cfg in attack_configs]
+    plot_recovery_results(
+        tp, attack_labels, results, "./figures/embedding_recovery_test/"
+    )
 
 
 if __name__ == "__main__":

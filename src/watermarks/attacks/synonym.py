@@ -15,7 +15,11 @@ from .attack import Attack
 class SynonymAttack(Attack):
     """Attack that replaces words with synonyms while preserving formatting."""
 
-    def __init__(self, method="wordnet"):
+    def __init__(
+        self,
+        method="wordnet",
+        local_mode: bool | None = None,
+    ):
         """
         Initialize the synonym attack with a specified method and swap probability.
 
@@ -25,12 +29,14 @@ class SynonymAttack(Attack):
                 - "embedding": Uses word embeddings for similar words
                 - "maskedlm": Uses masked language model for replacements
                 - "hownet": Uses HowNet for synonyms
-            probability (float): Probability of replacing a word with its synonym (0.0 to 1.0).
-                               1.0 means replace all possible words (default)
-                               0.0 means replace no words
-                               0.5 means 50% chance to replace each word
+            local_mode: Controls local vs global attack behavior.
+                - None (default): Use legacy behavior where tampering >= 0.99 forces global mode.
+                - True: Force local mode (sentence-level) even at 100% tampering.
+                - False: Force global mode regardless of tampering level.
+                Note: For synonym attack, local mode processes each sentence independently,
+                while global mode processes all words at once.
         """
-        super().__init__()
+        super().__init__(local_mode=local_mode)
         self.method = method
 
         # Select transformation based on the method
@@ -54,6 +60,15 @@ class SynonymAttack(Attack):
         if tampering == 0:
             return text
 
+        use_local = self._resolve_local_mode(local, tampering)
+
+        if use_local:
+            return self._local_synonym(text, tampering)
+        else:
+            return self._global_synonym(text, tampering)
+
+    def _replace_words_in_text(self, text: str, tampering: float) -> str:
+        """Replace words with synonyms based on tampering probability."""
         # Split text into words and whitespace, keeping both
         tokens = re.split(r"(\s+)", text)
 
@@ -78,8 +93,37 @@ class SynonymAttack(Attack):
             else:
                 new_tokens.append(token)  # Keep whitespace as is
 
-        result = "".join(new_tokens)
+        return "".join(new_tokens)
 
-        print("Debug synonym:")
-        print(f"tokens:\n{tokens}\nnew_tokens:\n{result}")
+    def _global_synonym(self, text: str, tampering: float) -> str:
+        """Apply synonym replacement to the entire text at once."""
+        result = self._replace_words_in_text(text, tampering)
+        print("Debug global synonym:")
+        print(f"in:\n{text}\nout:\n{result}")
+        return result
+
+    def _local_synonym(self, text: str, tampering: float) -> str:
+        """Apply synonym replacement sentence by sentence."""
+        # Split text into sentences while preserving separators
+        parts = re.split(r"([.!?]+(?:\s+|$))", text)
+        new_parts = []
+
+        # parts[::2] are sentences, parts[1::2] are separators
+        for i in range(0, len(parts), 2):
+            sentence = parts[i]
+
+            # Skip empty sentences
+            if not sentence.strip():
+                new_parts.append(sentence)
+            else:
+                # Apply synonym replacement to this sentence
+                new_parts.append(self._replace_words_in_text(sentence, tampering))
+
+            # Add the separator if it exists
+            if i + 1 < len(parts):
+                new_parts.append(parts[i + 1])
+
+        result = "".join(new_parts)
+        print("Debug local synonym:")
+        print(f"parts:\n{parts}\nnew_parts:\n{result}")
         return result

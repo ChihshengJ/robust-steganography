@@ -24,6 +24,7 @@ __pycache__/
 .pytest_cache/
 
 # macOS system files
+.harper-dictionary.txt
 .DS_Store
 .DS_Store?
 ._*
