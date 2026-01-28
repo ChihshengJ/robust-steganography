@@ -23,7 +23,7 @@ class SynonymAttack(Attack):
         """
         Initialize the synonym attack with a specified method and swap probability.
 
-        Args:
+        Arguments:
             method (str): The synonym replacement method to use. Options are:
                 - "wordnet" (default): Uses WordNet for synonyms
                 - "embedding": Uses word embeddings for similar words

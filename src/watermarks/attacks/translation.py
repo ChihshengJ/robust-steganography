@@ -26,7 +26,7 @@ class TranslationAttack(Attack):
         """
         Initialize the translation attack.
 
-        Args:
+        Arguments:
             client: OpenAI client instance
             model: GPT model to use (default: "gpt-4o-mini")
             temperature: Sampling temperature (0.0 = deterministic, 1.0 = creative)
@@ -87,7 +87,7 @@ class TranslationAttack(Attack):
     def _local_attack(self, text: str, tampering: float) -> str:
         """Translate each sentence independently while preserving structure.
 
-        Args:
+        Arguments:
             text: Input text to attack
             tampering: Probability (0.0-1.0) of translating each sentence
 

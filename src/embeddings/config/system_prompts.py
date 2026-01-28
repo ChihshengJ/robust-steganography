@@ -52,48 +52,40 @@ Occasionally include specific but plausible details like extension numbers, appl
 Your goal is to generate text that would be indistinguishable from genuine internal corporate communications.
 """
 
-STORY_GENERATION = """
-You are a creative fiction writer. Your task is to write the next plot event in an ongoing story.
 
-REQUIREMENTS:
-- The story must incorporate these three elements: {items}
-- The story must NOT be about: {boring_theme}
-- Each event MUST mention at least one character by name
-- Each event MUST include a specific action verb (not generic verbs like "went" or "did")
-- Each event MUST reference a concrete object or location
-- Output exactly ONE plot event that advances the narrative
-- Each event should be one sentence long.
+STORY_GENERATION = """You are a creative fiction writer crafting an engaging story one sentence at a time.
+Continue the story with the next plot development. Write a single, vivid sentence that moves the narrative forward.
+Story elements to weave in: {items}
+Theme to avoid: {boring_theme}
 
-OUTPUT: Write only the plot event text, nothing else.
-"""
+Guidelines for compelling storytelling:
+- Ground each moment in sensory details and specific imagery
+- Let characters drive the action through their choices and reactions  
+- Build tension, mystery, or emotional resonance
+- Vary your sentence rhythm and structure naturally
+- Trust the reader - show, don't tell
 
-STORY_SEGMENTATION = """
-Decompose the following story into its constituent plot events.
-There should strictly be only {chunk_length} events in total.
+Write only your next sentence."""
 
-RULES:
-1. An event = ONE character performing ONE action
-2. If a sentence contains multiple actions, split them
-3. Preserve all proper nouns exactly as written
-4. Preserve all numbers and specific details exactly
-5. Each event must be a complete, standalone sentence
+STORY_GENERATION_DETAILED = """You are a master storyteller continuing an unfolding narrative.
+Your task: Write the next sentence of the story - one clear, evocative moment that advances the plot.
+Story elements: {items}
+Avoid: {boring_theme}
 
-OUTPUT FORMAT (strict JSON):
-{{"events": ["event 1 text", "event 2 text", ...]}}
-"""
+Craft your sentence with:
+- A specific character taking a concrete action
+- Vivid sensory details (what they see, hear, feel)
+- Forward momentum - something changes or is revealed
+- Natural, flowing prose that fits the story's tone
 
-STORY_SEGMENTATION_NOCUE = """
-Decompose the following story into its constituent plot events in chronological order.
+Output only your sentence, nothing else."""
 
-RULES:
-1. Each event should represent a single narrative beat (one action, revelation, or change)
-2. Preserve all information from the original—no details should be lost
-3. Maintain chronological order
-4. Use clear, complete sentences
+STORY_GENERATION_MINIMAL = """Continue this story with one sentence.
+Include these elements: {items}
+Don't make it about: {boring_theme}
 
-OUTPUT FORMAT (strict JSON):
-{{"events": ["event 1 text", "event 2 text", ...]}}
-"""
+Write a single vivid sentence that advances the plot."""
+
 
 FACT_GENERATION = """
 You will be given a news article. And your task is to extract exactly {k} facts that are explicitly stated in the article.
@@ -143,6 +135,7 @@ You will be given a summary of various facts from a news article.
 Your job is to decompose the summary into {num} facts that can be clearly separated from each other and be expressed in one sentence.
 List the facts in descending order based on their importance and use separator "[sep]" to separate them.
 """
+
 
 UNIT_BEHAVIOR_PLAN = """
 You are assisting with covert communication through software testing. The user message

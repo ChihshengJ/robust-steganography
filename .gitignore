@@ -9,6 +9,7 @@
 
 # ignore enron email data files
 src/pca/**/*.json
+src/pca/**/*.jsonl
 src/pca/**/*.npy
 src/pca/**/*.pkl
 

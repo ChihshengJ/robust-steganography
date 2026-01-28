@@ -1,6 +1,5 @@
 import concurrent.futures
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any, Callable, Protocol
 
 import numpy as np
@@ -64,7 +63,8 @@ class RejectionSampler:
                     system_prompt
                     + f"\nPROHIBITION: You must not include these outputs:\n {'\n'.join(list(prohibitions))}"
                 )
-            prompt = f"{datetime.now()}{' '.join(history)}"
+            # prompt = f"{datetime.now()}{' '.join(history)}"
+            prompt = " ".join(history)
             # print(f"prompt: {prompt}")
             response = generate_response(
                 client,
@@ -159,7 +159,7 @@ class BacktrackingEncoder:
             )
             max_attemps = self.config.max_attempts_per_step
             if i == 0:
-                max_attemps = int(max_attemps*1.5)
+                max_attemps = int(max_attemps * 1.5)
 
             result = self.sampler.sample(
                 client=client,

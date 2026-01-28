@@ -1,12 +1,12 @@
 import random
 import re
-from datetime import datetime
 
 from openai import OpenAI
 
 from .attack import Attack
 
-SYSTEM_PROMPT_LOCAL = """You are a paraphrasing assistant. Rewrite the given sentence using completely different words and phrasing while preserving the exact meaning.
+SYSTEM_PROMPT_LOCAL = """You are a paraphrasing assistant.
+Rewrite the given sentence using completely different words and phrasing while preserving the exact meaning.
 
 Rules:
 1. Use synonyms and alternative expressions wherever possible
@@ -21,7 +21,6 @@ Output: "A previously unknown species was found by the researcher in the tropica
 """
 
 SYSTEM_PROMPT_GLOBAL = """You are an expert paraphrasing assistant tasked with completely rewriting text while preserving its meaning.
-
 Your objective is to transform the text as dramatically as possible while keeping all information intact.
 
 Techniques to apply:
@@ -68,7 +67,7 @@ class ParaphraseAttack(Attack):
         """
         Initialize the paraphrase attack.
 
-        Args:
+        Arguments:
             client: OpenAI client instance
             model: GPT model to use (default: "gpt-4o-mini")
             temperature: Sampling temperature (default: 0.7 for variety in paraphrasing)
@@ -98,7 +97,7 @@ class ParaphraseAttack(Attack):
         """Paraphrase entire text at once."""
         if self.use_simple_prompt:
             return self._global_paraphrase_simple(text)
-        
+
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -113,17 +112,20 @@ class ParaphraseAttack(Attack):
                 top_p=0.95,
             )
             result = response.choices[0].message.content.strip()
-            
+
             # Extract content after the marker
-            match = re.search(r"\[paraphrased message\]\s*(.*)", result, re.DOTALL | re.IGNORECASE)
+            match = re.search(
+                r"\[paraphrased message\]\s*(.*)", result, re.DOTALL | re.IGNORECASE
+            )
             if match:
                 result = match.group(1).strip()
                 # Clean up any remaining newlines for consistency
                 result = " ".join(result.split())
             else:
                 # Fallback: if marker not found, use the whole response
-                # but try to clean it up
-                print("Warning: Marker not found in paraphrase response, using full output")
+                print(
+                    "Warning: Marker not found in paraphrase response, using full output"
+                )
                 result = " ".join(result.split())
 
             return result
@@ -169,7 +171,7 @@ class ParaphraseAttack(Attack):
                 if i + 1 < len(parts):
                     new_parts.append(parts[i + 1])
                 continue
-                
+
             if random.random() < tampering:
                 try:
                     response = self.client.chat.completions.create(
@@ -198,5 +200,5 @@ class ParaphraseAttack(Attack):
 
         result = "".join(new_parts)
         # Clean up any double punctuation
-        result = re.sub(r'([.!?])\1+', r'\1', result)
+        result = re.sub(r"([.!?])\1+", r"\1", result)
         return result

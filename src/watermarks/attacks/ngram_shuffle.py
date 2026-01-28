@@ -18,7 +18,7 @@ class NGramShuffleAttack(Attack):
         """
         Initialize the n-gram shuffle attack.
 
-        Args:
+        Arguments:
             model: Language model whose tokenizer will be used
             n (int): Size of n-grams to use (default: 3)
             local_mode: Controls local vs global attack behavior.

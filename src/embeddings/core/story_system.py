@@ -1,12 +1,10 @@
-import json
 from typing import Any
 
 import numpy as np
+from nltk.tokenize import sent_tokenize
 
 from ..config.constants import BacktrackConfig
-from ..config.system_prompts import STORY_SEGMENTATION_NOCUE
 from ..utils.get_embedding import get_embeddings_in_batch
-from ..utils.new_text import generate_response
 from ..utils.sample_utils import BacktrackingEncoder, RejectionSampler
 from .encoder import Encoder
 from .error_correction import ErrorCorrection
@@ -16,7 +14,10 @@ from .steg_system import StegSystem
 
 class StoryStegSystem(StegSystem):
     """
-    Generate event based creative story plot for stego texts.
+    Generate event-based creative story plot for stego texts.
+
+    Encoding: Each story event (mostly sentence) encodes one chunk of bits via its embedding.
+    Recovery: Simple sentence tokenization extracts events, then embeddings are hashed.
     """
 
     def __init__(
@@ -27,13 +28,11 @@ class StoryStegSystem(StegSystem):
         system_prompt: str,
         encoder: Encoder | None = None,
         max_length: int = 200,
-        segmentation_prompt: str | None = None,
         backtrack_config: BacktrackConfig | None = None,
     ) -> None:
         super().__init__(client, hash_function, error_correction, encoder)
         self.system_prompt = system_prompt
         self.max_length = max_length
-        self.segmentation_prompt = segmentation_prompt or STORY_SEGMENTATION_NOCUE
         self.backtrack_config = backtrack_config or BacktrackConfig()
         self._backtracking_encoder = BacktrackingEncoder(
             sampler=RejectionSampler(),
@@ -72,42 +71,27 @@ class StoryStegSystem(StegSystem):
             initial_history,
             system_prompt=self.system_prompt,
             max_length=self.max_length,
-            temperature=0.5
         )
         return " ".join(cover_texts)
 
     def recover_message(self, stego_text: str) -> Any:
+        """
+        Recover message using just sentence tokenization.
+        """
         if self._error_encoded_length is None:
             raise ValueError(
                 "No encoded length set. Run hide_message first or set error_encoded_length."
             )
 
-        chunks = self._segment_story(stego_text)
-        print(
-            f"Segmented into {len(chunks)} events, "
-            f"expected: {self._error_encoded_length // self.hash_output_length}"
-        )
+        expected_chunks = self._error_encoded_length // self.hash_output_length
+        sentences = sent_tokenize(stego_text)
+        sentences = [s.strip() for s in sentences if s.strip()]
 
-        embeddings = get_embeddings_in_batch(self.client, chunks)
+        print(f"Extracted {len(sentences)} sentences, expected {expected_chunks}")
+        if len(sentences) != expected_chunks:
+            print(
+                f"WARNING: Sentence count mismatch ({len(sentences)} vs {expected_chunks})"
+            )
+
+        embeddings = get_embeddings_in_batch(self.client, sentences)
         return self._decode_from_embeddings(embeddings, self._error_encoded_length)
-
-    def _segment_story(self, stego_text: str) -> list[str]:
-        response = generate_response(
-            self.client,
-            prompt=f"The story: {stego_text}",
-            system_prompt=self.segmentation_prompt.format(
-                chunk_length=self._error_encoded_length
-            ),
-            max_length=5000,
-            temperature=0,
-            json_mode=True,
-        )
-        print(f"Segmentation response:\n{response}")
-
-        parsed = json.loads(response)
-        events = parsed.get("events", [])
-
-        if not events:
-            raise ValueError("Story segmentation returned no events")
-
-        return [event.strip() for event in events if event.strip()]
