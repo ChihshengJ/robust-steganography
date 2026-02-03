@@ -136,6 +136,154 @@ Your job is to decompose the summary into {num} facts that can be clearly separa
 List the facts in descending order based on their importance and use separator "[sep]" to separate them.
 """
 
+FACT_GENERATION_ANCHORED = """
+You will be given a news article. Extract exactly {k} facts that are explicitly stated in the article.
+
+REQUIREMENTS FOR EACH FACT:
+1. Must be a single, complete declarative sentence
+2. Must be DIRECTLY supported by specific text in the article
+3. Must contain at least 2 of these semantic anchors:
+   - A named entity (person, organization, or specific place)
+   - A specific number or quantity
+   - A specific date, time, or time reference
+   - A concrete, specific action verb (not "said", "is", "was")
+
+STRICT RULES:
+- Use exact wording from the article where possible
+- Never combine information from multiple sentences unless explicitly linked
+- Never include interpretation, inference, or background knowledge
+- Each fact must be verifiable by pointing to specific article text
+
+Rank the {k} facts in descending order of importance to the article's main event/topic.
+
+Output format (exactly {k} facts):
+1. [Most important fact with anchors]
+2. [Second fact with anchors]
+...
+{k}. [Least important fact with anchors]
+
+Output only the numbered list, nothing else.
+"""
+
+FACT_CONTINUATION_ANCHORED = """
+You will be given a news article and a list of key facts already extracted.
+Your task is to extract 1 additional fact from the article that is NOT in the list of extracted facts.
+
+REQUIREMENTS FOR THE NEW FACT:
+1. Must be a single, complete declarative sentence.
+2. Must be DIRECTLY supported by specific text in the article
+3. Must contain at least 1 semantic anchors:
+   - Named entity (person, organization, specific place)
+   - Specific number or quantity  
+   - Specific date/time reference
+   - Concrete action verb
+
+4. Never overlap with any existing fact in the list literally or semantically.
+5. Must be less important than the last fact in the current list
+
+STRICT RULES:
+- Extract using the article's exact wording where possible
+- Never paraphrase heavily - stay close to source text
+- The fact must be independently verifiable from the article
+
+Output only the text of the single extracted fact, nothing else.
+"""
+
+FACT_SUMMARY_STRICT = """
+You will be given a numbered list of facts extracted from a news article.
+Your task is to write a coherent summary that incorporates ALL these facts.
+
+CRITICAL RULES FOR SENTENCE STRUCTURE:
+1. Each fact MUST remain as its own separate sentence in the summary
+2. Do NOT merge multiple facts into a single sentence
+3. Do NOT split one fact across multiple sentences
+4. The number of sentences in your summary MUST equal the number of facts
+
+ALLOWED MODIFICATIONS:
+- Add transitional phrases at the START of sentences (However, Additionally, Meanwhile, Furthermore, As a result, In response, Subsequently)
+- Minor grammatical adjustments for flow (e.g., "The company" → "It" if referencing previous sentence)
+- Reorder facts slightly for narrative flow (but preserve relative importance grouping)
+
+NOT ALLOWED:
+- Combining two facts into one sentence
+- Adding new information not in the facts
+- Significantly rewording the core content of any fact
+- Omitting any fact from the summary
+
+The summary must read naturally while preserving each fact as a distinct sentence.
+
+Output only the summary paragraph, nothing else.
+"""
+
+FACT_SUMMARY_MINIMAL = """
+Convert these facts into a flowing summary paragraph.
+
+STRICT REQUIREMENTS:
+1. Every fact = exactly one sentence in output
+2. Sentence count must equal fact count
+3. Only add: transition words (However, Also, Meanwhile, Then)
+4. Keep 90%+ of original wording intact
+5. Do not add any information beyond the facts
+
+Output only the summary.
+"""
+
+FACT_EXTRACT_FROM_SUMMARY = """You are extracting individual facts from a news summary.
+
+The summary was constructed by combining exactly {num_facts} distinct facts, where each fact:
+- Is a single complete sentence (may contain internal quotes)
+- Contains semantic anchors: named entities, specific numbers, dates, or concrete actions
+- Was preserved as a separate sentence during summary creation (facts were NOT merged)
+
+Your task: Decompose this summary back into exactly {num_facts} individual fact sentences.
+
+CRITICAL RULES:
+1. Output EXACTLY {num_facts} facts - no more, no less
+2. Each fact must be ONE complete sentence from the summary
+3. Do NOT split a sentence containing a quote into multiple facts
+   - WRONG: Splitting `The CEO said, "Sales rose 40%." on Tuesday.` into two facts
+   - RIGHT: Keep it as ONE fact
+4. Do NOT merge multiple sentences into one fact
+5. Preserve EXACT wording from the summary - do not paraphrase
+6. Maintain original order as facts appear in the summary
+7. Use semantic anchors (names, numbers, dates, actions) to identify fact boundaries
+
+QUOTE HANDLING:
+- Quoted speech belongs to the sentence that introduces it
+- Look for reporting verbs (said, stated, announced, reported) before quotes
+- A period inside quotes does NOT end the outer sentence if the quote is embedded
+- Example: `Officials reported, "The damage exceeded $2 million." No injuries occurred.` = TWO facts
+
+TRANSITION WORDS:
+- Words like "However," "Additionally," "Meanwhile," "Furthermore," typically start a new fact
+
+OUTPUT FORMAT - use [sep] delimiter:
+[sep]First fact exactly as written
+[sep]Second fact exactly as written
+[sep]Third fact exactly as written
+"""
+
+ALIGNMENT_CHECK_PROMPT = """
+Given these original facts and a summary, verify the alignment:
+
+Original facts:
+{facts}
+
+Summary:
+{summary}
+
+For each sentence in the summary, identify which original fact it corresponds to.
+Output format:
+Sentence 1 → Fact [number] (match quality: exact/close/loose/no match)
+Sentence 2 → Fact [number] (match quality: ...)
+...
+
+Then provide:
+- Total sentences: [n]
+- Total facts: [n]
+- Alignment score: [percentage of exact/close matches]
+"""
+
 
 UNIT_BEHAVIOR_PLAN = """
 You are assisting with covert communication through software testing. The user message

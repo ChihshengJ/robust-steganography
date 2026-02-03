@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 from openai import OpenAI
+from typing_extensions import Callable
 
 from embeddings.utils.new_text import generate_response
 
@@ -57,27 +58,26 @@ class NaivePCAHash(HashFunction):
 
 
 class PCAHash(HashFunction):
-    def __init__(self, pca_dir: str, start: int, end: int):
+    def __init__(
+        self,
+        pca_dir: str,
+        bit_reducer: Callable[[np.ndarray], np.ndarray],
+    ):
         super().__init__()
         self.components = np.load(
             f"{pca_dir}/pca_components.npy"
         )  # (n_components, embed_dim)
         self.mean = np.load(f"{pca_dir}/pca_mean.npy")  # (embed_dim, )
         self.thresholds = np.load(f"{pca_dir}/pca_thresholds.npy")  # (n_components, )
-        self.n = self.components.shape[0]
-        self.output_length = abs(start - end)
-        assert start < end
-        assert end <= self.n
-        self.interval = (start, end)
+        self.bit_reducer = bit_reducer
+        self.output_length = 1
 
     def __call__(self, emb):
         emb = self._to_numpy_array(emb)
         z = (emb - self.mean) @ self.components.T  # (n_components,)
         bits = (z > self.thresholds).astype(np.int8).ravel()
-        # slice out the bits to use
         print(f"actual bits: {bits}")
-        capped_bits = bits[self.interval[0] : self.interval[1]]
-        return capped_bits
+        return self.bit_reducer(bits)
 
     def get_output_length(self):
         return self.output_length

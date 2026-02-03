@@ -5,11 +5,12 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import openai
+from datasets import load_dataset
 
 from embeddings import (
     PCAHash,
     RepetitionCode,
-    StoryStegSystem,
+    SummarySystemV2, ConvolutionalCode,
 )
 from embeddings.config.system_prompts import STORY_GENERATION
 from watermarks import (
@@ -30,6 +31,7 @@ from .utils import (
     ExperimentConfig,
     ProgressTracker,
     TextLogger,
+    index_reducer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -589,25 +591,39 @@ def main():
     tp = [1.0]
 
     client = openai.OpenAI()
-    hash_fn = PCAHash(pca_dir="./src/pca/creative_stories/artifacts", start=3, end=4)
+    hash_fn = PCAHash(
+        pca_dir="./src/pca/creative_stories/artifacts",
+        bit_reducer=index_reducer(4),
+    )
 
     # Error correction: controls stegotext length
     # - Repetition: repetition * num_bits
     # - Convolution: 4 * (num_bits + K - 1)
-    ecc = RepetitionCode(7)
+    ecc = RepetitionCode(5)
+    # ecc = ConvolutionalCode(1, 3)
 
     system_prompt = STORY_GENERATION.format(
         items="Fedral agent Stanley Cooper, an espionage conducted by Slovenian Government, A novel nuclear weapon",
         boring_theme="An agent stopped an espionage.",
     )
 
-    system = StoryStegSystem(
+    # system = StoryStegSystem(
+    #     client,
+    #     hash_fn,
+    #     ecc,
+    #     system_prompt,
+    #     BypassEncoder(),
+    # )
+
+    system = SummarySystemV2(
         client,
+        2,
         hash_fn,
         ecc,
-        system_prompt,
         BypassEncoder(),
     )
+
+    news = load_dataset("abisee/cnn_dailymail", "3.0.0", split="test")
 
     attack_configs = [
         AttackConfig("Paraphrase (local)", "paraphrase", True, local_mode=True),
@@ -621,18 +637,18 @@ def main():
         attack_configs=attack_configs,
         system=system,
         num_bits=3,
-        num_messages=4,
-        messages=[[1, 0, 1], [0, 1, 0], [1, 1, 0], [0, 0, 1]],
-        num_stego_per_message=5,
-        runs=5,
-        history=[],
+        num_messages=2,
+        messages=[[0, 1, 0], [1, 0, 0]],
+        num_stego_per_message=1,
+        runs=3,
+        history=news[8]["article"],
         seed=1228,
         checkpoint_path=Path("checkpoints/test/exp_checkpoint.pkl"),
         output_path=Path("figures/test/embedding_recovery_test"),
-        save_texts=True,
+        save_texts=False,
         max_saved_examples=200,
-        resume=True,
-        checkpoint_after_each_stego=True,
+        resume=False,
+        checkpoint_after_each_stego=False,
     )
 
     experiment = StegoExperiment(config)

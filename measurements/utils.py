@@ -1,9 +1,11 @@
+from typing_extensions import Callable
 import json
 import pickle
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, override
+import numpy as np
 
 from tqdm import tqdm
 
@@ -223,3 +225,29 @@ class BypassEncoder(Encoder):
     @override
     def decode(self, bits: list[int]) -> list[int]:
         return bits
+
+
+def index_reducer(index: int) -> Callable[[np.ndarray], np.ndarray]:
+    def reducer(bits: np.ndarray) -> np.ndarray:
+        return np.array([bits[index]], dtype=np.int8)
+
+    return reducer
+
+
+def threshold_sum_reducer(
+    threshold: float | None = None,
+) -> Callable[[np.ndarray], np.ndarray]:
+    def reducer(bits: np.ndarray) -> np.ndarray:
+        t = threshold if threshold is not None else len(bits) / 2
+        return np.array([1 if np.sum(bits) > t else 0], dtype=np.int8)
+
+    return reducer
+
+
+def slice_reducer(start: int, end: int) -> Callable[[np.ndarray], np.ndarray]:
+    """Returns bits[start:end] - preserves original multi-bit behavior."""
+
+    def reducer(bits: np.ndarray) -> np.ndarray:
+        return bits[start:end]
+
+    return reducer

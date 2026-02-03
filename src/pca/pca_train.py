@@ -6,11 +6,11 @@ from tqdm import tqdm
 
 ### Configuration
 
-OUT_DIR = Path("./src/pca/creative_stories/artifacts")
+OUT_DIR = Path("./src/pca/summary/artifacts")
 OUT_DIR.mkdir(exist_ok=True)
 
 # Input files
-EMBED_NPY = OUT_DIR / "event_embeddings.npy"
+EMBED_NPY = OUT_DIR / "fact_embeddings.npy"
 PARAPHRASE_EMBED_NPY = OUT_DIR / "paraphrase_embeddings.npy"
 GROUP_LABELS_NPY = OUT_DIR / "paraphrase_group_labels.npy"
 

@@ -54,35 +54,46 @@ class RejectionSampler:
     ) -> SampleResult:
         matches: list[tuple[str, np.ndarray]] = []
         attempts = 0
-        if use_prohibitions:
-            prohibitions: set[str] = set()
+        prohibitions: set[str] = set()
 
         while attempts < max_attempts:
-            if use_prohibitions and len(prohibitions):
-                system_prompt = (
-                    system_prompt
-                    + f"\nPROHIBITION: You must not include these outputs:\n {'\n'.join(list(prohibitions))}"
-                )
-            # prompt = f"{datetime.now()}{' '.join(history)}"
+            curr_system_prompt = system_prompt
+
+            if prohibitions:
+                if use_prohibitions:
+                    prohibition_list = "\n".join(
+                        f"- {p[:150]}..." if len(p) > 150 else f"- {p}"
+                        for p in list(prohibitions)[-10:]
+                    )
+                    curr_system_prompt += f"\n\nDo NOT generate any of these previously attempted outputs:\n{prohibition_list}"
+
             prompt = " ".join(history)
-            # print(f"prompt: {prompt}")
+            # print(f"prompt:\n   {prompt}...")
+
             response = generate_response(
                 client,
                 prompt,
-                system_prompt,
+                curr_system_prompt,
                 max_length,
                 temperature,
             )
             attempts += 1
 
+            if response in prohibitions:
+                # print(f"  [Attempt {attempts}] Duplicate response, skipping...")
+                continue
+
             embeddings = get_embeddings_in_batch(client, [response])
             embedding = np.array(embeddings[0]).reshape(1, -1)
             sampled_bits = hash_fn(embedding)
-            # print(f"response: {response}")
-            # print(f"desired_bits: {desired_bits}, sampled_bits: {sampled_bits}")
+
+            # print(
+            #     f"  [Attempt {attempts}] desired_bits: {desired_bits}, sampled_bits: {sampled_bits}"
+            # )
 
             if np.array_equal(sampled_bits, desired_bits):
                 matches.append((response, embedding))
+                prohibitions.add(response)  # Prevent finding same match again
 
                 if not collect_alternatives or len(matches) >= max_alternatives:
                     return SampleResult(
@@ -91,8 +102,7 @@ class RejectionSampler:
                         attempts_used=attempts,
                     )
             else:
-                if use_prohibitions:
-                    prohibitions.add(response)
+                prohibitions.add(response)
 
         return SampleResult(
             success=len(matches) > 0,
@@ -157,9 +167,9 @@ class BacktrackingEncoder:
             collect_alternatives = (
                 False if i == (len(chunks) - 1) else self.config.collect_alternatives
             )
-            max_attemps = self.config.max_attempts_per_step
+            max_attempts = self.config.max_attempts_per_step
             if i == 0:
-                max_attemps = int(max_attemps * 1.5)
+                max_attempts = int(max_attempts * 1.5)
 
             result = self.sampler.sample(
                 client=client,
@@ -169,7 +179,7 @@ class BacktrackingEncoder:
                 system_prompt=system_prompt,
                 max_length=max_length,
                 temperature=temperature,
-                max_attempts=max_attemps,
+                max_attempts=max_attempts,
                 collect_alternatives=collect_alternatives,
                 max_alternatives=self.config.max_alternatives,
                 use_prohibitions=use_prohibitions,
