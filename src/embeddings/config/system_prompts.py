@@ -52,6 +52,7 @@ Occasionally include specific but plausible details like extension numbers, appl
 Your goal is to generate text that would be indistinguishable from genuine internal corporate communications.
 """
 
+### Story Scheme ###
 
 STORY_GENERATION = """You are a creative fiction writer crafting an engaging story one sentence at a time.
 Continue the story with the next plot development. Write a single, vivid sentence that moves the narrative forward.
@@ -86,6 +87,7 @@ Don't make it about: {boring_theme}
 
 Write a single vivid sentence that advances the plot."""
 
+### Summary Scheme ###
 
 FACT_GENERATION = """
 You will be given a news article. And your task is to extract exactly {k} facts that are explicitly stated in the article.
@@ -130,137 +132,77 @@ You must use all information provided by the list of facts and use NO additional
 The summary must be concise, truthful to the information presented in the list of facts, and natural to read.
 """
 
-FACT_DECOMPOSE = """
+FACT_DECOMPOSE_SIMPLE = """
 You will be given a summary of various facts from a news article.
-Your job is to decompose the summary into {num} facts that can be clearly separated from each other and be expressed in one sentence.
+Your job is to decompose the summary into {num_facts} facts that can be clearly separated from each other and be expressed in one sentence.
 List the facts in descending order based on their importance and use separator "[sep]" to separate them.
 """
 
 FACT_GENERATION_ANCHORED = """
-You will be given a news article. Extract exactly {k} facts that are explicitly stated in the article.
+Extract the {k} most important facts from this article in strict chronological order.
 
-REQUIREMENTS FOR EACH FACT:
-1. Must be a single, complete declarative sentence
-2. Must be DIRECTLY supported by specific text in the article
-3. Must contain at least 2 of these semantic anchors:
-   - A named entity (person, organization, or specific place)
-   - A specific number or quantity
-   - A specific date, time, or time reference
-   - A concrete, specific action verb (not "said", "is", "was")
+Requirements:
+- Each fact must be a single complete sentence
+- Each fact must contain at least one concrete anchor: a specific name, number, date, or location
+- Facts MUST be ordered by when events occurred, starting from the earliest event
+- Each fact must be essential - removing it would leave a gap in understanding the timeline
+- No two facts should share the same anchor (don't repeat names, numbers, or locations across facts)
 
-STRICT RULES:
-- Use exact wording from the article where possible
-- Never combine information from multiple sentences unless explicitly linked
-- Never include interpretation, inference, or background knowledge
-- Each fact must be verifiable by pointing to specific article text
-
-Rank the {k} facts in descending order of importance to the article's main event/topic.
-
-Output format (exactly {k} facts):
-1. [Most important fact with anchors]
-2. [Second fact with anchors]
-...
-{k}. [Least important fact with anchors]
-
-Output only the numbered list, nothing else.
+Format: One fact per line, numbered 1 through {k}, from earliest to latest event.
 """
 
 FACT_CONTINUATION_ANCHORED = """
-You will be given a news article and a list of key facts already extracted.
-Your task is to extract 1 additional fact from the article that is NOT in the list of extracted facts.
+You are extracting facts from a news article in chronological order. Your task is to find 1 new fact that occurred AFTER the previous facts.
 
-REQUIREMENTS FOR THE NEW FACT:
-1. Must be a single, complete declarative sentence.
-2. Must be DIRECTLY supported by specific text in the article
-3. Must contain at least 1 semantic anchors:
-   - Named entity (person, organization, specific place)
-   - Specific number or quantity  
-   - Specific date/time reference
-   - Concrete action verb
+REQUIREMENTS FOR YOUR NEW FACT:
+1. Must describe an event that occurred LATER IN TIME than all previously extracted facts on the list
+2. Must contain a UNIQUE ANCHOR not appearing in any fact above:
+   - A person's name not yet mentioned, OR
+   - A specific number/measurement not yet stated, OR
+   - A location/place not yet referenced
+3. Must be "load-bearing" - its removal would break the chronological chain
+4. Must be a single complete sentence with specific details from the article
+5. Be concise. Word the fact differently from the article to make it more concise.
 
-4. Never overlap with any existing fact in the list literally or semantically.
-5. Must be less important than the last fact in the current list
+PATTERNS TO AVOID:
+- Never start with the same subject as any previous fact
+- Never restate statistics in a different context
+- Never paraphrase or summarize existing facts
 
-STRICT RULES:
-- Extract using the article's exact wording where possible
-- Never paraphrase heavily - stay close to source text
-- The fact must be independently verifiable from the article
-
-Output only the text of the single extracted fact, nothing else.
+What is the NEXT event chronologically that introduces NEW information?
+Output only the text of the fact and nothing else.
 """
 
 FACT_SUMMARY_STRICT = """
-You will be given a numbered list of facts extracted from a news article.
-Your task is to write a coherent summary that incorporates ALL these facts.
+Write a cohesive news summary based on provided list of facts, preserving the order of the list of facts.
 
-CRITICAL RULES FOR SENTENCE STRUCTURE:
-1. Each fact MUST remain as its own separate sentence in the summary
-2. Do NOT merge multiple facts into a single sentence
-3. Do NOT split one fact across multiple sentences
-4. The number of sentences in your summary MUST equal the number of facts
+REQUIREMENTS:
+1. Every fact must appear in your summary exactly once, in the SAME order as provided in the list of facts
+2. Never reorder facts - the first fact provided must be the first in your summary
+3. Never add sentences that summarize, restate, or echo information from other sentences
+4. Never repeat any name, number, location, or quote in multiple sentences
+5. Each sentence must be indispensable - a reader should notice if any sentence were removed
+6. Preserve all specific anchors (names, numbers, dates, locations) from the original facts
+7. Never merge multiple facts into a single sentence
+8. Never add concluding or summary sentences at the end
 
-ALLOWED MODIFICATIONS:
-- Add transitional phrases at the START of sentences (However, Additionally, Meanwhile, Furthermore, As a result, In response, Subsequently)
-- Minor grammatical adjustments for flow (e.g., "The company" → "It" if referencing previous sentence)
-- Reorder facts slightly for narrative flow (but preserve relative importance grouping)
-
-NOT ALLOWED:
-- Combining two facts into one sentence
-- Adding new information not in the facts
-- Significantly rewording the core content of any fact
-- Omitting any fact from the summary
-
-The summary must read naturally while preserving each fact as a distinct sentence.
-
-Output only the summary paragraph, nothing else.
+Write the summary as flowing prose with one fact per sentence, maintaining a rough chronological flow:
 """
 
-FACT_SUMMARY_MINIMAL = """
-Convert these facts into a flowing summary paragraph.
+FACT_DECOMPOSE = """
+Decompose the provided summary into exactly {num_facts} distinct facts based on the order in the summary.
 
-STRICT REQUIREMENTS:
-1. Every fact = exactly one sentence in output
-2. Sentence count must equal fact count
-3. Only add: transition words (However, Also, Meanwhile, Then)
-4. Keep 90%+ of original wording intact
-5. Do not add any information beyond the facts
+REQUIREMENTS:
+1. Extract exactly {num_facts} facts following the order they are presented in the summary
+2. Each fact must be a single complete sentence, roughly corresponds to a sentence in the text
+3. If the fact in a complete sentence in the text is not an event, respect its placement in the text
+4. Each fact must contain at least one specific anchor (name, number, date, or location)
+5. Preserve the exact wording of anchors - do not paraphrase names, numbers, or quotes
+6. Each fact should be independent and understandable on its own
+7. Do not merge or split information across multiple sentences
 
-Output only the summary.
-"""
-
-FACT_EXTRACT_FROM_SUMMARY = """You are extracting individual facts from a news summary.
-
-The summary was constructed by combining exactly {num_facts} distinct facts, where each fact:
-- Is a single complete sentence (may contain internal quotes)
-- Contains semantic anchors: named entities, specific numbers, dates, or concrete actions
-- Was preserved as a separate sentence during summary creation (facts were NOT merged)
-
-Your task: Decompose this summary back into exactly {num_facts} individual fact sentences.
-
-CRITICAL RULES:
-1. Output EXACTLY {num_facts} facts - no more, no less
-2. Each fact must be ONE complete sentence from the summary
-3. Do NOT split a sentence containing a quote into multiple facts
-   - WRONG: Splitting `The CEO said, "Sales rose 40%." on Tuesday.` into two facts
-   - RIGHT: Keep it as ONE fact
-4. Do NOT merge multiple sentences into one fact
-5. Preserve EXACT wording from the summary - do not paraphrase
-6. Maintain original order as facts appear in the summary
-7. Use semantic anchors (names, numbers, dates, actions) to identify fact boundaries
-
-QUOTE HANDLING:
-- Quoted speech belongs to the sentence that introduces it
-- Look for reporting verbs (said, stated, announced, reported) before quotes
-- A period inside quotes does NOT end the outer sentence if the quote is embedded
-- Example: `Officials reported, "The damage exceeded $2 million." No injuries occurred.` = TWO facts
-
-TRANSITION WORDS:
-- Words like "However," "Additionally," "Meanwhile," "Furthermore," typically start a new fact
-
-OUTPUT FORMAT - use [sep] delimiter:
-[sep]First fact exactly as written
-[sep]Second fact exactly as written
-[sep]Third fact exactly as written
+Output format: Facts separated by [sep], from first sentence to last sentence
+Example: On Monday, X happened[sep]Then on Tuesday, Y occurred[sep]By Wednesday, Z followed
 """
 
 ALIGNMENT_CHECK_PROMPT = """
@@ -284,6 +226,7 @@ Then provide:
 - Alignment score: [percentage of exact/close matches]
 """
 
+### Unit Test Scheme ###
 
 UNIT_BEHAVIOR_PLAN = """
 You are assisting with covert communication through software testing. The user message

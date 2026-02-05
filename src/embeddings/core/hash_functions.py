@@ -15,7 +15,6 @@ class HashFunction:
     def _to_numpy_array(self, emb):
         return np.array(emb)
 
-    # Ensure that the output is a 1D array of bits
     def __call__(self, emb):
         raise NotImplementedError("Hash function must implement __call__")
 
@@ -117,7 +116,6 @@ class MajorityVoteHash(HashFunction):
         hash_counts: dict[tuple[int], int] = dict()
         for _ in range(self.n_samples):
             response = generate_response(
-                client=ctx.client,
                 prompt=ctx.history,
                 system_prompt=ctx.system_prompt,
                 max_length=ctx.max_length,

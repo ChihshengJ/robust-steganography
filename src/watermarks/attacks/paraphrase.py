@@ -31,8 +31,8 @@ Techniques to apply:
 
 Critical constraints:
 - Every fact, name, number, and detail from the original MUST appear in your output
-- Do NOT add any new information or interpretations
-- Do NOT omit anything, no matter how minor it seems
+- Never add any new information or interpretations
+- Never omit any information in the text, no matter how minor it seems
 
 Output format:
 First, silently identify the key information that must be preserved.
@@ -59,7 +59,7 @@ class ParaphraseAttack(Attack):
     def __init__(
         self,
         client: OpenAI,
-        model: str = "gpt-4o-mini",
+        model: str = "gpt-4.1-mini",
         temperature: float = 0.7,
         local_mode: bool | None = None,
         use_simple_prompt: bool = False,

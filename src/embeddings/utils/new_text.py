@@ -40,14 +40,14 @@ def clean_response(text) -> str:
 
 
 def generate_response(
-    client,
     prompt: str | list[str],
     system_prompt: str,
     max_length: int = 500,
     temperature: float = 0.7,
     top_p: float = 1.0,
     json_mode: bool = False,
-    reasoning_effort: str | None = "minimal",  # "low", "medium", "high", etc.
+    reasoning_effort: str
+    | None = "minimal",  # "minimal", "low", "medium", "high", "xhigh"
     max_retries: int = 3,
 ) -> str:
     model = STEGO_GEN_MODEL
@@ -59,14 +59,12 @@ def generate_response(
         {"role": "user", "content": prompt},
     ]
 
-    # Build payload based on model type
     payload = {
         "model": model,
         "messages": messages,
         "max_completion_tokens": max_length,
     }
 
-    # Add reasoning_effort for reasoning models
     if model in REASONING_MODELS:
         if reasoning_effort:
             payload["reasoning_effort"] = reasoning_effort
@@ -111,7 +109,3 @@ if __name__ == "__main__":
         "Nothing much, I'm just working on a project.",
         "Do you want me to take a look? We can grab some coffee.",
     ]
-
-    # client = openai.OpenAI()
-    # response = generate_response(client, conversation_history, system_prompt="")
-    # print("Generated response:", response)

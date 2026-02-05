@@ -35,7 +35,6 @@ from .core.hash_functions import (
     PCAHash,
     RandomProjectionHash,
 )
-from .core.new_summary_system import SummarySystemV2
 from .core.new_unit_test_system import UnitTestSystem
 
 # Simulation
@@ -57,7 +56,6 @@ __all__ = [
     "SentenceStegSystem",
     "StoryStegSystem",
     "SummarySystem",
-    "SummarySystemV2",
     "UnitTestSystem",
     # Encoders
     "Encoder",

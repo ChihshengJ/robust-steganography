@@ -82,7 +82,7 @@ class StegSystem(ABC):
         chunks: list[list[int]],
         history: Any,
         system_prompt: str,
-        max_length=200,
+        max_length: int = 200,
         **kwargs,
     ) -> Any:
         """Encode the chunks into template items."""

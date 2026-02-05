@@ -10,7 +10,7 @@ from datasets import load_dataset
 from embeddings import (
     PCAHash,
     RepetitionCode,
-    SummarySystemV2, ConvolutionalCode,
+    SummarySystem,
 )
 from embeddings.config.system_prompts import STORY_GENERATION
 from watermarks import (
@@ -59,7 +59,6 @@ def init_attacks(
         - If attack_configs is None: keyed by attack type (legacy behavior)
     """
     if attack_configs is None:
-        # Legacy behavior: create one attack per type with default settings
         return {
             "n-gram": NGramShuffleAttack(model=model, n=3),
             "synonym": SynonymAttack(method="wordnet"),
@@ -71,7 +70,6 @@ def init_attacks(
             ),
         }
 
-    # New behavior: create one attack per config with specified local_mode
     attacks = {}
     for cfg in attack_configs:
         local_mode = getattr(cfg, "local_mode", None)
@@ -185,7 +183,6 @@ class StegoExperiment:
         )
 
     def run(self) -> dict:
-        """Execute the full experiment."""
         # Load or initialize state
         if self.config.resume and self.checkpoint_mgr.exists():
             state = self.checkpoint_mgr.load()
@@ -527,11 +524,6 @@ class StegoExperiment:
         self.checkpoint_mgr.save(state)
 
 
-# =============================================================================
-# Plotting
-# =============================================================================
-
-
 def plot_recovery_results(
     tampering_levels: list[float],
     attack_labels: list[str],
@@ -582,15 +574,12 @@ def plot_recovery_results(
     print(f"Plots saved to {output_dir}")
 
 
-# =============================================================================
-# Main
-# =============================================================================
-
-
 def main():
     tp = [1.0]
 
     client = openai.OpenAI()
+
+    ## Use a callback to manipulate the PCA hash
     hash_fn = PCAHash(
         pca_dir="./src/pca/creative_stories/artifacts",
         bit_reducer=index_reducer(4),
@@ -615,7 +604,7 @@ def main():
     #     BypassEncoder(),
     # )
 
-    system = SummarySystemV2(
+    system = SummarySystem(
         client,
         2,
         hash_fn,
@@ -626,7 +615,7 @@ def main():
     news = load_dataset("abisee/cnn_dailymail", "3.0.0", split="test")
 
     attack_configs = [
-        AttackConfig("Paraphrase (local)", "paraphrase", True, local_mode=True),
+        # AttackConfig("Paraphrase (local)", "paraphrase", True, local_mode=True),
         # AttackConfig("Translate (local)", "translate", True, local_mode=True),
         AttackConfig("Paraphrase (global)", "paraphrase", True, local_mode=False),
         # AttackConfig("Translate (global)", "translate", True, local_mode=False),
@@ -637,11 +626,11 @@ def main():
         attack_configs=attack_configs,
         system=system,
         num_bits=3,
-        num_messages=2,
-        messages=[[0, 1, 0], [1, 0, 0]],
-        num_stego_per_message=1,
-        runs=3,
-        history=news[8]["article"],
+        num_messages=4,
+        messages=[[0, 1, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]],
+        num_stego_per_message=5,
+        runs=5,
+        history=news[4]["article"],
         seed=1228,
         checkpoint_path=Path("checkpoints/test/exp_checkpoint.pkl"),
         output_path=Path("figures/test/embedding_recovery_test"),

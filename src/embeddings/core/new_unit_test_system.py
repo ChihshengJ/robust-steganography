@@ -204,7 +204,6 @@ class UnitTestSystem(StegSystem):
         plan = BehaviorPlan([], [], [])
         for _ in range(self.PLAN_RETRY_LIMIT):
             response = generate_response(
-                client=self.client,
                 prompt=f"HumanEval problem:\n{problem}",
                 system_prompt=system_prompt,
                 max_length=500,
@@ -244,7 +243,6 @@ class UnitTestSystem(StegSystem):
                     prohibited_behaviors=prohibited
                 )
                 response = generate_response(
-                    client=self.client,
                     prompt=history,
                     system_prompt=system_prompt,
                     max_length=500,
@@ -295,7 +293,6 @@ class UnitTestSystem(StegSystem):
             length=self.message_length + self.key
         )
         response = generate_response(
-            client=self.client,
             prompt=prompt,
             system_prompt=system_prompt,
             max_length=3000,
@@ -336,7 +333,6 @@ class UnitTestSystem(StegSystem):
 
     def _sort_tests_by_priority(self, test_file: str) -> List[str]:
         response = generate_response(
-            client=self.client,
             prompt=test_file,
             system_prompt=UNIT_TEST_SORT,
             max_length=2000,
@@ -361,7 +357,6 @@ class UnitTestSystem(StegSystem):
         system_prompt = UNIT_TEST_TO_BEHAVIOR
         prompt = f"HumanEval problem:\n {problem}\nList of unit tests:\n{tests}"
         response = generate_response(
-            client=self.client,
             prompt=prompt,
             system_prompt=system_prompt,
             max_length=1000,

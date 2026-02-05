@@ -310,7 +310,6 @@ class UnitSummarySystem:
         errors: list[str] = []
         for _ in range(self.PLAN_RETRY_LIMIT):
             response = generate_response(
-                client=self.client,
                 prompt=f"HumanEval problem:\n{problem}",
                 system_prompt=prompt,
                 max_length=3500,
@@ -347,7 +346,6 @@ class UnitSummarySystem:
                 prohibited_tests=self._format_prohibited_tests(prohibited),
             )
             response = generate_response(
-                client=self.client,
                 prompt=history,
                 system_prompt=system_prompt,
                 max_length=500,
@@ -412,7 +410,6 @@ class UnitSummarySystem:
                 prohibited_tests=self._format_prohibited_tests(prohibited),
             )
             response = generate_response(
-                client=self.client,
                 prompt=history,
                 system_prompt=system_prompt,
                 max_length=500,
@@ -502,7 +499,6 @@ class UnitSummarySystem:
 
     def _sort_tests_by_priority(self, test_file: str) -> List[str]:
         response = generate_response(
-            client=self.client,
             prompt=test_file,
             system_prompt=UNIT_TEST_SORT,
             max_length=2000,

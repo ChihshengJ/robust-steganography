@@ -13,13 +13,6 @@ from .steg_system import StegSystem
 
 
 class StoryStegSystem(StegSystem):
-    """
-    Generate event-based creative story plot for stego texts.
-
-    Encoding: Each story event (mostly sentence) encodes one chunk of bits via its embedding.
-    Recovery: Simple sentence tokenization extracts events, then embeddings are hashed.
-    """
-
     def __init__(
         self,
         client: Any,
@@ -48,7 +41,7 @@ class StoryStegSystem(StegSystem):
         temperature: float = 0.7,
         **kwargs,
     ) -> tuple[list[str], list]:
-        cover_texts, embeddings = self._backtracking_encoder.encode(
+        return self._backtracking_encoder.encode(
             client=self.client,
             chunks=[np.array(lst) for lst in chunks],
             initial_history=history if isinstance(history, list) else [history],
@@ -56,9 +49,7 @@ class StoryStegSystem(StegSystem):
             system_prompt=system_prompt,
             max_length=max_length,
             temperature=temperature,
-            use_prohibitions=False,
         )
-        return cover_texts, embeddings
 
     def hide_message(self, data: Any, seed: str, **kwargs) -> str:
         chunks, self._error_encoded_length = self._encode_to_chunks(data)
@@ -75,17 +66,13 @@ class StoryStegSystem(StegSystem):
         return " ".join(cover_texts)
 
     def recover_message(self, stego_text: str) -> Any:
-        """
-        Recover message using just sentence tokenization.
-        """
         if self._error_encoded_length is None:
             raise ValueError(
                 "No encoded length set. Run hide_message first or set error_encoded_length."
             )
 
         expected_chunks = self._error_encoded_length // self.hash_output_length
-        sentences = sent_tokenize(stego_text)
-        sentences = [s.strip() for s in sentences if s.strip()]
+        sentences = [s.strip() for s in sent_tokenize(stego_text) if s.strip()]
 
         print(f"Extracted {len(sentences)} sentences, expected {expected_chunks}")
         if len(sentences) != expected_chunks:
