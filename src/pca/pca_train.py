@@ -1,3 +1,5 @@
+import json
+from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -6,13 +8,14 @@ from tqdm import tqdm
 
 ### Configuration
 
-OUT_DIR = Path("./src/pca/summary/artifacts")
+OUT_DIR = Path("./src/pca/litreview/artifacts")
 OUT_DIR.mkdir(exist_ok=True)
 
 # Input files
-EMBED_NPY = OUT_DIR / "fact_embeddings.npy"
+EMBED_NPY = OUT_DIR / "sentence_embeddings.npy"
 PARAPHRASE_EMBED_NPY = OUT_DIR / "paraphrase_embeddings.npy"
-GROUP_LABELS_NPY = OUT_DIR / "paraphrase_group_labels.npy"
+GROUP_LABELS_NPY = OUT_DIR / "group_labels.npy"
+SENTENCES_JSON = OUT_DIR / "sentences.json"
 
 # Output files
 PCA_COMPONENTS_NPY = OUT_DIR / "pca_components.npy"
@@ -23,8 +26,10 @@ PCA_STABILITY_NPY = OUT_DIR / "pca_stability_scores.npy"
 PCA_CONSISTENCY_NPY = OUT_DIR / "pca_consistency_rates.npy"
 
 # Settings
-PCA_COMPONENTS = 10
+PCA_COMPONENTS = 20
 EPS = 1e-8
+
+USE_DIFFERENCE_VECTORS = True
 
 
 ### Sanity Checks
@@ -35,11 +40,9 @@ def sanity_checks(X: np.ndarray, k: int):
     n, d = X.shape
     print(f"Samples: {n}, Dim: {d}")
 
-    # NaN/Inf check
     if not np.isfinite(X).all():
         raise ValueError("Embeddings contain NaN or Inf")
 
-    # Variance check
     var_per_dim = X.var(axis=0)
     total_var = var_per_dim.sum()
     print(f"Total variance: {total_var:.4e}")
@@ -47,11 +50,9 @@ def sanity_checks(X: np.ndarray, k: int):
     if total_var < 1e-3:
         raise ValueError("Total variance too small — embeddings likely collapsed")
 
-    # Sample size check
     if n < 20 * k:
         print(f"WARNING: Only {n} samples for {k} components (recommended ≥ {20 * k})")
 
-    # Effective rank
     cov = np.cov(X, rowvar=False)
     eigvals = np.linalg.eigvalsh(cov)
     eigvals = np.maximum(eigvals, 0)
@@ -61,6 +62,32 @@ def sanity_checks(X: np.ndarray, k: int):
 
     if effective_rank < k:
         print(f"WARNING: Effective rank < PCA_COMPONENTS ({effective_rank:.2f} < {k})")
+
+
+### Difference Vector Construction
+
+
+def build_difference_vectors(
+    embeddings: np.ndarray, sentences: list[dict]
+) -> np.ndarray:
+    # Group sentence indices by flat_idx (reference identity)
+    groups = defaultdict(list)
+    for i, sent in enumerate(sentences):
+        groups[sent["flat_idx"]].append(i)
+
+    diffs = []
+    for flat_idx, indices in groups.items():
+        if len(indices) < 2:
+            continue
+        group_embs = embeddings[indices]
+        for i in range(len(group_embs)):
+            for j in range(i + 1, len(group_embs)):
+                diffs.append(group_embs[j] - group_embs[i])
+
+    diffs = np.array(diffs)
+    n_groups = sum(1 for idxs in groups.values() if len(idxs) >= 2)
+    print(f"Built {len(diffs)} difference vectors from {n_groups} reference groups")
+    return diffs
 
 
 ### Paraphrase Stability Analysis
@@ -77,11 +104,10 @@ def compute_stability_scores(
     Compute stability score for each PCA component.
 
     Stability = between-group variance / within-group variance
-    Higher = more stable under paraphrasing
+    Higher = stabler under paraphrasing
     """
     print("\nComputing stability scores...")
 
-    # Center embeddings
     all_emb = np.vstack([original_emb, para_emb])
     all_labels = np.concatenate([np.arange(len(original_emb)), group_labels])
     centered = all_emb - mean
@@ -90,9 +116,8 @@ def compute_stability_scores(
     n_components = components.shape[0]
     embed_dim = components.shape[1]
 
-    # Compute scatter matrices
-    Sw = np.zeros((embed_dim, embed_dim))  # Within-group
-    Sb = np.zeros((embed_dim, embed_dim))  # Between-group
+    Sw = np.zeros((embed_dim, embed_dim))
+    Sb = np.zeros((embed_dim, embed_dim))
     overall_mean = centered.mean(axis=0)
 
     for label in tqdm(unique_labels, desc="Scatter matrices", leave=False):
@@ -100,15 +125,12 @@ def compute_stability_scores(
         group = centered[mask]
         group_mean = group.mean(axis=0)
 
-        # Within-group
         group_centered = group - group_mean
         Sw += group_centered.T @ group_centered
 
-        # Between-group
         diff = (group_mean - overall_mean).reshape(-1, 1)
         Sb += len(group) * (diff @ diff.T)
 
-    # Compute stability for each component
     stability_scores = []
     for i in range(n_components):
         direction = components[i]
@@ -142,17 +164,14 @@ def compute_consistency_rates(
         direction = components[i]
         threshold = thresholds[i]
 
-        # Hash originals
         orig_proj = (original_emb - mean) @ direction
         orig_bits = (orig_proj > threshold).astype(int)
 
-        # Hash paraphrases
         para_proj = (para_emb - mean) @ direction
         para_bits = (para_proj > threshold).astype(int)
 
-        # Check consistency
         matches = sum(
-            para_bits[i] == orig_bits[group_labels[i]] for i in range(len(para_bits))
+            para_bits[j] == orig_bits[group_labels[j]] for j in range(len(para_bits))
         )
         consistency = matches / len(para_bits)
         consistency_rates.append(consistency)
@@ -164,7 +183,7 @@ def print_component_analysis(
     explained_var: np.ndarray,
     stability_scores: np.ndarray | None,
     consistency_rates: np.ndarray | None,
-    n_show: int = 10,
+    n_show: int = 20,
 ):
     """Print analysis of top components."""
     print("\n" + "=" * 70)
@@ -187,7 +206,6 @@ def print_component_analysis(
             row += f"  {consistency_rates[i] * 100:>9.1f}%"
         print(row)
 
-    # Recommendations
     print("\n" + "-" * 70)
     print("Recommendations:")
 
@@ -197,7 +215,6 @@ def print_component_analysis(
             f"  Highest consistency: PC{best_consistency} ({consistency_rates[best_consistency] * 100:.1f}%)"
         )
 
-        # Find components with >70% consistency
         good_components = np.where(consistency_rates > 0.7)[0]
         if len(good_components) > 0:
             print(f"  Components with >70% consistency: {list(good_components)}")
@@ -218,6 +235,9 @@ def print_component_analysis(
 def main():
     print("=" * 60)
     print("PCA Training")
+    print(
+        f"Mode: {'Difference vectors' if USE_DIFFERENCE_VECTORS else 'Raw embeddings'}"
+    )
     print("=" * 60)
 
     # Load embeddings
@@ -236,15 +256,40 @@ def main():
         group_labels = None
         print("No paraphrase data found — skipping stability analysis")
 
-    # Center and validate
+    # Global mean of original embeddings (used for centering at hash time)
     mean = embeddings.mean(axis=0)
-    X = embeddings - mean
-    sanity_checks(X, PCA_COMPONENTS)
 
-    # Train PCA
-    print("\nTraining PCA...")
-    pca = PCA(n_components=PCA_COMPONENTS)
-    Z = pca.fit_transform(X)
+    if USE_DIFFERENCE_VECTORS:
+        # Load sentences.json for group structure
+        if not SENTENCES_JSON.exists():
+            raise FileNotFoundError(
+                f"{SENTENCES_JSON} not found — needed for difference vector grouping"
+            )
+        with open(SENTENCES_JSON) as f:
+            sentences = json.load(f)
+        print(f"Loaded {len(sentences)} sentences for grouping")
+
+        # Build within-group pairwise differences
+        diffs = build_difference_vectors(embeddings, sentences)
+        sanity_checks(diffs, PCA_COMPONENTS)
+
+        # Train PCA on difference vectors (no centering — diffs are already ~zero mean)
+        print("\nTraining PCA on difference vectors...")
+        pca = PCA(n_components=PCA_COMPONENTS)
+        pca.fit(diffs)
+
+        # Project ORIGINAL embeddings onto difference-PCA components for thresholds
+        # Subtract global mean so projections are centered
+        Z = (embeddings - mean) @ pca.components_.T
+
+    else:
+        # Standard: PCA on centered raw embeddings
+        X = embeddings - mean
+        sanity_checks(X, PCA_COMPONENTS)
+
+        print("\nTraining PCA on raw embeddings...")
+        pca = PCA(n_components=PCA_COMPONENTS)
+        Z = pca.fit_transform(X)
 
     # Compute thresholds (median for balanced bits)
     thresholds = np.median(Z, axis=0)
@@ -256,7 +301,7 @@ def main():
         f"Bit balance (should be ~0.5): min={bit_means.min():.3f}, max={bit_means.max():.3f}"
     )
 
-    # Save basic PCA artifacts
+    # Save PCA artifacts (same format regardless of training mode)
     np.save(PCA_COMPONENTS_NPY, pca.components_)
     np.save(PCA_MEAN_NPY, mean)
     np.save(PCA_THRESHOLDS_NPY, thresholds)

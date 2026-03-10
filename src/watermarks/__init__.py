@@ -1,4 +1,4 @@
-from .attacks import Attack, NGramShuffleAttack, ParaphraseAttack, SynonymAttack
+from .attacks import Attack, NullAttack, NGramShuffleAttack, ParaphraseAttack, SynonymAttack
 from .core.embedder import Embedder
 from .core.extractor import Extractor
 from .covertext import CovertextCalculator, SmoothCovertextCalculator
@@ -37,6 +37,7 @@ __all__ = [
     "CovertextCalculator",
     "SmoothCovertextCalculator",
     "Attack",
+    "NullAttack",
     "SynonymAttack",
     "NGramShuffleAttack",
     "ParaphraseAttack",

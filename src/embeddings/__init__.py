@@ -35,6 +35,8 @@ from .core.hash_functions import (
     PCAHash,
     RandomProjectionHash,
 )
+from .core.litreview_system import LitReviewSystem
+from .core.litreview_v2 import LitReviewSystemV2
 from .core.new_unit_test_system import UnitTestSystem
 
 # Simulation
@@ -56,7 +58,8 @@ __all__ = [
     "SentenceStegSystem",
     "StoryStegSystem",
     "SummarySystem",
-    "UnitTestSystem",
+    "LitReviewSystem",
+    "LitReviewSystemV2",
     # Encoders
     "Encoder",
     "CharacterEncoder",

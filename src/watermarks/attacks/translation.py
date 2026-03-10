@@ -18,10 +18,9 @@ class TranslationAttack(Attack):
     def __init__(
         self,
         client: OpenAI,
-        model: str = "gpt-4o-mini",
+        model: str = "gpt-4.1",
         temperature: float = 0.0,
         language: str = "French",
-        local_mode: bool | None = None,
     ):
         """
         Initialize the translation attack.
@@ -31,12 +30,8 @@ class TranslationAttack(Attack):
             model: GPT model to use (default: "gpt-4o-mini")
             temperature: Sampling temperature (0.0 = deterministic, 1.0 = creative)
             language: the medium language used for back-translation
-            local_mode: Controls local vs global attack behavior.
-                - None (default): Use legacy behavior where tampering >= 0.99 forces global mode.
-                - True: Force local mode (sentence-level) even at 100% tampering.
-                - False: Force global mode regardless of tampering level.
         """
-        super().__init__(local_mode=local_mode)
+        super().__init__()
         self.client = client
         self.model = model
         self.temperature = temperature
@@ -44,9 +39,12 @@ class TranslationAttack(Attack):
 
     def __call__(self, text: str, tampering: float, local: bool) -> str:
         """Apply the translation attack."""
-        use_local = self._resolve_local_mode(local, tampering)
+        if not 0 <= tampering <= 1:
+            raise ValueError("Probability must be between 0 and 1")
+        if tampering == 0:
+            return text
 
-        if use_local:
+        if self._resolve_local_mode(local, tampering):
             return self._local_attack(text, tampering)
         else:
             return self._global_attack(text)

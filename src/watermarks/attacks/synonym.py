@@ -36,7 +36,7 @@ class SynonymAttack(Attack):
                 Note: For synonym attack, local mode processes each sentence independently,
                 while global mode processes all words at once.
         """
-        super().__init__(local_mode=local_mode)
+        super().__init__()
         self.method = method
 
         # Select transformation based on the method
@@ -60,9 +60,7 @@ class SynonymAttack(Attack):
         if tampering == 0:
             return text
 
-        use_local = self._resolve_local_mode(local, tampering)
-
-        if use_local:
+        if self._resolve_local_mode(local, tampering):
             return self._local_synonym(text, tampering)
         else:
             return self._global_synonym(text, tampering)

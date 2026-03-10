@@ -5,8 +5,9 @@ import numpy as np
 from nltk.tokenize import sent_tokenize
 
 from ..config.constants import BacktrackConfig
-from ..config.system_prompts import (
+from ..config.summary_prompts import (
     FACT_CONTINUATION_ANCHORED,
+    FACT_CONTINUATION_TEMPLATE,
     FACT_DECOMPOSE,
     FACT_GENERATION_ANCHORED,
     FACT_SUMMARY_STRICT,
@@ -17,7 +18,7 @@ from ..utils.sample_utils import (
     BacktrackingEncoder,
     RejectionSampler,
     StepChoice,
-    check_near_duplicate
+    check_near_duplicate,
 )
 from .encoder import Encoder
 from .error_correction import ErrorCorrection
@@ -25,7 +26,9 @@ from .hash_functions import HashFunction
 from .steg_system import StegSystem
 
 
-def build_prompt_for_facts(history: dict, system_prompt: str, covered: set[str]) -> tuple[str, str]:
+def build_prompt_for_facts(
+    history: dict, system_prompt: str, covered: set[str]
+) -> tuple[str, str]:
     def extract_topics(facts: list[str]) -> str:
         keywords = {
             word.strip(".,;:\"'-()[]")
@@ -38,22 +41,13 @@ def build_prompt_for_facts(history: dict, system_prompt: str, covered: set[str])
     all_covered = history["base_facts"] + history["optional_facts"]
     facts_numbered = "\n".join(f"{i + 1}. {f}" for i, f in enumerate(all_covered))
     topic_hints = extract_topics(all_covered)
-    prompt =  f"""
-{history["article"]}
-FACTS ALREADY EXTRACTED ({len(all_covered)} total) - you must find something DIFFERENT than these:
-{facts_numbered}
-
-TOPICS ALREADY COVERED: {topic_hints}
-
-Extract ONE NEW fact that:
-- Covers an event that occurred LATER IN TIME than all previously extracted facts on the list
-- Is a single complete sentence
-- Contains specific names, numbers, or dates from the article
-
-Look for: secondary details, specific quotes, background context, reactions, locations, times.
-
-Continue with fact {len(all_covered) + 1}:
-"""
+    prompt: str = FACT_CONTINUATION_TEMPLATE.format(
+        article=history["article"],
+        n_total=len(all_covered),
+        facts_numbered=facts_numbered,
+        aspect_hints=topic_hints,
+        next_number=len(all_covered) + 1,
+    )
     system_prompt_mod = system_prompt
     if len(covered) > 0:
         system_prompt_mod += f"\nAdditionally, avoid these facts that are already covered: \n- {'\n- '.join(list(covered)[-7:])}"
@@ -184,7 +178,9 @@ class SummarySystem(StegSystem):
 
         ### Generate summary
         all_facts = self._base_facts + self._optional_facts
-        facts_formatted = "\n".join(f"{i + 1}. {fact}" for i, fact in enumerate(all_facts))
+        facts_formatted = "\n".join(
+            f"{i + 1}. {fact}" for i, fact in enumerate(all_facts)
+        )
 
         print(f"\n{'=' * 60}")
         print("Generating summary...")
@@ -206,7 +202,9 @@ class SummarySystem(StegSystem):
 
     def recover_message(self, stego_text: str):
         if self.message_length is None:
-            raise ValueError("No message length set. Run hide_message first or set message_length.")
+            raise ValueError(
+                "No message length set. Run hide_message first or set message_length."
+            )
 
         expected_optional = self.message_length // self.hash_output_length
         expected_total = self.key + expected_optional
@@ -214,7 +212,9 @@ class SummarySystem(StegSystem):
         print(f"\n{'=' * 60}")
         print("Recovery - LLM Decomposition")
         print(f"{'=' * 60}")
-        print(f"  Expected facts: {expected_total} (key={self.key}, optional={expected_optional})")
+        print(
+            f"  Expected facts: {expected_total} (key={self.key}, optional={expected_optional})"
+        )
 
         all_facts = self._decompose_summary(stego_text, expected_total)
         print(f"  Extracted facts: {len(all_facts)}")
@@ -228,7 +228,9 @@ class SummarySystem(StegSystem):
             print(f"    {self.key + i + 1}. {f}")
 
         if len(optional_facts) < expected_optional:
-            print(f"    Only {len(optional_facts)} optional facts, expected {expected_optional}")
+            print(
+                f"    Only {len(optional_facts)} optional facts, expected {expected_optional}"
+            )
 
         embeddings = get_embeddings_in_batch(self.client, optional_facts)
         return self._decode_from_embeddings(embeddings, self.message_length)
@@ -260,7 +262,7 @@ class SummarySystem(StegSystem):
             for i in range(1, 100):
                 prefix = f"{i}."
                 if line.startswith(prefix):
-                    fact_text = line[len(prefix):].strip()
+                    fact_text = line[len(prefix) :].strip()
                     if fact_text:
                         facts.append(fact_text)
                     break

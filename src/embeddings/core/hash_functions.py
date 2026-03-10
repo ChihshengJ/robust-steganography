@@ -15,7 +15,7 @@ class HashFunction:
     def _to_numpy_array(self, emb):
         return np.array(emb)
 
-    def __call__(self, emb):
+    def __call__(self, emb, **kwargs):
         raise NotImplementedError("Hash function must implement __call__")
 
     def get_output_length(self):
@@ -29,7 +29,7 @@ class RandomProjectionHash(HashFunction):
         self.rand_matrix = np.random.randn(embedding_dim, num_bits)
         self.output_length = num_bits
 
-    def __call__(self, emb):
+    def __call__(self, emb, **kwargs):
         emb = self._to_numpy_array(emb)
         projection = emb @ self.rand_matrix
         hashes = (projection > 0).astype(int)
@@ -47,7 +47,7 @@ class NaivePCAHash(HashFunction):
         self.end = end
         self.output_length = end - start
 
-    def __call__(self, emb):
+    def __call__(self, emb, **kwargs):
         emb = self._to_numpy_array(emb)
         transformed = self.pca.transform(emb.reshape(1, -1))
         return (transformed[:, self.start : self.end] > 0).astype(int).ravel()
@@ -71,7 +71,7 @@ class PCAHash(HashFunction):
         self.bit_reducer = bit_reducer
         self.output_length = 1
 
-    def __call__(self, emb):
+    def __call__(self, emb, **kwargs):
         emb = self._to_numpy_array(emb)
         z = (emb - self.mean) @ self.components.T  # (n_components,)
         bits = (z > self.thresholds).astype(np.int8).ravel()
@@ -139,7 +139,7 @@ class MajorityVoteHash(HashFunction):
         print(self._majority)
         return majority_key
 
-    def __call__(self, emb):
+    def __call__(self, emb, **kwargs):
         if self._majority is None:
             raise RuntimeError("Hash not calibrated by sampling.")
         emb = self._to_numpy_array(emb)
@@ -177,7 +177,7 @@ class OracleHash(HashFunction):
         if seed is not None:
             np.random.seed(seed)
 
-    def __call__(self, emb, corrupt: bool = False) -> np.ndarray:
+    def __call__(self, emb, corrupt: bool = False, **kwargs) -> np.ndarray:
         # Use embedding as key (convert to string for dict key)
         emb_array = self._to_numpy_array(emb)
         key = emb_array.tobytes()

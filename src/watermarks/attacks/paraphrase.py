@@ -20,37 +20,52 @@ Input: "The scientist discovered a new species in the rainforest."
 Output: "A previously unknown species was found by the researcher in the tropical jungle."
 """
 
-SYSTEM_PROMPT_GLOBAL = """You are an expert paraphrasing assistant tasked with completely rewriting text while preserving its meaning.
-Your objective is to transform the text as dramatically as possible while keeping all information intact.
+# SYSTEM_PROMPT_GLOBAL = """You are an expert paraphrasing assistant tasked with completely rewriting text while preserving its meaning.
+# Your objective is to transform the text as dramatically as possible while keeping all information intact.
+#
+# Techniques to apply:
+# 1. **Paragraph organization**: This is the priority.
+#     Reorder information where logically possible.
+#     Change the sentence order, swap close sentences, parallelled key points.
+#     Nothing is off-limit as long as the entire text conveys the same information.
+# 2. **Vocabulary**: Replace words with synonyms throughout. Avoid reusing any distinctive phrases from the original.
+# 3. **Sentence structure**: Convert between active/passive voice, change clause order, split long sentences or combine short ones.
+# 4. **Expression style**: If the original is formal, stay formal but use different formal expressions. Same for informal text.
+#
+# Critical constraints:
+# - Every fact, name, number, and detail from the original MUST appear in your output
+# - Never add any new information or interpretations
+# - Never omit any information in the text
+#
+# Output format:
+# First, identify the key information that must be preserved.
+# Output them after the marker "[key points]".
+# Then output your paraphrase based on the key points after the marker "[paraphrased message]".
+# Output only the paraphrased text after the marker - no bullet points, no explanations.
+# """
 
-Techniques to apply:
-1. **Vocabulary**: Replace words with synonyms throughout. Avoid reusing any distinctive phrases from the original.
-2. **Sentence structure**: Convert between active/passive voice, change clause order, split long sentences or combine short ones.
-3. **Paragraph organization**: Reorder information where logically possible. Lead with different points than the original.
-4. **Expression style**: If the original is formal, stay formal but use different formal expressions. Same for informal text.
+SYSTEM_PROMPT_GLOBAL = """You are an expert paraphrasing assistant. Your task is to completely rewrite text so that it is structurally unrecognizable from the original while preserving every piece of information.
+## Priority 1: Structural Transformation
+- Aggressively reorder paragraphs and sentences. Move conclusions to the beginning, supporting details to new positions, or interleave points that were originally separated.
+- Split the text into a different number of paragraphs than the original.
+- If the original presents A then B then C, consider presenting B then C then A, or weaving them together — any arrangement that conveys the same information in a different structure.
+- Merge sentences that were separate; break apart sentences that were combined. No sentence in your output should map 1-to-1 to an original sentence.
+## Priority 2: Lexical and Syntactic Transformation
+- Replace distinctive words and phrases with synonyms or equivalent expressions.
+- Alternate between active and passive voice differently from the original.
+- Restructure clause ordering within sentences (e.g., move subordinate clauses, invert cause-effect presentation).
+- Match the register (formal/informal) of the original but use entirely different expressions within that register.
+## Hard Constraints
+- Every fact, name, number, date, statistic, and detail from the original MUST appear in your output. Missing even one is a failure.
+- Add nothing: no new information, no interpretations, no editorial commentary.
+- Remove nothing: if the original mentions it, your output mentions it.
 
-Critical constraints:
-- Every fact, name, number, and detail from the original MUST appear in your output
-- Never add any new information or interpretations
-- Never omit any information in the text, no matter how minor it seems
+## Output Format
+First, extract every discrete fact and detail that must be preserved. List them after the marker "[key points]" as a numbered list.
+Then, using ONLY those key points, write a fully restructured paraphrase after the marker "[paraphrased message]". Output only flowing prose after this marker — no bullet points, no headers, no meta-commentary.
 
-Output format:
-First, silently identify the key information that must be preserved.
-Then output your paraphrase after the marker "[paraphrased message]".
-Output only the paraphrased text after the marker - no bullet points, no explanations.
-"""
-
-SYSTEM_PROMPT_GLOBAL_SIMPLE = """Completely rewrite the following text using different words, sentence structures, and organization. 
-
-Requirements:
-- Change as much of the wording as possible
-- Restructure sentences and reorder information where logical
-- Preserve ALL facts, names, numbers, and details exactly
-- Do not add or remove any information
-- Maintain the same overall meaning and tone
-
-Output only your rewritten version, nothing else.
-"""
+## Self-Check Before Outputting
+Verify: (1) Does every key point appear in the paraphrase? (2) Is the paragraph/sentence order substantially different from the original? (3) Would a side-by-side comparison show no sentence-level correspondence? If any answer is no, revise before outputting."""
 
 
 class ParaphraseAttack(Attack):
@@ -59,10 +74,8 @@ class ParaphraseAttack(Attack):
     def __init__(
         self,
         client: OpenAI,
-        model: str = "gpt-4.1-mini",
+        model: str = "gpt-4.1",
         temperature: float = 0.7,
-        local_mode: bool | None = None,
-        use_simple_prompt: bool = False,
     ):
         """
         Initialize the paraphrase attack.
@@ -75,29 +88,26 @@ class ParaphraseAttack(Attack):
                 - None (default): Use legacy behavior where tampering >= 0.99 forces global mode.
                 - True: Force local mode (sentence-level) even at 100% tampering.
                 - False: Force global mode regardless of tampering level.
-            use_simple_prompt: If True, use the simpler global prompt without the
-                marker extraction step. May work better with some models.
         """
-        super().__init__(local_mode=local_mode)
+        super().__init__()
         self.client = client
         self.model = model
         self.temperature = temperature
-        self.use_simple_prompt = use_simple_prompt
 
     def __call__(self, text: str, tampering: float, local: bool) -> str:
         """Apply the paraphrase attack."""
-        use_local = self._resolve_local_mode(local, tampering)
+        if not 0 <= tampering <= 1:
+            raise ValueError("Probability must be between 0 and 1")
+        if tampering == 0:
+            return text
 
-        if use_local:
+        if self._resolve_local_mode(local, tampering):
             return self._local_paraphrase(text, tampering)
         else:
             return self._global_paraphrase(text)
 
     def _global_paraphrase(self, text: str) -> str:
         """Paraphrase entire text at once."""
-        if self.use_simple_prompt:
-            return self._global_paraphrase_simple(text)
-
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -131,28 +141,6 @@ class ParaphraseAttack(Attack):
             return result
         except Exception as e:
             print(f"Global paraphrase attack failed: {e}")
-            return text
-
-    def _global_paraphrase_simple(self, text: str) -> str:
-        """Paraphrase entire text using the simpler prompt."""
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": SYSTEM_PROMPT_GLOBAL_SIMPLE,
-                    },
-                    {"role": "user", "content": text},
-                ],
-                temperature=self.temperature,
-                top_p=0.95,
-            )
-            result = response.choices[0].message.content.strip()
-            result = " ".join(result.split())
-            return result
-        except Exception as e:
-            print(f"Global paraphrase (simple) attack failed: {e}")
             return text
 
     def _local_paraphrase(self, text: str, tampering: float) -> str:

@@ -54,7 +54,7 @@ Your goal is to generate text that would be indistinguishable from genuine inter
 
 ### Story Scheme ###
 
-STORY_GENERATION = """You are a creative fiction writer crafting an engaging story one sentence at a time.
+STORY_GENERATION_OLD = """You are a creative fiction writer crafting an engaging story one sentence at a time.
 Continue the story with the next plot development. Write a single, vivid sentence that moves the narrative forward.
 Story elements to weave in: {items}
 Theme to avoid: {boring_theme}
@@ -65,6 +65,23 @@ Guidelines for compelling storytelling:
 - Build tension, mystery, or emotional resonance
 - Vary your sentence rhythm and structure naturally
 - Trust the reader - show, don't tell
+
+Write only your next sentence."""
+
+STORY_GENERATION = """You are a concise fiction writer crafting a tightly structured story one sentence at a time.
+Each sentence you write is ONE distinct chronological event — a single action, observation, or revelation that advances the plot.
+Continue the story with the next plot beat. Write exactly one sentence.
+Story elements to weave in: {items}
+Theme to avoid: {boring_theme}
+
+Guidelines:
+- One event per sentence: never pack multiple actions, discoveries, or scene changes into a single sentence.
+- Chronological discipline: each sentence must occur strictly AFTER the previous one in story time. No flashbacks, no simultaneous events, no "as X happened, Y happened" constructions.
+- Brevity over flourish: aim for 15-40 words. Convey the event with one or two concrete sensory details, not cascading clauses.
+- Avoid compound sentences joined by "and", "while", "as", or semicolons to make sure the output contains only ONE event.
+- Each sentence should be self-contained enough that a reader could identify WHAT happened in that beat without needing the surrounding sentences.
+- Advance the plot: every sentence must change the story's state — a new action taken, a new fact revealed, a new location entered, or a new decision made.
+- Let characters drive the story through specific choices and reactions.
 
 Write only your next sentence."""
 
@@ -86,6 +103,20 @@ Include these elements: {items}
 Don't make it about: {boring_theme}
 
 Write a single vivid sentence that advances the plot."""
+
+STORY_SEGMENTATION = """You are a narrative analyst. The following story was originally written as exactly {n_chunks} sentences, each advancing the plot by one chronological beat.
+The text below is a paraphrased version that may have split, merged, or restructured sentences, but the same {n_chunks} sequential plot events are present in chronological order.
+Your task: segment this text into exactly {n_chunks} chunks, where each chunk captures all and only the information from one original plot event.
+
+Rules:
+- Output exactly {n_chunks} chunks in chronological story order. Each chunk must have its content.
+- Every word in the text must appear in exactly one chunk. Do not add, remove, or rephrase any words — partition the text exactly as written.
+- If a paraphrased sentence contains information from two original plot events, split it at the appropriate boundary.
+- If multiple paraphrased sentences belong to the same original plot event, concatenate them into one chunk.
+
+Respond with a JSON object: {{"chunks": ["chunk1", "chunk2", ...]}}
+Output only valid JSON, no preamble."""
+
 
 ### Summary Scheme ###
 
@@ -180,11 +211,10 @@ REQUIREMENTS:
 1. Every fact must appear in your summary exactly once, in the SAME order as provided in the list of facts
 2. Never reorder facts - the first fact provided must be the first in your summary
 3. Never add sentences that summarize, restate, or echo information from other sentences
-4. Never repeat any name, number, location, or quote in multiple sentences
-5. Each sentence must be indispensable - a reader should notice if any sentence were removed
-6. Preserve all specific anchors (names, numbers, dates, locations) from the original facts
-7. Never merge multiple facts into a single sentence
-8. Never add concluding or summary sentences at the end
+4. Each sentence must be indispensable - a reader should notice if any sentence were removed
+5. Preserve all specific anchors (names, numbers, dates, locations) from the original facts
+6. Never merge multiple facts into a single sentence
+7. Never add concluding or summary sentences at the end
 
 Write the summary as flowing prose with one fact per sentence, maintaining a rough chronological flow:
 """

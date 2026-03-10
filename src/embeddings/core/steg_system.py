@@ -1,10 +1,12 @@
+from embeddings.config.constants import BacktrackConfig
 from abc import ABC, abstractmethod
 from typing import Any, Sequence
 
 from nltk.tokenize import sent_tokenize
+import numpy as np
 
 from ..utils.get_embedding import get_embeddings_in_batch
-from ..utils.sample_utils import sample_concurrent
+from ..utils.sample_utils import sample_concurrent, BacktrackingEncoder, RejectionSampler
 from .encoder import CharacterEncoder, Encoder
 from .error_correction import ErrorCorrection
 from .hash_functions import HashFunction, OracleHash
@@ -180,10 +182,16 @@ class SentenceStegSystem(StegSystem):
         system_prompt: str,
         encoder: Encoder | None = None,
         max_length: int = 200,
+        backtrack_config: BacktrackConfig | None = None,
     ) -> None:
         super().__init__(client, hash_function, error_correction, encoder)
         self.system_prompt = system_prompt
         self.max_length = max_length
+        self.backtrack_config = backtrack_config or BacktrackConfig()
+        self._backtracking_encoder = BacktrackingEncoder(
+            sampler=RejectionSampler(),
+            config=self.backtrack_config
+        )
 
     def encode(
         self,
@@ -191,34 +199,33 @@ class SentenceStegSystem(StegSystem):
         history: list[str],
         system_prompt: str = "You are having a casual conversation.",
         max_length=200,
-        k: int = 5,
+        k: int = 2,
+        temperature: float = 0.7,
         **kwargs,
-    ) -> list[str]:
-        cover_text = []
-        for chunk in chunks:
-            response = sample_concurrent(
-                client=self.client,
-                desired_bits=chunk,
-                history=history,
-                hash_fn=self.hash_fn,
-                temperature=0.5,
-                system_prompt=system_prompt,
-                k=k,
-                max_length=max_length,
-            )
-            assert isinstance(response, list), "No response"
-            history.append(response)
-            cover_text.append(response)
-        return cover_text
+    ) -> tuple[list[str], list]:
+        return self._backtracking_encoder.encode(
+            client=self.client,
+            chunks=[np.array(lst) for lst in chunks],
+            initial_history=history if isinstance(history, list) else [history],
+            hash_fn=self.hash_fn,
+            system_prompt=system_prompt,
+            max_length=max_length,
+            temperature=temperature,
+        )
 
     def hide_message(self, data: Any, seed: list[str], **kwargs) -> str:
-        """Generate cover text with sentences encoding the data."""
+        """
+        Generate cover text with sentences encoding the data.
+        
+        Keeping the list of history the same as the original code.
+        """
+
         chunks, self._error_encoded_length = self._encode_to_chunks(data)
 
-        cover_texts = self.encode(
+        cover_texts, _ = self.encode(
             chunks=chunks,
             history=seed,
-            k=5,
+            k=2,
             system_prompt=self.system_prompt,
             max_length=self.max_length,
         )

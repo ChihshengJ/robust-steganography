@@ -1,40 +1,15 @@
-from typing_extensions import Callable
 import json
 import pickle
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, override
-import numpy as np
 
+import numpy as np
 from tqdm import tqdm
+from typing_extensions import Callable
 
 from embeddings import Encoder, StegSystem
-
-
-@dataclass
-class AttackConfig:
-    """Configuration for an attack in the experiment.
-
-    Attributes:
-        label: Name for this attack configuration (used in plots/logs)
-        attack_type: The type of attack ("n-gram", "synonym", "paraphrase", "translate")
-        mode: Local mode flag passed to __call__ (legacy parameter)
-        local_mode: Override for local/global mode behavior during attack initialization.
-            - None (default): Use legacy behavior where `mode and tampering < 0.99`
-              determines local mode. At 100% tampering, global mode is used.
-            - True: Force local mode (sentence-level) regardless of tampering level.
-              Even at 100% tampering, each sentence is processed individually.
-            - False: Force global mode regardless of tampering level and mode parameter.
-        use_simple_prompt: For paraphrase attack only. If True, use simpler prompt
-            without marker extraction. May work better with some models.
-    """
-
-    label: str
-    attack_type: str
-    mode: bool
-    local_mode: bool | None = None
-    use_simple_prompt: bool = False
 
 
 @dataclass
@@ -42,7 +17,7 @@ class ExperimentConfig:
     """All configuration for an experiment run."""
 
     tampering_levels: list[float]
-    attack_configs: list[AttackConfig]
+    attack_configs: list[dict]
     system: StegSystem
     num_bits: int
     num_messages: int
