@@ -562,7 +562,7 @@ def main():
         encoder=BypassEncoder(),
     )
 
-    with open("./src/pca/litreview/papers/paper_04.json", "r") as file:
+    with open("./src/pca/litreview/papers/paper_10.json", "r") as file:
         paper = json.load(file)
 
     attack_configs = [
@@ -574,10 +574,10 @@ def main():
         tampering_levels=tp,
         attack_configs=attack_configs,
         system=system,
-        num_bits=5,
-        num_messages=3,
-        messages=[[1, 0, 1, 1, 0], [0, 1, 0, 0, 1], [1, 1, 1, 1, 0]],
-        num_stego_per_message=4,
+        num_bits=6,
+        num_messages=2,
+        messages=[[1, 0, 1, 1, 0, 1], [0, 1, 0, 0, 0, 1]],
+        num_stego_per_message=2,
         runs=5,
         history=paper,
         seed=1228,

@@ -5,7 +5,7 @@ from typing import Any
 
 import numpy as np
 
-from ..config.litreview_prompts import EXTRACT_CITATIONS, GENERATE_REVIEW, SYNTHESIZE
+from ..config.litreview_prompts import EXTRACT_CITATIONS, GENERATE_REVIEW
 from ..utils.new_text import generate_response
 from .encoder import Encoder, CharacterEncoder
 from .error_correction import ErrorCorrection
@@ -117,25 +117,19 @@ def extract_citations(text: str) -> list[dict]:
         temperature=0,
     )
 
-    print(f"  LLM citation extraction raw output:")
-    print(f"    {response[:300]}")
-
     seen: set[str] = set()
     citations = []
     for line in response.strip().split("\n"):
         line = line.strip()
         if not line:
             continue
-        # Strip numbering if the LLM adds it
         line = re.sub(r"^\d+[.):\s]+", "", line).strip()
         parts = line.rsplit(maxsplit=1)
         if len(parts) != 2:
-            print(f"    Skipping unparseable line: {line!r}")
             continue
         last_name, year_str = parts
         last_name = last_name.strip(".,;:()")
         if not re.match(r"\d{4}$", year_str):
-            print(f"    Skipping bad year: {line!r}")
             continue
 
         year = int(year_str)
@@ -201,14 +195,7 @@ class LitReviewSystemV2(StegSystem):
 
         n_zeros = sum(1 for r in references if r["hash_bit"] == 0)
         n_ones = len(references) - n_zeros
-
-        print(f"\n{'=' * 60}")
-        print(f"Reference-Selection Steganography — Encoding")
-        print(f"{'=' * 60}")
-        print(f"  Parsed {len(references)} usable references (0s: {n_zeros}, 1s: {n_ones})")
-        print(f"  Message: {len(message_bits)} bits after ECC")
-        print(f"  Bit sequence: {''.join(map(str, message_bits))}")
-        print(f"  Pool hash sequence: {''.join(str(r['hash_bit']) for r in references)}")
+        print(f"  Pool: {len(references)} refs (0s: {n_zeros}, 1s: {n_ones}), encoding {len(message_bits)} bits")
 
         selected = greedy_select(references, message_bits)
         if selected is None:
@@ -218,24 +205,9 @@ class LitReviewSystemV2(StegSystem):
                 f"{len(references)} references (0s: {n_zeros}, 1s: {n_ones})"
             )
 
-        print(f"\n  Selected {len(selected)} references:")
-        for i, ref in enumerate(selected):
-            print(
-                f"    {i + 1}. [bit={ref['hash_bit']}] "
-                f"{ref['author_text']} ({ref['year']}). {ref['ref_title']}"
-            )
+        print(f"  Selected {len(selected)} references, bits: {''.join(str(r['hash_bit']) for r in selected)}")
 
-        sentences = self._generate_sentences(seed_data, selected)
-
-        print(f"\n  Generated sentences:")
-        for i, s in enumerate(sentences):
-            print(f"    {i + 1}. {s}")
-
-        stego_text = self._synthesize(sentences, seed_data)
-
-        print(f"\n  Synthesized stego text ({len(stego_text)} chars):")
-        print(f"  {stego_text[:300]}...")
-
+        stego_text = self._generate_review(seed_data, selected)
         return stego_text
 
     def recover_message(self, stego_text: str, **kwargs):
@@ -245,22 +217,9 @@ class LitReviewSystemV2(StegSystem):
             )
         expected_bits = self._error_encoded_length // self.hash_output_length
 
-        print(f"\n{'=' * 60}")
-        print("Reference-Selection Steganography — Recovery")
-        print(f"{'=' * 60}")
-        print(f"  Expected {expected_bits} citation bits")
-
         citations = extract_citations(stego_text)
-
-        print(f"  Extracted {len(citations)} unique citations:")
-        for i, c in enumerate(citations):
-            print(
-                f"    {i + 1}. [bit={c['hash_bit']}] "
-                f"{c['author_last_name']} ({c['year']})"
-            )
-
         recovered_bits = [c["hash_bit"] for c in citations]
-        print(f"  Recovered bits: {''.join(map(str, recovered_bits))}")
+        print(f"  Extracted {len(citations)} citations, bits: {''.join(map(str, recovered_bits))}")
 
         if len(recovered_bits) != expected_bits:
             print(f"  WARNING: Expected {expected_bits} bits, got {len(recovered_bits)}")
@@ -271,57 +230,19 @@ class LitReviewSystemV2(StegSystem):
 
         ecc_bits = np.array(recovered_bits)
         decoded_bits = self.ecc.decode(ecc_bits, self._error_encoded_length)
-        print(f"  ECC decoded: {len(decoded_bits)} bits")
-
         return self.encoder.decode(decoded_bits)
 
-    def _generate_sentences(
-        self, seed_data: dict, selected_refs: list[dict]
-    ) -> list[str]:
+    def _generate_review(self, seed_data: dict, selected_refs: list[dict]) -> str:
         refs_formatted = "\n".join(
-            f"  {i + 1}. {r['author_text']} ({r['year']}). {r['ref_title']}"
-            for i, r in enumerate(selected_refs)
+            f"  - {r['author_text']} ({r['year']}). {r['ref_title']}"
+            for r in selected_refs
         )
-        prompt = (
-            f'Paper: "{seed_data["title"]}"\n'
-            f"Abstract: {seed_data['abstract'][:600]}\n\n"
-            f"References to describe (in this order):\n{refs_formatted}"
-        )
-
-        print(f"\n  Generating {len(selected_refs)} sentences...")
 
         response = generate_response(
-            prompt=prompt,
-            system_prompt=GENERATE_REVIEW.format(k=len(selected_refs)),
-            max_length=2000,
-            temperature=0,
-        )
-
-        sentences = []
-        for line in response.strip().split("\n"):
-            line = line.strip()
-            if not line:
-                continue
-            line = re.sub(r"^\d+[.):\s]+", "", line).strip()
-            if line:
-                sentences.append(line)
-
-        if len(sentences) < len(selected_refs):
-            print(
-                f"  WARNING: Generated {len(sentences)} sentences, "
-                f"expected {len(selected_refs)}"
-            )
-
-        return sentences[: len(selected_refs)]
-
-    def _synthesize(self, sentences: list[str], seed_data: dict) -> str:
-        print(f"\n  Synthesizing {len(sentences)} sentences into paragraph...")
-
-        response = generate_response(
-            prompt="\n".join(f"{i + 1}. {s}" for i, s in enumerate(sentences)),
-            system_prompt=SYNTHESIZE.format(
+            prompt=f"References:\n{refs_formatted}",
+            system_prompt=GENERATE_REVIEW.format(
                 seed_title=seed_data["title"],
-                seed_abstract=seed_data["abstract"],
+                seed_abstract=seed_data["abstract"][:600],
             ),
             max_length=4000,
             temperature=0,

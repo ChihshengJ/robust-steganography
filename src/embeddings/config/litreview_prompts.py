@@ -63,7 +63,7 @@ Output format: sorted claims separated by [sep]
 Example: Smith et al. (2018) proposed X for Y.[sep]Jones (2019) extended this by Z.[sep]Li et al. (2020) achieved W."""
 
 
-GENERATE_REVIEW = """You are writing a related work section for an academic paper. Generate exactly {k} sentences, one for each reference listed below, in the given order.
+GENERATE_REVIEW_BY_SENTENCES = """You are writing a related work section for an academic paper. Generate exactly {k} sentences, one for each reference listed below, in the given order.
 
 Requirements:
 - Each sentence MUST cite its reference as "LastName et al. (YEAR)" or "LastName (YEAR)"
@@ -101,3 +101,16 @@ Example:
 Smith 2018
 Jones 2019
 Li 2020"""
+
+GENERATE_REVIEW = """You are writing a concise related work section for an academic paper.
+
+Paper: "{seed_title}"
+Abstract: {seed_abstract}
+
+Write a single cohesive paragraph covering ALL of the following references. 
+For each reference, include one brief mention of its plausible contribution based on its title. 
+Cite each as "LastName et al. (YEAR)" or "LastName (YEAR)".
+
+Keep it natural and concise — this is a focused related work section, not an exhaustive survey. 
+Vary sentence structure and use natural transitions. 
+Every reference must appear exactly once with its citation."""
