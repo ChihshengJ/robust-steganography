@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 ### Configuration
 
-OUT_DIR = Path("./src/pca/litreview/artifacts")
+OUT_DIR = Path("./src/pca/cot_reasoning/artifacts")
 OUT_DIR.mkdir(exist_ok=True)
 
 # Input files

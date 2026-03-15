@@ -10,6 +10,7 @@ from .config.system_prompts import (
     ONE_WAY_MONOLOGUE,
     TWO_WAY_DYNAMIC,
 )
+from .core.cot_system import CotSystem
 
 # Encoders
 from .core.encoder import (
@@ -48,6 +49,7 @@ from .core.steg_system import (
 )
 from .core.story_system import StoryStegSystem
 from .core.summary_system import SummarySystem
+from .core.topicQA_system import TopicQASystem
 
 __version__ = "0.1.0"
 
@@ -60,6 +62,8 @@ __all__ = [
     "SummarySystem",
     "LitReviewSystem",
     "LitReviewSystemV2",
+    "CotSystem",
+    "TopicQASystem",
     # Encoders
     "Encoder",
     "CharacterEncoder",

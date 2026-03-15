@@ -5,7 +5,8 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import openai
-from watermark import (
+
+from watermarks import (
     AESPRF,
     Embedder,
     Extractor,

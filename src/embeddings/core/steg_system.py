@@ -1,12 +1,16 @@
-from embeddings.config.constants import BacktrackConfig
 from abc import ABC, abstractmethod
 from typing import Any, Sequence
 
-from nltk.tokenize import sent_tokenize
 import numpy as np
+from nltk.tokenize import sent_tokenize
+
+from embeddings.config.constants import BacktrackConfig
 
 from ..utils.get_embedding import get_embeddings_in_batch
-from ..utils.sample_utils import sample_concurrent, BacktrackingEncoder, RejectionSampler
+from ..utils.sample_utils import (
+    BacktrackingEncoder,
+    RejectionSampler,
+)
 from .encoder import CharacterEncoder, Encoder
 from .error_correction import ErrorCorrection
 from .hash_functions import HashFunction, OracleHash
@@ -189,8 +193,7 @@ class SentenceStegSystem(StegSystem):
         self.max_length = max_length
         self.backtrack_config = backtrack_config or BacktrackConfig()
         self._backtracking_encoder = BacktrackingEncoder(
-            sampler=RejectionSampler(),
-            config=self.backtrack_config
+            sampler=RejectionSampler(), config=self.backtrack_config
         )
 
     def encode(
@@ -216,7 +219,7 @@ class SentenceStegSystem(StegSystem):
     def hide_message(self, data: Any, seed: list[str], **kwargs) -> str:
         """
         Generate cover text with sentences encoding the data.
-        
+
         Keeping the list of history the same as the original code.
         """
 

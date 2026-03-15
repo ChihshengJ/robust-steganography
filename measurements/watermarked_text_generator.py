@@ -1,25 +1,28 @@
 import json
-import sys
 import random
-from watermark import (
-    GPT2Model,
+import sys
+
+from watermarks import (
     AESPRF,
-    SmoothPerturb,
-    SmoothCovertextCalculator,
     Embedder,
-    Extractor
+    GPT2Model,
+    SmoothCovertextCalculator,
+    SmoothPerturb,
 )
 
+
 def generate_watermarked_text(id):
-    n_bits = 1              # Length of message to hide
-    epsilon = 0.05          # 95% success probability
-    delta = 0.2             # Perturbation strength
+    n_bits = 1  # Length of message to hide
+    epsilon = 0.05  # 95% success probability
+    delta = 0.2  # Perturbation strength
     safety_factor = 10
-    c = 5                   # n-gram length for PRF used by watermarking
+    c = 5  # n-gram length for PRF used by watermarking
 
     # Instantiate required components.
     calculator = SmoothCovertextCalculator()
-    required_length = calculator.get_covertext_length(n=n_bits, epsilon=epsilon, delta=delta, safety_factor=safety_factor)
+    required_length = calculator.get_covertext_length(
+        n=n_bits, epsilon=epsilon, delta=delta, safety_factor=safety_factor
+    )
     print(f"required length: {required_length}")
 
     model = GPT2Model()
@@ -29,27 +32,35 @@ def generate_watermarked_text(id):
 
     # Watermarking parameters.
     message = [random.randint(0, 1) for _ in range(3)]  # 3-bit message to hide
-    keys = [b'\x00' * 32, b'\x01' * 32, b'\x02' * 32]  # One key per bit
+    keys = [b"\x00" * 32, b"\x01" * 32, b"\x02" * 32]  # One key per bit
     history = ["How have you been?"]  # Context
 
     # Generate watermarked text.
-    watermarked_text, tokens, _ = embedder.embed(keys=keys, h=history, m=message, delta=delta, c=c, covertext_length=required_length)
+    watermarked_text, tokens, _ = embedder.embed(
+        keys=keys,
+        h=history,
+        m=message,
+        delta=delta,
+        c=c,
+        covertext_length=required_length,
+    )
 
     # Convert tokens to a serializable format (list of token IDs)
-    serializable_tokens = tokens['input_ids'].tolist()
+    serializable_tokens = tokens["input_ids"].tolist()
 
     # Save to JSON file.
     output_data = {
         "id": id,
         "watermarked_text": watermarked_text,
         "tokens": serializable_tokens,
-        "message": message
+        "message": message,
     }
 
     with open(f"watermarked_texts/{id}.json", "w") as f:
         json.dump(output_data, f, indent=4)
 
     print(f"Generated watermarked text for ID: {id}, saved as {id}.json")
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
