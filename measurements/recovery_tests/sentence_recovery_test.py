@@ -21,7 +21,7 @@ from watermarks import (
 )
 from watermarks.attacks.translation import TranslationAttack
 
-from .utils import (
+from ..utils import (
     BypassEncoder,
     CheckpointManager,
     CheckpointState,

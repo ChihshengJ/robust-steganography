@@ -1,9 +1,10 @@
-from src.embeddings.config.system_prompts import STORY_SEGMENTATION
-from nltk import sent_tokenize
 import json
 from typing import Any
 
 import numpy as np
+from nltk import sent_tokenize
+
+from src.embeddings.config.system_prompts import STORY_SEGMENTATION
 
 from ..config.constants import BacktrackConfig
 from ..utils.get_embedding import get_embeddings_in_batch
@@ -77,7 +78,7 @@ class StoryStegSystem(StegSystem):
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": text},
             ],
-            temperature=0.3,
+            temperature=0,
         )
 
         content = response.choices[0].message.content
@@ -115,7 +116,6 @@ class StoryStegSystem(StegSystem):
         print(f"LLM segmentation: {expected_chunks} chunks recovered")
         embeddings = get_embeddings_in_batch(self.client, sentences)
         return self._decode_from_embeddings(embeddings, self._error_encoded_length)
-
 
     def recover_message_legacy(self, stego_text: str) -> Any:
         """Recover hidden message from stego text."""

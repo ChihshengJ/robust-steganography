@@ -21,7 +21,7 @@ from watermarks import (
 )
 from watermarks.attacks.translation import TranslationAttack
 
-from .utils import (
+from ..utils import (
     BypassEncoder,
     CheckpointManager,
     CheckpointState,
@@ -54,11 +54,8 @@ def init_attacks(
 
     attacks = {}
     for cfg in attack_configs:
-
         if cfg["attack_type"] == "n-gram":
-            attacks[cfg["label"]] = NGramShuffleAttack(
-                model=model, n=3
-            )
+            attacks[cfg["label"]] = NGramShuffleAttack(model=model, n=3)
         elif cfg["attack_type"] == "synonym":
             attacks[cfg["label"]] = SynonymAttack(method="wordnet")
         elif cfg["attack_type"] == "paraphrase":
@@ -69,10 +66,12 @@ def init_attacks(
             )
         elif cfg["attack_type"] == "translate":
             attacks[cfg["label"]] = TranslationAttack(
-                client=client, model="gpt-4.1", temperature=0,
+                client=client,
+                model="gpt-4.1",
+                temperature=0,
             )
         else:
-            raise ValueError(f"Unknown attack type: {cfg["attack_type"]}")
+            raise ValueError(f"Unknown attack type: {cfg['attack_type']}")
 
     return attacks
 
@@ -246,7 +245,7 @@ class StegoExperiment:
         attack_cfg = self.config.attack_configs[attack_idx]
         LOGGER.info(
             f"\nAttack {attack_idx + 1}/{len(self.config.attack_configs)}: "
-            f"{attack_cfg["label"]} (Message {msg_idx})"
+            f"{attack_cfg['label']} (Message {msg_idx})"
         )
 
         # Initialize results structures
@@ -265,7 +264,7 @@ class StegoExperiment:
         bar = self.progress.create(
             "tampering",
             len(self.config.tampering_levels),
-            f"Tampering ({attack_cfg["label"]}, msg {msg_idx})",
+            f"Tampering ({attack_cfg['label']}, msg {msg_idx})",
             initial=state.tampering_index,
         )
 
@@ -377,9 +376,9 @@ class StegoExperiment:
 
         # Store aggregated scores
         runs = self.config.runs
-        msg_results = state.message_results[attack_cfg["label"]]["tampering_level_data"][
-            tp
-        ]
+        msg_results = state.message_results[attack_cfg["label"]][
+            "tampering_level_data"
+        ][tp]
         msg_results["perfect_scores"].append(success_count / runs if runs else 0.0)
         msg_results["bitwise_scores"].append(bit_score / runs if runs else 0.0)
 
@@ -554,7 +553,6 @@ def main():
     ecc = RepetitionCode(5)
     # ecc = ConvolutionalCode(1, 3)
 
-
     system = SummarySystem(
         client,
         2,
@@ -566,7 +564,7 @@ def main():
     news = load_dataset("abisee/cnn_dailymail", "3.0.0", split="test")
 
     attack_configs = [
-        {"label":"Paraphrase (global)", "attack_type": "paraphrase", "local": False},
+        {"label": "Paraphrase (global)", "attack_type": "paraphrase", "local": False},
     ]
 
     config = ExperimentConfig(

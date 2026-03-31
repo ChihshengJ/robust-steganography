@@ -22,7 +22,7 @@ from watermarks import (
 )
 from watermarks.attacks.translation import TranslationAttack
 
-from .utils import (
+from ..utils import (
     BypassEncoder,
     CheckpointManager,
     CheckpointState,
@@ -553,7 +553,7 @@ def main():
     # Error correction: controls stegotext length
     # - Repetition: repetition * num_bits
     # - Convolution: 4 * (num_bits + K - 1)
-    ecc = RepetitionCode(3)
+    ecc = RepetitionCode(1)
     # ecc = ConvolutionalCode(1, 3)
 
     system = LitReviewSystemV2(
@@ -561,9 +561,6 @@ def main():
         error_correction=ecc,
         encoder=BypassEncoder(),
     )
-
-    with open("./src/pca/litreview/papers/paper_10.json", "r") as file:
-        paper = json.load(file)
 
     attack_configs = [
         {"label": "Paraphrase (global)", "attack_type": "paraphrase", "local": False},
@@ -574,12 +571,12 @@ def main():
         tampering_levels=tp,
         attack_configs=attack_configs,
         system=system,
-        num_bits=6,
+        num_bits=12,
         num_messages=2,
-        messages=[[1, 0, 1, 1, 0, 1], [0, 1, 0, 0, 0, 1]],
-        num_stego_per_message=2,
+        messages=[[1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1], [0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1]],
+        num_stego_per_message=1,
         runs=5,
-        history=paper,
+        history="25",
         seed=1228,
         checkpoint_path=Path("checkpoints/test/exp_checkpoint.pkl"),
         output_path=Path("figures/test/embedding_recovery_test"),

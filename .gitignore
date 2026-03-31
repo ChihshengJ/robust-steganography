@@ -21,6 +21,8 @@ measurements/checkpoints/
 measurements/watermarked_texts/
 measurements/figures/embedding_recovery_test/summaries/
 
+papers/
+
 __pycache__/
 .pytest_cache/
 

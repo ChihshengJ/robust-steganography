@@ -48,6 +48,7 @@ from .core.steg_system import (
     StegSystem,  # Abstract base class
 )
 from .core.story_system import StoryStegSystem
+from .core.story_system_v2 import StorySystemV2
 from .core.summary_system import SummarySystem
 from .core.topicQA_system import TopicQASystem
 
@@ -64,6 +65,7 @@ __all__ = [
     "LitReviewSystemV2",
     "CotSystem",
     "TopicQASystem",
+    "StorySystemV2",
     # Encoders
     "Encoder",
     "CharacterEncoder",

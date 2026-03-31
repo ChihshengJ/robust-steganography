@@ -10,6 +10,9 @@ pynacl
 cryptography
 nltk>=3.8.1
 textattack>=0.3.9
+sentence-transformers>=5.3.0
+sacrebleu>=2.6.0
+tokencost>=0.1.26
 
 [dev]
 pytest

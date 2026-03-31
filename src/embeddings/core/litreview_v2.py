@@ -1,15 +1,43 @@
 import hashlib
 import json
 import re
+import time
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from ..config.litreview_prompts import EXTRACT_CITATIONS, GENERATE_REVIEW
-from ..utils.new_text import generate_response
-from .encoder import Encoder, CharacterEncoder
+from .encoder import CharacterEncoder, Encoder
 from .error_correction import ErrorCorrection
 from .steg_system import StegSystem
+
+
+def _llm(
+    client,
+    model,
+    prompt,
+    system="You are a helpful assistant.",
+    temperature=0,
+    max_tokens=1000,
+):
+    for attempt in range(3):
+        try:
+            r = client.chat.completions.create(
+                model=model,
+                temperature=temperature,
+                max_completion_tokens=max_tokens,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            return r.choices[0].message.content.strip()
+        except Exception as e:
+            if attempt == 2:
+                raise
+            print(f"  retry {attempt + 1}: {e}")
+            time.sleep(2**attempt)
 
 
 def ref_bit_hash(author_last_name: str, year: int) -> int:
@@ -17,80 +45,49 @@ def ref_bit_hash(author_last_name: str, year: int) -> int:
     return hashlib.sha256(key.encode()).digest()[0] % 2
 
 
-def normalize_year(year_str) -> int:
-    if year_str is None:
-        return 0
-    digits = re.match(r"(\d{4})", str(year_str))
-    return int(digits.group(1)) if digits else 0
+def load_corpus(corpus_path: str | Path, refs_path: str | Path) -> list[dict]:
+    """Load and join corpus.jsonl + references.jsonl into a list of paper dicts.
+
+    Each entry has: paperId, title, abstract, year, authors, references.
+    Only papers present in both files and with non-empty references are included.
+    Returns a deterministically sorted list (by paperId).
+    """
+    corpus_path, refs_path = Path(corpus_path), Path(refs_path)
+
+    papers: dict[str, dict] = {}
+    with open(corpus_path) as f:
+        for line in f:
+            obj = json.loads(line)
+            papers[obj["paperId"]] = obj
+
+    with open(refs_path) as f:
+        for line in f:
+            obj = json.loads(line)
+            pid = obj["paperId"]
+            if pid in papers:
+                papers[pid]["references"] = obj["references"]
+
+    joined = [p for p in papers.values() if p.get("references") and p.get("abstract")]
+    joined.sort(key=lambda p: p["paperId"])
+    return joined
 
 
-def parse_cached_text(cached_text: str) -> dict:
-    text = cached_text.replace("\r", " ").replace("\n", " ")
-    text = re.sub(r"\s+", " ", text).strip()
-    text = re.sub(r"^\[\d+\]\s*", "", text).strip()
-
-    parts = re.split(r",|\band\b", text, maxsplit=1)
-    author_token = parts[0].strip()
-
-    et_al = re.search(r"et\s+al\.?", text)
-    author_text = text[: et_al.end()].strip() if et_al else author_token
-
-    author_last_name = author_token.split()[-1] if author_token else ""
-    author_last_name = author_last_name.strip(".,;:()")
-
-    title_start = re.search(r"(?:et\s+al\.?\s*[.,]?\s*|\.\s+)(?=[A-Z])", text)
-    remainder = text[title_start.end() :] if title_start else text
-
-    venue_patterns = [
-        r"\.\s*(?:In\s+)",
-        r"\.\s*(?:arXiv)",
-        r"\.\s*(?:Proceedings)",
-        r"\.\s*(?:Advances\s+in)",
-        r"\.\s*(?:IEEE|ACM|AAAI|ICML|NeurIPS|ICLR|CVPR|ECCV|ICCV|ACL|EMNLP|NAACL)",
-        r"\.\s*(?:Journal)",
-        r"\.\s*(?:Trans(?:actions)?\.?\s)",
-        r",\s*\d{4}",
-        r"\.\s*\d{4}",
-    ]
-    ref_title = remainder
-    for pattern in venue_patterns:
-        m = re.search(pattern, remainder)
-        if m:
-            candidate = remainder[: m.start()].strip().rstrip(".")
-            if len(candidate.split()) >= 3:
-                ref_title = candidate
-                break
-
-    return {
-        "author_text": author_text,
-        "author_last_name": author_last_name,
-        "ref_title": ref_title.strip().rstrip("."),
-    }
-
-
-def parse_references(anchors: list[dict], min_title_words: int = 5) -> list[dict]:
+def prepare_references(raw_refs: list[dict], min_title_words: int = 5) -> list[dict]:
+    """Convert raw reference dicts from references.jsonl into sorted, deduplicated
+    refs with hash_bit. Filters out refs with short titles."""
     refs = []
     seen_keys: set[str] = set()
 
-    for anchor in anchors:
-        cached = anchor.get("cachedText", "")
-        year_raw = anchor.get("year")
-        if not cached or not year_raw:
+    for r in raw_refs:
+        last_name = r.get("author_last_name", "")
+        year = r.get("year")
+        title = r.get("title", "")
+        if not last_name or not year or not title:
             continue
-        year = normalize_year(year_raw)
-        if year == 0:
-            continue
-
-        parsed = parse_cached_text(cached)
-        if len(parsed["ref_title"].split()) < min_title_words:
-            continue
-        if not all(
-            ord(c) < 128 or c in "\u2018\u2019\u2013\u2014"
-            for c in parsed["ref_title"]
-        ):
+        if len(title.split()) < min_title_words:
             continue
 
-        dedup_key = f"{parsed['author_last_name'].lower()}_{year}"
+        dedup_key = f"{last_name.lower()}_{year}"
         if dedup_key in seen_keys:
             continue
         seen_keys.add(dedup_key)
@@ -98,10 +95,10 @@ def parse_references(anchors: list[dict], min_title_words: int = 5) -> list[dict
         refs.append(
             {
                 "year": year,
-                "author_text": parsed["author_text"],
-                "author_last_name": parsed["author_last_name"],
-                "ref_title": parsed["ref_title"],
-                "hash_bit": ref_bit_hash(parsed["author_last_name"], year),
+                "author_text": r.get("author_text", last_name),
+                "author_last_name": last_name,
+                "ref_title": title,
+                "hash_bit": ref_bit_hash(last_name, year),
             }
         )
 
@@ -109,12 +106,14 @@ def parse_references(anchors: list[dict], min_title_words: int = 5) -> list[dict
     return refs
 
 
-def extract_citations(text: str) -> list[dict]:
-    response = generate_response(
+def extract_citations(client, model, text: str) -> list[dict]:
+    response = _llm(
+        client,
+        model,
         prompt=text,
-        system_prompt=EXTRACT_CITATIONS,
-        max_length=2000,
+        system=EXTRACT_CITATIONS,
         temperature=0,
+        max_tokens=2000,
     )
 
     seen: set[str] = set()
@@ -149,9 +148,7 @@ def extract_citations(text: str) -> list[dict]:
     return citations
 
 
-def greedy_select(
-    references: list[dict], message_bits: list[int]
-) -> list[dict] | None:
+def greedy_select(references: list[dict], message_bits: list[int]) -> list[dict] | None:
     selected: list[dict] = []
     ref_idx = 0
     for bit in message_bits:
@@ -167,35 +164,48 @@ def greedy_select(
 
 
 class LitReviewSystemV2(StegSystem):
-
     def __init__(
         self,
         client,
         error_correction: ErrorCorrection,
+        corpus: list[dict] | None = None,
+        model: str = "gpt-4.1",
         encoder: Encoder | None = None,
     ):
         self.client = client
+        self.model = model
         self.hash_fn = None
         self.ecc = error_correction
         self.encoder = encoder or CharacterEncoder()
         self.hash_output_length = 1
         self._error_encoded_length: int | None = None
+        self.corpus = corpus
+        if not self.corpus:
+            self.corpus = load_corpus(
+                "src/pca/litreview/references/corpus.jsonl",
+                "src/pca/litreview/references/references.jsonl",
+            )
 
     def encode(self, chunks, history, system_prompt, max_length=200, **kwargs):
         raise NotImplementedError(
             "LitReviewSystem encodes via reference selection. Use hide_message directly."
         )
 
-    def hide_message(self, data: Any, seed: str | dict, **kwargs) -> str:
-        seed_data = json.loads(seed) if isinstance(seed, str) else seed
-        references = parse_references(seed_data["anchors"])
+    def hide_message(self, data: Any, seed: str, **kwargs) -> str:
+        """Encode data into a literature review for the paper at corpus index `seed`."""
+        if self.corpus is None:
+            raise ValueError("Corpus not initialized")
+        paper = self.corpus[int(seed)]
+        references = prepare_references(paper["references"])
 
         chunks, self._error_encoded_length = self._encode_to_chunks(data)
         message_bits = [int(c[0]) for c in chunks]
 
         n_zeros = sum(1 for r in references if r["hash_bit"] == 0)
         n_ones = len(references) - n_zeros
-        print(f"  Pool: {len(references)} refs (0s: {n_zeros}, 1s: {n_ones}), encoding {len(message_bits)} bits")
+        print(
+            f"  Pool: {len(references)} refs (0s: {n_zeros}, 1s: {n_ones}), encoding {len(message_bits)} bits"
+        )
 
         selected = greedy_select(references, message_bits)
         if selected is None:
@@ -205,9 +215,11 @@ class LitReviewSystemV2(StegSystem):
                 f"{len(references)} references (0s: {n_zeros}, 1s: {n_ones})"
             )
 
-        print(f"  Selected {len(selected)} references, bits: {''.join(str(r['hash_bit']) for r in selected)}")
+        print(
+            f"  Selected {len(selected)} references, bits: {''.join(str(r['hash_bit']) for r in selected)}"
+        )
 
-        stego_text = self._generate_review(seed_data, selected)
+        stego_text = self._generate_review(paper, selected)
         return stego_text
 
     def recover_message(self, stego_text: str, **kwargs):
@@ -217,12 +229,16 @@ class LitReviewSystemV2(StegSystem):
             )
         expected_bits = self._error_encoded_length // self.hash_output_length
 
-        citations = extract_citations(stego_text)
+        citations = extract_citations(self.client, self.model, stego_text)
         recovered_bits = [c["hash_bit"] for c in citations]
-        print(f"  Extracted {len(citations)} citations, bits: {''.join(map(str, recovered_bits))}")
+        print(
+            f"  Extracted {len(citations)} citations, bits: {''.join(map(str, recovered_bits))}"
+        )
 
         if len(recovered_bits) != expected_bits:
-            print(f"  WARNING: Expected {expected_bits} bits, got {len(recovered_bits)}")
+            print(
+                f"  WARNING: Expected {expected_bits} bits, got {len(recovered_bits)}"
+            )
 
         if len(recovered_bits) < expected_bits:
             recovered_bits.extend([0] * (expected_bits - len(recovered_bits)))
@@ -232,19 +248,20 @@ class LitReviewSystemV2(StegSystem):
         decoded_bits = self.ecc.decode(ecc_bits, self._error_encoded_length)
         return self.encoder.decode(decoded_bits)
 
-    def _generate_review(self, seed_data: dict, selected_refs: list[dict]) -> str:
+    def _generate_review(self, paper: dict, selected_refs: list[dict]) -> str:
         refs_formatted = "\n".join(
             f"  - {r['author_text']} ({r['year']}). {r['ref_title']}"
             for r in selected_refs
         )
 
-        response = generate_response(
+        return _llm(
+            self.client,
+            self.model,
             prompt=f"References:\n{refs_formatted}",
-            system_prompt=GENERATE_REVIEW.format(
-                seed_title=seed_data["title"],
-                seed_abstract=seed_data["abstract"][:600],
+            system=GENERATE_REVIEW.format(
+                seed_title=paper["title"],
+                seed_abstract=paper.get("abstract", "")[:600],
             ),
-            max_length=4000,
             temperature=0,
+            max_tokens=4000,
         )
-        return response

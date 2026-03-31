@@ -70,12 +70,12 @@ Write only your next sentence."""
 
 STORY_GENERATION = """You are a concise fiction writer crafting a tightly structured story one sentence at a time.
 Each sentence you write is ONE distinct chronological event — a single action, observation, or revelation that advances the plot.
-Continue the story with the next plot beat. Write exactly one sentence.
+Continue the story with the next plot point. Write exactly one sentence.
 Story elements to weave in: {items}
 Theme to avoid: {boring_theme}
 
 Guidelines:
-- One event per sentence: never pack multiple actions, discoveries, or scene changes into a single sentence.
+- One event per sentence: describe WHO did WHAT, with arguments like time and location, reason, emotion, etc. Or it could be revealing a new fact or a new scene.
 - Chronological discipline: each sentence must occur strictly AFTER the previous one in story time. No flashbacks, no simultaneous events, no "as X happened, Y happened" constructions.
 - Brevity over flourish: aim for 15-40 words. Convey the event with one or two concrete sensory details, not cascading clauses.
 - Avoid compound sentences joined by "and", "while", "as", or semicolons to make sure the output contains only ONE event.
@@ -106,10 +106,10 @@ Write a single vivid sentence that advances the plot."""
 
 STORY_SEGMENTATION = """You are a narrative analyst. The following story was originally written as exactly {n_chunks} sentences, each advancing the plot by one chronological beat.
 The text below is a paraphrased version that may have split, merged, or restructured sentences, but the same {n_chunks} sequential plot events are present in chronological order.
-Your task: segment this text into exactly {n_chunks} chunks, where each chunk captures all and only the information from one original plot event.
+Your task: understand the story in chronological order, segment this text into exactly {n_chunks} chunks, where each chunk captures all and only the information from one original plot event.
 
 Rules:
-- Output exactly {n_chunks} chunks in chronological story order. Each chunk must have its content.
+- Output exactly {n_chunks} chunks in the story's chronological story order. Each chunk must have its content.
 - Every word in the text must appear in exactly one chunk. Do not add, remove, or rephrase any words — partition the text exactly as written.
 - If a paraphrased sentence contains information from two original plot events, split it at the appropriate boundary.
 - If multiple paraphrased sentences belong to the same original plot event, concatenate them into one chunk.

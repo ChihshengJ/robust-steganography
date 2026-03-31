@@ -6,8 +6,6 @@ Author-email: Chihsheng Jin <chihsheng3421@gmail.com>
 License: MIT License
 Project-URL: Homepage, https://github.com/ChihshengJ/robust_steganography
 Classifier: Programming Language :: Python :: 3
-Classifier: License :: OSI Approved :: MIT License
-Classifier: Operating System :: OS Independent
 Requires-Python: >=3.12
 Description-Content-Type: text/markdown
 License-File: LICENSE.txt
@@ -23,6 +21,9 @@ Requires-Dist: pynacl
 Requires-Dist: cryptography
 Requires-Dist: nltk>=3.8.1
 Requires-Dist: textattack>=0.3.9
+Requires-Dist: sentence-transformers>=5.3.0
+Requires-Dist: sacrebleu>=2.6.0
+Requires-Dist: tokencost>=0.1.26
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: pytest-cov; extra == "dev"

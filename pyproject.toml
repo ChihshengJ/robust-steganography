@@ -15,15 +15,14 @@ requires-python = ">=3.12"
 license = { text = "MIT License" }
 classifiers = [
   "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: MIT License",
-  "Operating System :: OS Independent",
+  # "License :: OSI Approved :: MIT License",
+  # "Operating System :: OS Independent",
 ]
 
 dependencies = [
   "numpy",
   "openai",
   "torch",
-  # "sentence-transformers",
   "tqdm",
   "scikit-learn",
   "pycryptodome",
@@ -33,6 +32,9 @@ dependencies = [
   "cryptography",
   "nltk>=3.8.1",
   "textattack>=0.3.9",
+  "sentence-transformers>=5.3.0",
+  "sacrebleu>=2.6.0",
+  "tokencost>=0.1.26",
 ]
 
 [project.optional-dependencies]

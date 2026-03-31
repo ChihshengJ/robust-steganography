@@ -21,7 +21,7 @@ from watermarks import (
 )
 from watermarks.attacks.translation import TranslationAttack
 
-from .utils import (
+from ..utils import (
     BypassEncoder,
     CheckpointManager,
     CheckpointState,
@@ -570,7 +570,6 @@ def main():
     attack_configs = [
         # {"label": "Paraphrase (local)", "attack_type": "paraphrase", "local": True},
         {"label": "Paraphrase (global)", "attack_type": "paraphrase", "local": False},
-        {"label": "Translation (global)", "attack_type": "translate", "local": False},
     ]
 
     config = ExperimentConfig(
@@ -578,10 +577,10 @@ def main():
         attack_configs=attack_configs,
         system=system,
         num_bits=5,
-        num_messages=2,
-        messages=[[0, 1, 0, 1, 0], [1, 0, 1, 1, 0]],
+        num_messages=1,
+        messages=[[1, 0, 1, 0, 1]],
         num_stego_per_message=1,
-        runs=5,
+        runs=3,
         history="",
         seed=1228,
         checkpoint_path=Path("checkpoints/test/exp_checkpoint.pkl"),

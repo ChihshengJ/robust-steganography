@@ -21,8 +21,8 @@ class ExperimentConfig:
     system: StegSystem
     num_bits: int
     num_messages: int
-    messages: list[list[int]]
     num_stego_per_message: int
+    messages: list[list[int]] | None = None
     runs: int = 5
     history: list[str] | str = field(default_factory=list)
     seed: int | None = None

@@ -1,4 +1,3 @@
-import json
 import logging
 import random
 from pathlib import Path
@@ -8,7 +7,6 @@ import openai
 
 from embeddings import (
     CotSystem,
-    LitReviewSystemV2,
     PCAHash,
     RepetitionCode,
 )
@@ -23,7 +21,7 @@ from watermarks import (
 )
 from watermarks.attacks.translation import TranslationAttack
 
-from .utils import (
+from ..utils import (
     BypassEncoder,
     CheckpointManager,
     CheckpointState,

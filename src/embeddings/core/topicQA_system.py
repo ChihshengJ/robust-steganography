@@ -1,15 +1,15 @@
-from embeddings.core.hash_functions import HashFunction
-import math
 import hashlib
 import json
+import math
 import random
 import time
 from typing import Any
 
-from .encoder import CharacterEncoder, Encoder
+from embeddings.core.hash_functions import HashFunction
+
+from .encoder import Encoder
 from .error_correction import ErrorCorrection
 from .steg_system import StegSystem
-
 
 SUBTOPIC_PROMPT = """
 Given the following question, list exactly {n} distinct non-overlapping aspects a comprehensive answer could address.
@@ -41,6 +41,7 @@ Reply with ONLY the letter ({letters})."""
 
 class _BitsPerGroupStub(HashFunction):
     """Stub standing in for HashFunction so _encode_to_chunks splits bits correctly."""
+
     def __init__(self, bits_per_group: int):
         self.output_length = bits_per_group
 
@@ -48,12 +49,20 @@ class _BitsPerGroupStub(HashFunction):
         raise NotImplementedError("TopicQAStegSystem does not use hash functions")
 
 
-def _llm(client, model, prompt, system="You are a helpful assistant.",
-         temperature=0, max_tokens=1000):
+def _llm(
+    client,
+    model,
+    prompt,
+    system="You are a helpful assistant.",
+    temperature=0,
+    max_tokens=1000,
+):
     for attempt in range(3):
         try:
             r = client.chat.completions.create(
-                model=model, temperature=temperature, max_tokens=max_tokens,
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens,
                 messages=[
                     {"role": "system", "content": system},
                     {"role": "user", "content": prompt},
@@ -63,8 +72,8 @@ def _llm(client, model, prompt, system="You are a helpful assistant.",
         except Exception as e:
             if attempt == 2:
                 raise
-            print(f"  retry {attempt+1}: {e}")
-            time.sleep(2 ** attempt)
+            print(f"  retry {attempt + 1}: {e}")
+            time.sleep(2**attempt)
 
 
 def _parse_topic_list(raw: str) -> list[str]:
@@ -74,7 +83,7 @@ def _parse_topic_list(raw: str) -> list[str]:
     start = raw.find("[")
     end = raw.rfind("]")
     if start != -1 and end != -1:
-        raw = raw[start:end + 1]
+        raw = raw[start : end + 1]
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
@@ -145,15 +154,18 @@ class TopicQASystem(StegSystem):
 
     def generate_subtopics(self, question: str) -> list[str]:
         raw = _llm(
-            self.local_client, self.local_model,
+            self.local_client,
+            self.local_model,
             SUBTOPIC_PROMPT.format(n=self.n_subtopics, question=question),
             temperature=0,
         )
         topics = _parse_topic_list(raw)
         if len(topics) > self.n_subtopics:
-            topics = topics[:self.n_subtopics]
+            topics = topics[: self.n_subtopics]
         if len(topics) < self.n_subtopics:
-            print(f"  WARNING: local model returned {len(topics)} topics, expected {self.n_subtopics}")
+            print(
+                f"  WARNING: local model returned {len(topics)} topics, expected {self.n_subtopics}"
+            )
         return topics
 
     def group_subtopics(self, topics: list[str]) -> list[list[str]]:
@@ -178,19 +190,32 @@ class TopicQASystem(StegSystem):
         topics_str = "\n".join(f"- {t}" for t in selected_topics)
         prompt = ENCODE_PROMPT.format(topics_str=topics_str, question=question)
         return _llm(
-            self.client, self.response_model, prompt,
-            temperature=self.response_temperature, max_tokens=2000,
+            self.client,
+            self.response_model,
+            prompt,
+            temperature=self.response_temperature,
+            max_tokens=2000,
         )
 
     def _decode_group(self, response: str, question: str, group: list[str]) -> int:
-        options = "\n".join(f"({chr(65+i)}) {t}" for i, t in enumerate(group))
-        letters = ", ".join(chr(65+i) for i in range(len(group)))
+        options = "\n".join(f"({chr(65 + i)}) {t}" for i, t in enumerate(group))
+        letters = ", ".join(chr(65 + i) for i in range(len(group)))
         prompt = DECODE_PROMPT.format(
-            question=question, response=response, options=options, letters=letters,
+            question=question,
+            response=response,
+            options=options,
+            letters=letters,
         )
-        answer = _llm(
-            self.client, self.decoder_model, prompt, temperature=0,
-        ).strip().upper()
+        answer = (
+            _llm(
+                self.client,
+                self.decoder_model,
+                prompt,
+                temperature=0,
+            )
+            .strip()
+            .upper()
+        )
         for i in range(len(group)):
             if chr(65 + i) in answer:
                 return i
@@ -198,10 +223,12 @@ class TopicQASystem(StegSystem):
 
     def paraphrase(self, text: str, model: str | None = None) -> str:
         return _llm(
-            self.client, model or self.response_model,
+            self.client,
+            model or self.response_model,
             f"Rewrite this text completely in your own words, "
             f"preserving all informational content:\n\n{text}",
-            temperature=0.7, max_tokens=2000,
+            temperature=0.7,
+            max_tokens=2000,
         )
 
     def encode(
@@ -236,9 +263,11 @@ class TopicQASystem(StegSystem):
     def hide_message(self, data: Any, seed: str, **kwargs) -> str:
         self._question = seed
         chunks, self._error_encoded_length = self._encode_to_chunks(data)
-        print(f"Payload: {len(chunks)} groups × {self.bits_per_group} bits = "
-              f"{len(chunks) * self.bits_per_group} channel bits "
-              f"(capacity: {self.raw_capacity_bits})")
+        print(
+            f"Payload: {len(chunks)} groups × {self.bits_per_group} bits = "
+            f"{len(chunks) * self.bits_per_group} channel bits "
+            f"(capacity: {self.raw_capacity_bits})"
+        )
 
         response, metadata = self.encode(chunks, seed)
         print(f"Selected subtopics: {metadata['selected']}")
@@ -246,7 +275,9 @@ class TopicQASystem(StegSystem):
 
     def recover_message(self, stego_text: str) -> Any:
         if self._error_encoded_length is None:
-            raise ValueError("No encoded length set. Run hide_message first or set error_encoded_length.")
+            raise ValueError(
+                "No encoded length set. Run hide_message first or set error_encoded_length."
+            )
         if self._question is None:
             raise ValueError("No question set. Run hide_message first or set question.")
 

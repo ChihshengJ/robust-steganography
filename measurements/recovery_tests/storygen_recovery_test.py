@@ -8,14 +8,14 @@ import openai
 from embeddings import (
     PCAHash,
     RepetitionCode,
-    TopicQASystem,
+    StoryStegSystem, StorySystemV2,
 )
+from embeddings.config.system_prompts import STORY_GENERATION
 from watermarks import (
     Attack,
     GPT2Model,
     LanguageModel,
     NGramShuffleAttack,
-    NullAttack,
     ParaphraseAttack,
     SynonymAttack,
 )
@@ -70,8 +70,6 @@ def init_attacks(
                 model="gpt-4.1",
                 temperature=0,
             )
-        elif cfg["attack_type"] == "null":
-            attacks[cfg["label"]] = NullAttack()
         else:
             raise ValueError(f"Unknown attack type: {cfg['attack_type']}")
 
@@ -546,8 +544,8 @@ def main():
 
     ## Use a callback to manipulate the PCA hash
     hash_fn = PCAHash(
-        pca_dir="./src/pca/litreview/artifacts",
-        bit_reducer=index_reducer(7),
+        pca_dir="./src/pca/creative_stories/artifacts",
+        bit_reducer=index_reducer(2),
     )
 
     # Error correction: controls stegotext length
@@ -556,36 +554,36 @@ def main():
     ecc = RepetitionCode(1)
     # ecc = ConvolutionalCode(1, 3)
 
-    system = TopicQASystem(
-        client,
+    system_prompt = STORY_GENERATION.format(
+        items="Fedral agent Stanley Cooper, an espionage conducted by Slovenian Government, A novel nuclear weapon",
+        boring_theme="An agent stopped an espionage.",
+    )
+
+    system = StorySystemV2(
+        client=client,
         error_correction=ecc,
         local_client=local_client,
         local_model="Qwen3.5-4B-UD-Q8_K_XL.gguf",
-        n_subtopics=12,
-        group_size=2,
-        response_model="gpt-4.1",
-        decoder_model="gpt-4.1",
-        key="papi",
+        n_slots=18,
         encoder=BypassEncoder(),
     )
 
-    question = "What factors determine whether a city has the potential to become a country's tech hub?"
+    premise = "Federal agent Stanley Cooper investigates an espionage operation conducted by the Slovenian government involving a novel nuclear weapon. The story follows Cooper as he tracks a suspect, discovers secret plans, confronts danger, and attempts to escape with critical intelligence."
 
     attack_configs = [
+        # {"label": "Paraphrase (local)", "attack_type": "paraphrase", "local": True},
         {"label": "Paraphrase (global)", "attack_type": "paraphrase", "local": False},
-        # {"label": "Null", "attack_type": "null", "local": False},
     ]
 
     config = ExperimentConfig(
         tampering_levels=tp,
         attack_configs=attack_configs,
         system=system,
-        num_bits=6,
+        num_bits=18,
         num_messages=3,
-        messages=[[1, 0, 1, 0, 1, 0], [0, 0, 1, 1, 1, 0], [0, 0, 0, 1, 0, 1]],
-        num_stego_per_message=5,
+        num_stego_per_message=2,
         runs=5,
-        history=question,
+        history=premise,
         seed=1228,
         checkpoint_path=Path("checkpoints/test/exp_checkpoint.pkl"),
         output_path=Path("figures/test/embedding_recovery_test"),
