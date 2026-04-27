@@ -1,0 +1,202 @@
+{
+  "s_vs_c1": {
+    "accuracy": 0.0,
+    "n_correct": 0,
+    "n_total": 20,
+    "p_value": 1.9073486328125e-06,
+    "centroid_cosine": 0.9475679397583008
+  },
+  "s_vs_c2": {
+    "accuracy": 0.1,
+    "n_correct": 2,
+    "n_total": 20,
+    "p_value": 0.0004024505615234375,
+    "centroid_cosine": 0.9194782972335815
+  },
+  "pca": [
+    {
+      "record_id": "topicqa_stego_p000",
+      "label": "stego",
+      "pc1": -0.5801320672035217,
+      "pc2": -0.25978314876556396
+    },
+    {
+      "record_id": "topicqa_stego_p001",
+      "label": "stego",
+      "pc1": -0.02178570069372654,
+      "pc2": 0.325412780046463
+    },
+    {
+      "record_id": "topicqa_stego_p002",
+      "label": "stego",
+      "pc1": 0.29889869689941406,
+      "pc2": 0.3317345976829529
+    },
+    {
+      "record_id": "topicqa_stego_p003",
+      "label": "stego",
+      "pc1": -0.02412223070859909,
+      "pc2": -0.3035890460014343
+    },
+    {
+      "record_id": "topicqa_stego_p004",
+      "label": "stego",
+      "pc1": -0.2473919689655304,
+      "pc2": 0.4539382755756378
+    },
+    {
+      "record_id": "topicqa_stego_p005",
+      "label": "stego",
+      "pc1": 0.3864753842353821,
+      "pc2": -0.4604094326496124
+    },
+    {
+      "record_id": "topicqa_stego_p006",
+      "label": "stego",
+      "pc1": 0.1712287962436676,
+      "pc2": 0.10891594737768173
+    },
+    {
+      "record_id": "topicqa_stego_p007",
+      "label": "stego",
+      "pc1": -0.1467110961675644,
+      "pc2": 0.2525657117366791
+    },
+    {
+      "record_id": "topicqa_stego_p008",
+      "label": "stego",
+      "pc1": -0.49469447135925293,
+      "pc2": -0.36839431524276733
+    },
+    {
+      "record_id": "topicqa_stego_p009",
+      "label": "stego",
+      "pc1": 0.5662193894386292,
+      "pc2": -0.2178431898355484
+    },
+    {
+      "record_id": "topicqa_cover_c1_p000",
+      "label": "cover_c1",
+      "pc1": -0.535539984703064,
+      "pc2": -0.2802638113498688
+    },
+    {
+      "record_id": "topicqa_cover_c1_p001",
+      "label": "cover_c1",
+      "pc1": -0.008958596736192703,
+      "pc2": 0.35157549381256104
+    },
+    {
+      "record_id": "topicqa_cover_c1_p002",
+      "label": "cover_c1",
+      "pc1": 0.28787675499916077,
+      "pc2": 0.3434998691082001
+    },
+    {
+      "record_id": "topicqa_cover_c1_p003",
+      "label": "cover_c1",
+      "pc1": -0.0005333502776920795,
+      "pc2": -0.34395739436149597
+    },
+    {
+      "record_id": "topicqa_cover_c1_p004",
+      "label": "cover_c1",
+      "pc1": -0.147684246301651,
+      "pc2": 0.4027184545993805
+    },
+    {
+      "record_id": "topicqa_cover_c1_p005",
+      "label": "cover_c1",
+      "pc1": 0.3971182703971863,
+      "pc2": -0.4251966178417206
+    },
+    {
+      "record_id": "topicqa_cover_c1_p006",
+      "label": "cover_c1",
+      "pc1": 0.17787306010723114,
+      "pc2": 0.13832899928092957
+    },
+    {
+      "record_id": "topicqa_cover_c1_p007",
+      "label": "cover_c1",
+      "pc1": -0.1359262317419052,
+      "pc2": 0.32781481742858887
+    },
+    {
+      "record_id": "topicqa_cover_c1_p008",
+      "label": "cover_c1",
+      "pc1": -0.4584338366985321,
+      "pc2": -0.339738667011261
+    },
+    {
+      "record_id": "topicqa_cover_c1_p009",
+      "label": "cover_c1",
+      "pc1": 0.5654253959655762,
+      "pc2": -0.19576683640480042
+    },
+    {
+      "record_id": "topicqa_cover_c2_p000",
+      "label": "cover_c2",
+      "pc1": -0.593995988368988,
+      "pc2": -0.18284960091114044
+    },
+    {
+      "record_id": "topicqa_cover_c2_p001",
+      "label": "cover_c2",
+      "pc1": -0.04525476321578026,
+      "pc2": 0.32127895951271057
+    },
+    {
+      "record_id": "topicqa_cover_c2_p002",
+      "label": "cover_c2",
+      "pc1": 0.255128413438797,
+      "pc2": 0.3473367691040039
+    },
+    {
+      "record_id": "topicqa_cover_c2_p003",
+      "label": "cover_c2",
+      "pc1": 0.02722982130944729,
+      "pc2": -0.3182060420513153
+    },
+    {
+      "record_id": "topicqa_cover_c2_p004",
+      "label": "cover_c2",
+      "pc1": -0.18378379940986633,
+      "pc2": 0.47380489110946655
+    },
+    {
+      "record_id": "topicqa_cover_c2_p005",
+      "label": "cover_c2",
+      "pc1": 0.41468319296836853,
+      "pc2": -0.4319024682044983
+    },
+    {
+      "record_id": "topicqa_cover_c2_p006",
+      "label": "cover_c2",
+      "pc1": 0.18279610574245453,
+      "pc2": 0.09204745292663574
+    },
+    {
+      "record_id": "topicqa_cover_c2_p007",
+      "label": "cover_c2",
+      "pc1": -0.14205121994018555,
+      "pc2": 0.3455864489078522
+    },
+    {
+      "record_id": "topicqa_cover_c2_p008",
+      "label": "cover_c2",
+      "pc1": -0.48127952218055725,
+      "pc2": -0.33454856276512146
+    },
+    {
+      "record_id": "topicqa_cover_c2_p009",
+      "label": "cover_c2",
+      "pc1": 0.5173261761665344,
+      "pc2": -0.15411153435707092
+    }
+  ],
+  "pca_explained_variance": [
+    0.14856873452663422,
+    0.1312665492296219
+  ]
+}

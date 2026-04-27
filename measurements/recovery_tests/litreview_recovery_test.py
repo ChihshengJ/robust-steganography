@@ -1,4 +1,3 @@
-import json
 import logging
 import random
 from pathlib import Path
@@ -571,10 +570,9 @@ def main():
         tampering_levels=tp,
         attack_configs=attack_configs,
         system=system,
-        num_bits=12,
-        num_messages=2,
-        messages=[[1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1], [0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1]],
-        num_stego_per_message=1,
+        num_bits=15,
+        num_messages=3,
+        num_stego_per_message=2,
         runs=5,
         history="25",
         seed=1228,

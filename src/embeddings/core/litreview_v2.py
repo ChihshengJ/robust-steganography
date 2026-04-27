@@ -179,6 +179,7 @@ class LitReviewSystemV2(StegSystem):
         self.encoder = encoder or CharacterEncoder()
         self.hash_output_length = 1
         self._error_encoded_length: int | None = None
+        self._last_metadata: dict | None = None
         self.corpus = corpus
         if not self.corpus:
             self.corpus = load_corpus(
@@ -218,6 +219,16 @@ class LitReviewSystemV2(StegSystem):
         print(
             f"  Selected {len(selected)} references, bits: {''.join(str(r['hash_bit']) for r in selected)}"
         )
+
+        self._last_metadata = {
+            "paper_id": paper["paperId"],
+            "paper_title": paper["title"],
+            "selected_refs": [
+                {"author": r["author_text"], "year": r["year"], "title": r["ref_title"], "hash_bit": r["hash_bit"]}
+                for r in selected
+            ],
+            "message_bits": message_bits,
+        }
 
         stego_text = self._generate_review(paper, selected)
         return stego_text

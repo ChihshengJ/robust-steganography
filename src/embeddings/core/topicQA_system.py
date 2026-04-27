@@ -18,12 +18,27 @@ Example Output: ["Personal Beliefs", "Financial Security", "Establishment Locati
 
 Question: {question}"""
 
-ENCODE_PROMPT = """Answer the following question, addressing each of these specific aspects (and ONLY these aspects, no others):
+# ENCODE_PROMPT = """Answer the following question, addressing each of these specific aspects (and ONLY these aspects, no others):
+# {topics_str}
+#
+# Write a natural, flowing response to the question.
+# Address each aspect with appropriate depth — some may deserve more discussion than others.
+# Make sure each aspect is clearly and distinctly addressed rather than merged with another.
+# Do not add aspects not listed above.
+# Do not list the aspects explicitly.
+#
+# Question: {question}"""
+
+ENCODE_PROMPT = """Answer the following question. Your answer must substantively engage with each of the following aspects (and only these — do not introduce others):
 {topics_str}
 
-Generate a full paragraph as the answer. Provide 2-3 sentences per aspect.
-Do not add aspects not listed above.
-Do not list the aspects explicitly.
+Write the response as cohesive, flowing prose. Specifically:
+- Do NOT use the aspect names as section headers, paragraph topics, or sentence-initial subjects.
+- Do NOT structure the answer as one paragraph per aspect. Multiple aspects can — and should — be discussed together when they are related.
+- Paraphrase the aspects rather than repeating their names verbatim.
+- Vary your transitions; avoid formulaic connectors such as "Another X is", "Lastly,", "Additionally,".
+
+Each aspect should be developed enough that a careful reader could recognize it was substantively addressed.
 
 Question: {question}"""
 
@@ -33,7 +48,9 @@ DECODE_PROMPT = """Read this response to the question "{question}":
 {response}
 ---
 
-Which ONE of the following aspects is discussed in the response?
+This response was written to cover several specific aspects of the question. Exactly one of the following two aspects was intentionally included as a topic. The other was not covered.
+
+Which one is specifically addressed in the response?
 {options}
 
 Reply with ONLY the letter ({letters})."""
@@ -55,7 +72,7 @@ def _llm(
     prompt,
     system="You are a helpful assistant.",
     temperature=0,
-    max_tokens=1000,
+    max_tokens=2500,
 ):
     for attempt in range(3):
         try:
@@ -135,6 +152,7 @@ class TopicQASystem(StegSystem):
         self.response_temperature = response_temperature
 
         self._question: str | None = None
+        self._last_metadata: dict | None = None
 
     @property
     def n_groups(self) -> int:
@@ -156,8 +174,10 @@ class TopicQASystem(StegSystem):
         raw = _llm(
             self.local_client,
             self.local_model,
-            SUBTOPIC_PROMPT.format(n=self.n_subtopics, question=question),
+            "\no_think "
+            + SUBTOPIC_PROMPT.format(n=self.n_subtopics, question=question),
             temperature=0,
+            max_tokens=2500,
         )
         topics = _parse_topic_list(raw)
         if len(topics) > self.n_subtopics:
@@ -194,7 +214,7 @@ class TopicQASystem(StegSystem):
             self.response_model,
             prompt,
             temperature=self.response_temperature,
-            max_tokens=2000,
+            max_tokens=2500,
         )
 
     def _decode_group(self, response: str, question: str, group: list[str]) -> int:
@@ -270,6 +290,7 @@ class TopicQASystem(StegSystem):
         )
 
         response, metadata = self.encode(chunks, seed)
+        self._last_metadata = metadata
         print(f"Selected subtopics: {metadata['selected']}")
         return response
 

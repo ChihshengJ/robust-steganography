@@ -102,7 +102,7 @@ Smith 2018
 Jones 2019
 Li 2020"""
 
-GENERATE_REVIEW = """You are writing a concise related work section for an academic paper.
+GENERATE_REVIEW_RETIRED = """You are writing a concise related work section for an academic paper.
 
 Paper: "{seed_title}"
 Abstract: {seed_abstract}
@@ -114,3 +114,20 @@ Cite each as "LastName et al. (YEAR)" or "LastName (YEAR)".
 Keep it natural and concise — this is a focused related work section, not an exhaustive survey. 
 Vary sentence structure and use natural transitions. 
 Every reference must appear exactly once with its citation."""
+
+GENERATE_REVIEW = """You are writing the Related Work section of an academic paper.
+
+Paper: "{seed_title}"
+Abstract: {seed_abstract}
+
+Write a Related Work section that contextualizes this paper within the broader 
+research landscape. Organize thematically, grouping related works by research 
+direction or methodology across multiple paragraphs.
+
+Where works are closely related, discuss them together in the same sentence or 
+passage rather than giving each its own isolated sentence. Include contextual 
+sentences that provide background or transitions without citing specific papers.
+Some works may warrant more discussion than others depending on their relevance.
+
+Cite as "LastName (YEAR)" or "LastName et al. (YEAR)".
+All provided references must be cited."""

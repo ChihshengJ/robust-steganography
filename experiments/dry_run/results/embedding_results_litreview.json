@@ -1,0 +1,202 @@
+{
+  "s_vs_c1": {
+    "accuracy": 0.0,
+    "n_correct": 0,
+    "n_total": 20,
+    "p_value": 1.9073486328125e-06,
+    "centroid_cosine": 0.9730863571166992
+  },
+  "s_vs_c2": {
+    "accuracy": 0.0,
+    "n_correct": 0,
+    "n_total": 20,
+    "p_value": 1.9073486328125e-06,
+    "centroid_cosine": 0.9651191830635071
+  },
+  "pca": [
+    {
+      "record_id": "litreview_stego_p000",
+      "label": "stego",
+      "pc1": 0.03641100972890854,
+      "pc2": -0.045155756175518036
+    },
+    {
+      "record_id": "litreview_stego_p001",
+      "label": "stego",
+      "pc1": 0.06196882575750351,
+      "pc2": -0.11149075627326965
+    },
+    {
+      "record_id": "litreview_stego_p002",
+      "label": "stego",
+      "pc1": -0.36280548572540283,
+      "pc2": -0.25582197308540344
+    },
+    {
+      "record_id": "litreview_stego_p003",
+      "label": "stego",
+      "pc1": -0.3773265480995178,
+      "pc2": 0.8786947131156921
+    },
+    {
+      "record_id": "litreview_stego_p004",
+      "label": "stego",
+      "pc1": 0.3035081923007965,
+      "pc2": -0.15592901408672333
+    },
+    {
+      "record_id": "litreview_stego_p005",
+      "label": "stego",
+      "pc1": 0.2315521240234375,
+      "pc2": 0.2168205827474594
+    },
+    {
+      "record_id": "litreview_stego_p006",
+      "label": "stego",
+      "pc1": -0.695015013217926,
+      "pc2": -0.38558247685432434
+    },
+    {
+      "record_id": "litreview_stego_p007",
+      "label": "stego",
+      "pc1": 0.3548720180988312,
+      "pc2": 0.005879885517060757
+    },
+    {
+      "record_id": "litreview_stego_p008",
+      "label": "stego",
+      "pc1": 0.08958619832992554,
+      "pc2": -0.03230144456028938
+    },
+    {
+      "record_id": "litreview_stego_p009",
+      "label": "stego",
+      "pc1": 0.33171212673187256,
+      "pc2": -0.024677174165844917
+    },
+    {
+      "record_id": "litreview_cover_c1_p000",
+      "label": "cover_c1",
+      "pc1": 0.03877851739525795,
+      "pc2": -0.03146598860621452
+    },
+    {
+      "record_id": "litreview_cover_c1_p001",
+      "label": "cover_c1",
+      "pc1": 0.05768568068742752,
+      "pc2": -0.10838940739631653
+    },
+    {
+      "record_id": "litreview_cover_c1_p002",
+      "label": "cover_c1",
+      "pc1": -0.36915457248687744,
+      "pc2": -0.20874810218811035
+    },
+    {
+      "record_id": "litreview_cover_c1_p003",
+      "label": "cover_c1",
+      "pc1": -0.37604039907455444,
+      "pc2": 0.876009464263916
+    },
+    {
+      "record_id": "litreview_cover_c1_p004",
+      "label": "cover_c1",
+      "pc1": 0.30555999279022217,
+      "pc2": -0.20728005468845367
+    },
+    {
+      "record_id": "litreview_cover_c1_p005",
+      "label": "cover_c1",
+      "pc1": 0.23623941838741302,
+      "pc2": 0.21652981638908386
+    },
+    {
+      "record_id": "litreview_cover_c1_p006",
+      "label": "cover_c1",
+      "pc1": -0.7110946178436279,
+      "pc2": -0.3834235668182373
+    },
+    {
+      "record_id": "litreview_cover_c1_p007",
+      "label": "cover_c1",
+      "pc1": 0.4454798698425293,
+      "pc2": -0.03923988714814186
+    },
+    {
+      "record_id": "litreview_cover_c1_p008",
+      "label": "cover_c1",
+      "pc1": 0.013808188028633595,
+      "pc2": -0.02891983650624752
+    },
+    {
+      "record_id": "litreview_cover_c1_p009",
+      "label": "cover_c1",
+      "pc1": 0.4116710424423218,
+      "pc2": -0.062443122267723083
+    },
+    {
+      "record_id": "litreview_cover_c2_p000",
+      "label": "cover_c2",
+      "pc1": 0.030952880159020424,
+      "pc2": -0.04741210862994194
+    },
+    {
+      "record_id": "litreview_cover_c2_p001",
+      "label": "cover_c2",
+      "pc1": 0.10097356140613556,
+      "pc2": -0.1289447844028473
+    },
+    {
+      "record_id": "litreview_cover_c2_p002",
+      "label": "cover_c2",
+      "pc1": -0.355878084897995,
+      "pc2": -0.1883753389120102
+    },
+    {
+      "record_id": "litreview_cover_c2_p003",
+      "label": "cover_c2",
+      "pc1": -0.35396820306777954,
+      "pc2": 0.8777176737785339
+    },
+    {
+      "record_id": "litreview_cover_c2_p004",
+      "label": "cover_c2",
+      "pc1": -0.09859023988246918,
+      "pc2": -0.2383943349123001
+    },
+    {
+      "record_id": "litreview_cover_c2_p005",
+      "label": "cover_c2",
+      "pc1": 0.3447670042514801,
+      "pc2": 0.1127409040927887
+    },
+    {
+      "record_id": "litreview_cover_c2_p006",
+      "label": "cover_c2",
+      "pc1": -0.6386903524398804,
+      "pc2": -0.4029053747653961
+    },
+    {
+      "record_id": "litreview_cover_c2_p007",
+      "label": "cover_c2",
+      "pc1": 0.35044991970062256,
+      "pc2": 0.00095731345936656
+    },
+    {
+      "record_id": "litreview_cover_c2_p008",
+      "label": "cover_c2",
+      "pc1": 0.17960073053836823,
+      "pc2": -0.030508406460285187
+    },
+    {
+      "record_id": "litreview_cover_c2_p009",
+      "label": "cover_c2",
+      "pc1": 0.41298630833625793,
+      "pc2": -0.06794129312038422
+    }
+  ],
+  "pca_explained_variance": [
+    0.17839409410953522,
+    0.1594766229391098
+  ]
+}

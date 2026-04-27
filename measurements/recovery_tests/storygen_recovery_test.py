@@ -8,7 +8,7 @@ import openai
 from embeddings import (
     PCAHash,
     RepetitionCode,
-    StoryStegSystem, StorySystemV2,
+    StorySystemV2,
 )
 from embeddings.config.system_prompts import STORY_GENERATION
 from watermarks import (
@@ -564,7 +564,7 @@ def main():
         error_correction=ecc,
         local_client=local_client,
         local_model="Qwen3.5-4B-UD-Q8_K_XL.gguf",
-        n_slots=18,
+        n_slots=20,
         encoder=BypassEncoder(),
     )
 

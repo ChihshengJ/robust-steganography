@@ -75,15 +75,14 @@ Example: [{{"slot": "Intel delivery method", "A": "a sealed envelope under the d
 
 Story premise: {premise}"""
 
-STORY_SYNTHESIS_PROMPT = """Write a short story based on the following premise and event details.
-Incorporate each event detail naturally into the narrative in the given order.
-Write 2-3 sentences per event. Use flowing prose — do not list events or use bullet points.
-Every detail below MUST appear explicitly and unambiguously in the story text.
-Do NOT include details from the "not" column — only use the "use" column.
+STORY_SYNTHESIS_PROMPT = """Write a short story based on the following premise.
+Incorporate each of the specific details listed below naturally into the narrative.
+Every detail MUST appear clearly and unambiguously in the story text.
+Use flowing prose with natural pacing — give more attention to dramatic moments and less to routine ones.
 
 Premise: {premise}
 
-Events (in narrative order):
+Details to include:
 {events_str}"""
 
 SLOT_DECODE_PROMPT = """Read this story carefully:
@@ -137,6 +136,7 @@ class StorySystemV2(StegSystem):
         self.response_temperature = response_temperature
 
         self._premise: str | None = None
+        self._last_metadata: dict | None = None
 
     @property
     def raw_capacity_bits(self) -> int:
@@ -258,11 +258,7 @@ class StorySystemV2(StegSystem):
         return recovered
 
     def _generate_story(self, premise: str, assigned: list[dict]) -> str:
-        events_str = "\n".join(
-            f'{i + 1}. {a["slot"]}: use "{a["chosen"]}" '
-            f'(not "{a["B"] if a["chosen_key"] == "A" else a["A"]}")'
-            for i, a in enumerate(assigned)
-        )
+        events_str = "\n".join(f"- {a['slot']}: {a['chosen']}" for a in assigned)
         prompt = STORY_SYNTHESIS_PROMPT.format(
             premise=premise,
             events_str=events_str,
@@ -318,6 +314,7 @@ class StorySystemV2(StegSystem):
         print(f"Payload: {len(chunks)} bits (capacity: {self.raw_capacity_bits})")
 
         story, metadata = self.encode(chunks, seed)
+        self._last_metadata = metadata
         print("Slot assignments:")
         for a in metadata["assigned"]:
             tag = "*" if a["carries_message"] else " "

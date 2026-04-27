@@ -565,11 +565,11 @@ def main():
         group_size=2,
         response_model="gpt-4.1",
         decoder_model="gpt-4.1",
-        key="papi",
+        key="kakegurui",
         encoder=BypassEncoder(),
     )
 
-    question = "What factors determine whether a city has the potential to become a country's tech hub?"
+    question = "What are the main challenges facing public education in the United States?"
 
     attack_configs = [
         {"label": "Paraphrase (global)", "attack_type": "paraphrase", "local": False},
@@ -583,7 +583,7 @@ def main():
         num_bits=6,
         num_messages=3,
         messages=[[1, 0, 1, 0, 1, 0], [0, 0, 1, 1, 1, 0], [0, 0, 0, 1, 0, 1]],
-        num_stego_per_message=5,
+        num_stego_per_message=2,
         runs=5,
         history=question,
         seed=1228,
