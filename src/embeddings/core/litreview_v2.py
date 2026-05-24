@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import re
 import time
@@ -163,6 +164,47 @@ def greedy_select(references: list[dict], message_bits: list[int]) -> list[dict]
     return selected
 
 
+# --- Keyed-rank scheme (current) -------------------------------------------
+# Each reference gets a keyed (bit, keyrank) pair. `bit` carries one message
+# bit; `keyrank` is a keyed total order over all references, letting the
+# decoder recover bit order by sorting the cited refs — with no paper/corpus.
+
+
+def ref_keyhash(key: str, author_last_name: str, year: int) -> tuple[int, int]:
+    """Keyed hash of a reference -> (payload bit, keyrank).
+
+    `bit` carries one message bit; `keyrank` is a keyed pseudo-random total
+    order over all references. Normalization matches `ref_bit_hash`.
+    """
+    msg = f"{author_last_name.lower().strip()}_{year}"
+    v = hmac.new(key.encode(), msg.encode(), hashlib.sha256).digest()
+    return v[0] & 1, int.from_bytes(v[1:9], "big")
+
+
+def select_by_keyrank(
+    references: list[dict], message_bits: list[int]
+) -> list[dict] | None:
+    """Select one reference per message bit by greedy walk in keyrank order.
+
+    `references` must already carry keyed `bit` and `keyrank` fields. Returned
+    refs are in increasing keyrank order, so the decoder recovers the bit
+    sequence just by sorting the cited refs by keyrank.
+    """
+    pool = sorted(references, key=lambda r: r["keyrank"])
+    selected: list[dict] = []
+    idx = 0
+    for bit in message_bits:
+        while idx < len(pool):
+            if pool[idx]["bit"] == bit:
+                selected.append(pool[idx])
+                idx += 1
+                break
+            idx += 1
+        else:
+            return None
+    return selected
+
+
 class LitReviewSystemV2(StegSystem):
     def __init__(
         self,
@@ -171,9 +213,11 @@ class LitReviewSystemV2(StegSystem):
         corpus: list[dict] | None = None,
         model: str = "gpt-4.1",
         encoder: Encoder | None = None,
+        key: str = "default",
     ):
         self.client = client
         self.model = model
+        self.key = key
         self.hash_fn = None
         self.ecc = error_correction
         self.encoder = encoder or CharacterEncoder()
@@ -192,23 +236,78 @@ class LitReviewSystemV2(StegSystem):
             "LitReviewSystem encodes via reference selection. Use hide_message directly."
         )
 
-    def hide_message(self, data: Any, seed: str, **kwargs) -> str:
-        """Encode data into a literature review for the paper at corpus index `seed`."""
+    # --- OLD keyless-hash scheme (commented out, superseded by keyed-rank) ---
+    # def hide_message(self, data: Any, seed: str, **kwargs) -> str:
+    #     """Encode data into a literature review for the paper at corpus index `seed`."""
+    #     if self.corpus is None:
+    #         raise ValueError("Corpus not initialized")
+    #     paper = self.corpus[int(seed)]
+    #     references = prepare_references(paper["references"])
+    #
+    #     chunks, self._error_encoded_length = self._encode_to_chunks(data)
+    #     message_bits = [int(c[0]) for c in chunks]
+    #
+    #     n_zeros = sum(1 for r in references if r["hash_bit"] == 0)
+    #     n_ones = len(references) - n_zeros
+    #     print(
+    #         f"  Pool: {len(references)} refs (0s: {n_zeros}, 1s: {n_ones}), encoding {len(message_bits)} bits"
+    #     )
+    #
+    #     selected = greedy_select(references, message_bits)
+    #     if selected is None:
+    #         raise ValueError(
+    #             f"Reference pool exhausted: cannot encode "
+    #             f"{''.join(map(str, message_bits))} with "
+    #             f"{len(references)} references (0s: {n_zeros}, 1s: {n_ones})"
+    #         )
+    #
+    #     print(
+    #         f"  Selected {len(selected)} references, bits: {''.join(str(r['hash_bit']) for r in selected)}"
+    #     )
+    #
+    #     self._last_metadata = {
+    #         "paper_id": paper["paperId"],
+    #         "paper_title": paper["title"],
+    #         "selected_refs": [
+    #             {"author": r["author_text"], "year": r["year"], "title": r["ref_title"], "hash_bit": r["hash_bit"]}
+    #             for r in selected
+    #         ],
+    #         "message_bits": message_bits,
+    #     }
+    #
+    #     stego_text = self._generate_review(paper, selected)
+    #     return stego_text
+
+    def hide_message(self, data: Any, seed: int, **kwargs) -> str:
+        """Encode data into a literature review for the paper at corpus index `seed`.
+
+        Keyed-rank scheme: each reference gets a keyed (bit, keyrank) pair via
+        HMAC(key, ...). References are selected by greedy walk in keyrank order,
+        one per message bit. The cited refs therefore appear in keyrank order,
+        so decoding is self-contained — it needs neither the paper nor the
+        reference list, only the key.
+        """
         if self.corpus is None:
             raise ValueError("Corpus not initialized")
         paper = self.corpus[int(seed)]
         references = prepare_references(paper["references"])
 
+        # Keyed (bit, keyrank) per reference — replaces the keyless hash_bit.
+        for r in references:
+            r["bit"], r["keyrank"] = ref_keyhash(
+                self.key, r["author_last_name"], r["year"]
+            )
+
         chunks, self._error_encoded_length = self._encode_to_chunks(data)
         message_bits = [int(c[0]) for c in chunks]
 
-        n_zeros = sum(1 for r in references if r["hash_bit"] == 0)
+        n_zeros = sum(1 for r in references if r["bit"] == 0)
         n_ones = len(references) - n_zeros
         print(
             f"  Pool: {len(references)} refs (0s: {n_zeros}, 1s: {n_ones}), encoding {len(message_bits)} bits"
         )
 
-        selected = greedy_select(references, message_bits)
+        selected = select_by_keyrank(references, message_bits)
         if selected is None:
             raise ValueError(
                 f"Reference pool exhausted: cannot encode "
@@ -217,14 +316,20 @@ class LitReviewSystemV2(StegSystem):
             )
 
         print(
-            f"  Selected {len(selected)} references, bits: {''.join(str(r['hash_bit']) for r in selected)}"
+            f"  Selected {len(selected)} references, bits: {''.join(str(r['bit']) for r in selected)}"
         )
 
         self._last_metadata = {
             "paper_id": paper["paperId"],
             "paper_title": paper["title"],
             "selected_refs": [
-                {"author": r["author_text"], "year": r["year"], "title": r["ref_title"], "hash_bit": r["hash_bit"]}
+                {
+                    "author": r["author_text"],
+                    "year": r["year"],
+                    "title": r["ref_title"],
+                    "bit": r["bit"],
+                    "keyrank": r["keyrank"],
+                }
                 for r in selected
             ],
             "message_bits": message_bits,
@@ -233,7 +338,40 @@ class LitReviewSystemV2(StegSystem):
         stego_text = self._generate_review(paper, selected)
         return stego_text
 
+    # --- OLD keyless-hash scheme (commented out, superseded by keyed-rank) ---
+    # def recover_message(self, stego_text: str, **kwargs):
+    #     if self._error_encoded_length is None:
+    #         raise ValueError(
+    #             "No encoded length set. Run hide_message first or set error_encoded_length."
+    #         )
+    #     expected_bits = self._error_encoded_length // self.hash_output_length
+    #
+    #     citations = extract_citations(self.client, self.model, stego_text)
+    #     recovered_bits = [c["hash_bit"] for c in citations]
+    #     print(
+    #         f"  Extracted {len(citations)} citations, bits: {''.join(map(str, recovered_bits))}"
+    #     )
+    #
+    #     if len(recovered_bits) != expected_bits:
+    #         print(
+    #             f"  WARNING: Expected {expected_bits} bits, got {len(recovered_bits)}"
+    #         )
+    #
+    #     if len(recovered_bits) < expected_bits:
+    #         recovered_bits.extend([0] * (expected_bits - len(recovered_bits)))
+    #     recovered_bits = recovered_bits[:expected_bits]
+    #
+    #     ecc_bits = np.array(recovered_bits)
+    #     decoded_bits = self.ecc.decode(ecc_bits, self._error_encoded_length)
+    #     return self.encoder.decode(decoded_bits)
+
     def recover_message(self, stego_text: str, **kwargs):
+        """Decode the message from a stego review.
+
+        Self-contained: extracts the cited (author, year) pairs, recomputes
+        each citation's keyed (bit, keyrank), and sorts by keyrank to recover
+        the bit order. Needs neither the paper identity nor the reference list.
+        """
         if self._error_encoded_length is None:
             raise ValueError(
                 "No encoded length set. Run hide_message first or set error_encoded_length."
@@ -241,7 +379,13 @@ class LitReviewSystemV2(StegSystem):
         expected_bits = self._error_encoded_length // self.hash_output_length
 
         citations = extract_citations(self.client, self.model, stego_text)
-        recovered_bits = [c["hash_bit"] for c in citations]
+        for c in citations:
+            c["bit"], c["keyrank"] = ref_keyhash(
+                self.key, c["author_last_name"], c["year"]
+            )
+        # Bit order is recovered from the keyed total order, not citation order.
+        citations.sort(key=lambda c: c["keyrank"])
+        recovered_bits = [c["bit"] for c in citations]
         print(
             f"  Extracted {len(citations)} citations, bits: {''.join(map(str, recovered_bits))}"
         )

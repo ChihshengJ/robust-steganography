@@ -196,6 +196,17 @@ class SentenceStegSystem(StegSystem):
             sampler=RejectionSampler(), config=self.backtrack_config
         )
 
+        self._seed: str | None = None
+        self._last_metadata: dict | None = None
+
+    @property
+    def seed(self) -> str | None:
+        return self._seed
+
+    @seed.setter
+    def seed(self, value: str | None) -> None:
+        self._seed = value
+
     def encode(
         self,
         chunks: list[list[int]],
@@ -203,7 +214,7 @@ class SentenceStegSystem(StegSystem):
         system_prompt: str = "You are having a casual conversation.",
         max_length=200,
         k: int = 2,
-        temperature: float = 0.7,
+        temperature: float = 1,
         **kwargs,
     ) -> tuple[list[str], list]:
         return self._backtracking_encoder.encode(

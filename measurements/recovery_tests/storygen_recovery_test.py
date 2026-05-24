@@ -540,7 +540,7 @@ def main():
     tp = [1.0]
 
     client = openai.OpenAI()
-    local_client = openai.OpenAI(base_url="http://127.0.0.1:11434/v1")
+    local_client = openai.OpenAI(base_url="http://127.0.0.1:8080/v1")
 
     ## Use a callback to manipulate the PCA hash
     hash_fn = PCAHash(
@@ -563,7 +563,7 @@ def main():
         client=client,
         error_correction=ecc,
         local_client=local_client,
-        local_model="Qwen3.5-4B-UD-Q8_K_XL.gguf",
+        local_model="Qwen3.5-9B-Q4_K_M.gguf",
         n_slots=20,
         encoder=BypassEncoder(),
     )

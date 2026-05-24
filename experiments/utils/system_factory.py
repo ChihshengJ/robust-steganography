@@ -4,30 +4,51 @@ from __future__ import annotations
 
 import openai
 
-from embeddings import LitReviewSystemV2, RepetitionCode, StorySystemV2, TopicQASystem
+from embeddings import (
+    CORPORATE_MONOLOGUE,
+    LitReviewSystemV2,
+    PCAHash,
+    RandomProjectionHash,
+    RepetitionCode,
+    SentenceStegSystem,
+    StorySystemV2,
+    TopicQASystem,
+)
 from embeddings.core.litreview_v2 import load_corpus
-from measurements.utils import BypassEncoder
+from measurements.utils import BypassEncoder, index_reducer
 
-LOCAL_BASE_URL = "http://127.0.0.1:11434/v1"
+LOCAL_BASE_URL = "http://127.0.0.1:8080/v1"
 LOCAL_MODEL = "Qwen3.5-4B-UD-Q8_K_XL.gguf"
 
 
 def make_clients() -> tuple[openai.OpenAI, openai.OpenAI]:
     """Create the OpenAI API client and local Ollama client."""
     client = openai.OpenAI()
-    local_client = openai.OpenAI(base_url=LOCAL_BASE_URL, api_key="unused")
+    local_client = openai.OpenAI(
+        base_url=LOCAL_BASE_URL,
+        api_key="unused",
+    )
     return client, local_client
 
 
-def make_topicqa(client: openai.OpenAI, local_client: openai.OpenAI) -> TopicQASystem:
-    """Create a TopicQASystem with standard experiment parameters."""
+def make_topicqa(
+    client: openai.OpenAI,
+    local_client: openai.OpenAI,
+    n_subtopics: int = 12,
+    group_size: int = 2,
+) -> TopicQASystem:
+    """Create a TopicQASystem with standard experiment parameters.
+
+    Capacity = n_subtopics // group_size * log2(group_size). For the default
+    group_size=2, that's n_subtopics // 2 bits.
+    """
     return TopicQASystem(
         client,
         error_correction=RepetitionCode(1),
         local_client=local_client,
         local_model=LOCAL_MODEL,
-        n_subtopics=12,
-        group_size=2,
+        n_subtopics=n_subtopics,
+        group_size=group_size,
         response_model="gpt-4.1",
         decoder_model="gpt-4.1",
         key="default",
@@ -36,14 +57,21 @@ def make_topicqa(client: openai.OpenAI, local_client: openai.OpenAI) -> TopicQAS
     )
 
 
-def make_story(client: openai.OpenAI, local_client: openai.OpenAI) -> StorySystemV2:
-    """Create a StorySystemV2 with standard experiment parameters."""
+def make_story(
+    client: openai.OpenAI,
+    local_client: openai.OpenAI,
+    n_slots: int = 16,
+) -> StorySystemV2:
+    """Create a StorySystemV2 with standard experiment parameters.
+
+    Capacity = n_slots bits (1 bit per slot ranking).
+    """
     return StorySystemV2(
         client,
         error_correction=RepetitionCode(1),
         local_client=local_client,
         local_model=LOCAL_MODEL,
-        n_slots=20,
+        n_slots=n_slots,
         response_model="gpt-4.1",
         decoder_model="gpt-4.1",
         key="default",
@@ -63,6 +91,24 @@ def make_litreview(client: openai.OpenAI) -> LitReviewSystemV2:
         error_correction=RepetitionCode(1),
         corpus=corpus,
         model="gpt-4.1",
+        encoder=BypassEncoder(),
+        key="default",
+    )
+
+
+def make_baseline(client: openai.OpenAI) -> SentenceStegSystem:
+    """Baseline sentence-level steg (Bauer et al.): random-projection hash,
+    1 bit/sentence, RepetitionCode(5), corporate-email generation prompt."""
+    hash_fn = PCAHash(
+        pca_dir="./src/pca/enron_emails/artifacts",
+        bit_reducer=index_reducer(8),
+    )
+    hash_fn = RandomProjectionHash(seed=108)
+    return SentenceStegSystem(
+        client,
+        hash_function=hash_fn,
+        error_correction=RepetitionCode(5),
+        system_prompt=CORPORATE_MONOLOGUE,
         encoder=BypassEncoder(),
     )
 

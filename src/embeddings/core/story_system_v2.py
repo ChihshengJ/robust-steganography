@@ -18,10 +18,11 @@ def _llm(
     temperature=0,
     max_tokens=1000,
     top_p=0.7,
+    extra_body: dict | None = None,
 ):
     for attempt in range(3):
         try:
-            r = client.chat.completions.create(
+            kwargs = dict(
                 model=model,
                 temperature=temperature,
                 top_p=top_p,
@@ -31,6 +32,9 @@ def _llm(
                     {"role": "user", "content": prompt},
                 ],
             )
+            if extra_body is not None:
+                kwargs["extra_body"] = extra_body
+            r = client.chat.completions.create(**kwargs)
             return r.choices[0].message.content.strip()
         except Exception as e:
             if attempt == 2:
@@ -63,7 +67,8 @@ Given the following story premise, generate exactly {n} independent story beat s
 Each slot is one narrative event or detail in the story. For each slot, provide TWO alternative concrete details (A and B) that could fill that slot.
 
 Requirements:
-- Alternatives must be clearly distinguishable concrete objects, locations, methods, or characters (not abstract qualities)
+- Alternatives must be clearly distinguishable concrete objects, locations, methods, or actions (not abstract qualities)
+- Slot dimensions must focus on plot or setting choices (objects, locations, methods, events, physical descriptions). DO NOT make any slot dimension about a character's name, identity, role, or personal attributes. Character names should not appear in the A/B alternatives.
 - No two slots may share the same alternative details or describe the same narrative moment.
 - Alternatives must be interchangeable: picking A or B for one slot must not affect any other slot
 - Slots should follow a natural narrative order (setup -> rising action -> climax -> resolution)
@@ -78,7 +83,7 @@ Story premise: {premise}"""
 STORY_SYNTHESIS_PROMPT = """Write a short story based on the following premise.
 Incorporate each of the specific details listed below naturally into the narrative.
 Every detail MUST appear clearly and unambiguously in the story text.
-Use flowing prose with natural pacing — give more attention to dramatic moments and less to routine ones.
+Use flowing prose with natural pacing. Develop the story through concrete actions, physical detail, and brief dialogue only where it advances the plot. Vary paragraph length naturally.
 
 Premise: {premise}
 
@@ -156,7 +161,8 @@ class StorySystemV2(StegSystem):
             self.local_model,
             SLOT_GENERATION_PROMPT.format(n=self.n_slots, premise=premise),
             temperature=0,
-            top_p=0,
+            top_p=1.0,
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         )
         slots = _parse_slots(raw)
         if len(slots) > self.n_slots:

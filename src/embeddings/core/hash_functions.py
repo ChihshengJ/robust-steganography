@@ -23,7 +23,7 @@ class HashFunction:
 
 
 class RandomProjectionHash(HashFunction):
-    def __init__(self, embedding_dim=3072, num_bits=1, seed=128):
+    def __init__(self, embedding_dim=3072, num_bits=1, seed=42):
         super().__init__()
         np.random.seed(seed)
         self.rand_matrix = np.random.randn(embedding_dim, num_bits)

@@ -34,7 +34,7 @@ from experiments.utils.token_counter import bits_per_token, count_tokens, count_
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-SYSTEMS = ["topicqa", "story", "litreview"]
+SYSTEMS = ["topicqa", "story", "litreview", "baseline"]
 TEXT_TYPES = ["stego", "cover_c1", "cover_c2"]
 
 

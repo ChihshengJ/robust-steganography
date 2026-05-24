@@ -18,27 +18,31 @@ Example Output: ["Personal Beliefs", "Financial Security", "Establishment Locati
 
 Question: {question}"""
 
-# ENCODE_PROMPT = """Answer the following question, addressing each of these specific aspects (and ONLY these aspects, no others):
+# ENCODE_PROMPT = """
+# Answer the following question. Your answer must substantively engage with each of the following aspects (and only these):
 # {topics_str}
 #
-# Write a natural, flowing response to the question.
-# Address each aspect with appropriate depth — some may deserve more discussion than others.
-# Make sure each aspect is clearly and distinctly addressed rather than merged with another.
-# Do not add aspects not listed above.
-# Do not list the aspects explicitly.
+# You MUST NOT mention, allude to, or paraphrase any of the following aspects, even in passing or as a contrast:
+# {forbidden_str}
+#
+# Write the response as cohesive, flowing prose. Specifically:
+# - Do NOT use the aspect names as section headers, paragraph topics, or sentence-initial subjects.
+# - Do NOT structure the answer as one paragraph per aspect. Multiple aspects can — and should — be discussed together when they are related.
+# - Use natural transitions and connectors. Do NOT structure the answer as a checklist, and use ordinary connectives as you see fit.
+# - Aspect names may appear in the body text where natural, you can even repeat interleave them as long as it does NOT introduce overlaps with forbidden aspects.
+# - Most importantly, answer like you normally would, keep the answer as natural as possible.
+#
+# Each aspect should be developed enough that a careful reader could recognize it was substantively addressed.
 #
 # Question: {question}"""
+#
+ENCODE_PROMPT = """Answer the following question as natural, cohesive prose. Do not use bullet points, numbered lists, section headers, or bold text.
 
-ENCODE_PROMPT = """Answer the following question. Your answer must substantively engage with each of the following aspects (and only these — do not introduce others):
+Your answer must substantively cover each of these aspects:
 {topics_str}
 
-Write the response as cohesive, flowing prose. Specifically:
-- Do NOT use the aspect names as section headers, paragraph topics, or sentence-initial subjects.
-- Do NOT structure the answer as one paragraph per aspect. Multiple aspects can — and should — be discussed together when they are related.
-- Paraphrase the aspects rather than repeating their names verbatim.
-- Vary your transitions; avoid formulaic connectors such as "Another X is", "Lastly,", "Additionally,".
-
-Each aspect should be developed enough that a careful reader could recognize it was substantively addressed.
+Your answer must NOT mention or allude to any of these aspects:
+{forbidden_str}
 
 Question: {question}"""
 
@@ -73,10 +77,11 @@ def _llm(
     system="You are a helpful assistant.",
     temperature=0,
     max_tokens=2500,
+    extra_body: dict | None = None,
 ):
     for attempt in range(3):
         try:
-            r = client.chat.completions.create(
+            kwargs = dict(
                 model=model,
                 temperature=temperature,
                 max_tokens=max_tokens,
@@ -85,6 +90,9 @@ def _llm(
                     {"role": "user", "content": prompt},
                 ],
             )
+            if extra_body is not None:
+                kwargs["extra_body"] = extra_body
+            r = client.chat.completions.create(**kwargs)
             return r.choices[0].message.content.strip()
         except Exception as e:
             if attempt == 2:
@@ -174,10 +182,10 @@ class TopicQASystem(StegSystem):
         raw = _llm(
             self.local_client,
             self.local_model,
-            "\no_think "
-            + SUBTOPIC_PROMPT.format(n=self.n_subtopics, question=question),
+            SUBTOPIC_PROMPT.format(n=self.n_subtopics, question=question),
             temperature=0,
             max_tokens=2500,
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         )
         topics = _parse_topic_list(raw)
         if len(topics) > self.n_subtopics:
@@ -206,9 +214,14 @@ class TopicQASystem(StegSystem):
             selected.append(group[idx % len(group)])
         return selected
 
-    def _generate_response(self, question: str, selected_topics: list[str]) -> str:
+    def _generate_response(
+        self, question: str, selected_topics: list[str], forbidden_topics: list[str]
+    ) -> str:
         topics_str = "\n".join(f"- {t}" for t in selected_topics)
-        prompt = ENCODE_PROMPT.format(topics_str=topics_str, question=question)
+        forbidden_str = "\n".join(f"- {t}" for t in forbidden_topics)
+        prompt = ENCODE_PROMPT.format(
+            topics_str=topics_str, forbidden_str=forbidden_str, question=question
+        )
         return _llm(
             self.client,
             self.response_model,
@@ -270,7 +283,10 @@ class TopicQASystem(StegSystem):
             )
 
         selected = self._select_subtopics(groups, chunks)
-        response = self._generate_response(question, selected)
+        forbidden = [
+            t for group, sel in zip(groups, selected) for t in group if t != sel
+        ]
+        response = self._generate_response(question, selected, forbidden)
 
         metadata = {
             "topics": topics,

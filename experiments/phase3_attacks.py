@@ -2,7 +2,8 @@
 
 For each system, take the first 30 stego texts and the first 20 cover-C1 texts from
 Phase 1, apply the 5 attack configurations from experiment.md (synonym, local/global
-paraphrase, local/global back-translation), and write attacked texts as JSONL.
+paraphrase, local/global back-translation) to the stegos, and a trimmed cover plan
+(local_paraphrase at tampering {0.5, 1.0}, 1 run each) to the covers.
 
 Output layout (matches experiment.md lines 52-55):
 
@@ -14,13 +15,18 @@ Output layout (matches experiment.md lines 52-55):
 Per-system record counts:
     Stego:  30 src x (synonym 3 + local_paraphrase 9 + local_BT 9 + global_paraphrase 3 + global_BT 3)
             = 30 x 27 = 810
-    Cover:  20 src x (synonym 3 + local_paraphrase 3 + local_BT 3 + global_paraphrase 1 + global_BT 1)
-            = 20 x 11 = 220
-    Total per system: 1030 attacked records.
+    Cover:  20 src x local_paraphrase at {0.5, 1.0} x 1 run = 20 x 2 = 40
+    Total per system: 850 attacked records.
+
+Concurrency: API-bound attack calls are dispatched via a ThreadPoolExecutor
+(default 8 workers, override with --max-workers). The OpenAI client is
+thread-safe; the `random` module is shared global state so the per-task seed
+in `derive_seed` is best-effort under concurrency. Set --max-workers 1 to
+restore strict deterministic seeding.
 
 Usage:
     python -m experiments.phase3_attacks --system topicqa
-    python -m experiments.phase3_attacks --system all
+    python -m experiments.phase3_attacks --system all --max-workers 16
     python -m experiments.phase3_attacks --system topicqa --n-stegos 2 --skip-covers \
         --attack global_paraphrase            # smoke test
     python -m experiments.phase3_attacks --system all --dry-run
@@ -31,6 +37,8 @@ from __future__ import annotations
 import argparse
 import logging
 import random
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -92,7 +100,16 @@ ATTACK_CONFIGS: list[dict] = [
     },
 ]
 
-SYSTEMS = ("topicqa", "story", "litreview")
+SYSTEMS = ("topicqa", "story", "litreview", "baseline")
+
+# Cover-attack plan: covers carry no bits, so they only feed Exp 1 attack-severity
+# baselines. local_paraphrase at medium and maximum tampering is enough to anchor
+# what a paraphrase-class attack does to non-stego text. (Reduced from the full
+# 5-attack grid to cut API cost — see experiment.md discussion.)
+COVER_ALLOWED: set[tuple[str, float]] = {
+    ("local_paraphrase", 0.5),
+    ("local_paraphrase", 1.0),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -107,10 +124,18 @@ def build_attacks(client) -> dict[str, object]:
     """
     return {
         "synonym": SynonymAttack(method="wordnet"),
-        "local_paraphrase": ParaphraseAttack(client=client, model="gpt-4.1", temperature=0.7),
-        "local_backtranslation": TranslationAttack(client=client, model="gpt-4.1", temperature=0.7),
-        "global_paraphrase": ParaphraseAttack(client=client, model="gpt-4.1", temperature=0.7),
-        "global_backtranslation": TranslationAttack(client=client, model="gpt-4.1", temperature=0.7),
+        "local_paraphrase": ParaphraseAttack(
+            client=client, model="gpt-4.1", temperature=0.7
+        ),
+        "local_backtranslation": TranslationAttack(
+            client=client, model="gpt-4.1", temperature=0.7
+        ),
+        "global_paraphrase": ParaphraseAttack(
+            client=client, model="gpt-4.1", temperature=0.7
+        ),
+        "global_backtranslation": TranslationAttack(
+            client=client, model="gpt-4.1", temperature=0.7
+        ),
     }
 
 
@@ -153,15 +178,12 @@ def load_sources(
             (r for r in read_jsonl(cover_path) if r.get("prompt_idx") is not None),
             key=lambda r: r["prompt_idx"],
         )
-        cover_records = [r for r in cover_records if r["prompt_idx"] < n_covers][:n_covers]
+        cover_records = [r for r in cover_records if r["prompt_idx"] < n_covers][
+            :n_covers
+        ]
         sources.extend((r, "cover_c1") for r in cover_records)
 
     return sources
-
-
-def cover_runs(label: str, default_runs: int) -> int:
-    """Cover attacks always use 1 run per attack config (experiment.md line 259)."""
-    return 1
 
 
 def plan_records(
@@ -170,19 +192,21 @@ def plan_records(
 ) -> list[tuple[dict, str, dict, float, int]]:
     """Build the full (source, source_text_type, attack_cfg, tampering, run_idx) plan.
 
-    Used by --dry-run and as the iteration spine of the main loop.
+    Stego sources run the full ATTACK_CONFIGS grid. Cover sources are restricted
+    to COVER_ALLOWED (label, tampering) pairs with 1 run each.
     """
     plan = []
     for source, source_text_type in sources:
         for cfg in ATTACK_CONFIGS:
             if attack_filter and cfg["label"] not in attack_filter:
                 continue
-            n_runs = (
-                cfg["runs_per_stego"]
-                if source_text_type == "stego"
-                else cover_runs(cfg["label"], cfg["runs_per_stego"])
-            )
             for tampering in cfg["tampering_levels"]:
+                if source_text_type == "cover_c1":
+                    if (cfg["label"], tampering) not in COVER_ALLOWED:
+                        continue
+                    n_runs = 1
+                else:
+                    n_runs = cfg["runs_per_stego"]
                 for run_idx in range(n_runs):
                     plan.append((source, source_text_type, cfg, tampering, run_idx))
     return plan
@@ -229,7 +253,8 @@ def make_record(
         "run_idx": run_idx,
         "original_text": original_text,
         "attacked_text": attacked_text,
-        "original_token_count": source.get("token_count") or count_tokens(original_text),
+        "original_token_count": source.get("token_count")
+        or count_tokens(original_text),
         "attacked_token_count": count_tokens(attacked_text) if attacked_text else None,
         "system_state": source.get("system_state"),
         "metadata": {"rng_seed": seed},
@@ -245,6 +270,33 @@ def make_record(
 # ---------------------------------------------------------------------------
 
 
+def execute_task(
+    task: tuple[dict, str, dict, float, int],
+    attacks: dict,
+) -> tuple[str, dict, str | None]:
+    """Run a single attack task and return (record_id, record, error_or_None).
+
+    Designed to be called from a worker thread. No locking needed inside —
+    the OpenAI client is thread-safe, and we let the per-task `random.seed`
+    in `attack_one` be best-effort under concurrency (results are cached in
+    JSONL, so non-determinism here only affects fresh first runs).
+    """
+    source, source_text_type, cfg, tampering, run_idx = task
+    seed = derive_seed(source["id"], cfg["label"], tampering, run_idx)
+    attacked_text, error = attack_one(attacks, cfg, source["text"], tampering, seed)
+    record = make_record(
+        source=source,
+        source_text_type=source_text_type,
+        cfg=cfg,
+        tampering=tampering,
+        run_idx=run_idx,
+        attacked_text=attacked_text,
+        error=error,
+        seed=seed,
+    )
+    return record["id"], record, error
+
+
 def run_system(
     system: str,
     client,
@@ -255,6 +307,7 @@ def run_system(
     skip_covers: bool,
     attack_filter: set[str] | None,
     dry_run: bool,
+    max_workers: int,
 ):
     out_path = output_dir / f"{system}_attacked.jsonl"
     sources = load_sources(phase1_dir, system, n_stegos, n_covers, skip_covers)
@@ -279,44 +332,52 @@ def run_system(
     completed = load_completed_ids(out_path)
     log.info(f"[{system}] {len(completed)} records already done; resuming")
 
-    n_done_now = 0
+    pending: list[tuple[dict, str, dict, float, int]] = []
     n_skipped = 0
-    n_errors = 0
-
-    for source, source_text_type, cfg, tampering, run_idx in plan:
+    for task in plan:
+        source, _, cfg, tampering, run_idx = task
         rid = build_record_id(source["id"], cfg["label"], tampering, run_idx)
         if rid in completed:
             n_skipped += 1
             continue
+        pending.append(task)
 
-        seed = derive_seed(source["id"], cfg["label"], tampering, run_idx)
-        attacked_text, error = attack_one(
-            attacks, cfg, source["text"], tampering, seed
-        )
+    if not pending:
+        log.info(f"[{system}] nothing to attack ({n_skipped} already done).")
+        return
 
-        if error:
-            n_errors += 1
-            log.warning(f"[{system}] {rid} attack failed: {error}")
+    log.info(
+        f"[{system}] dispatching {len(pending)} tasks across {max_workers} worker(s); "
+        f"{n_skipped} skipped"
+    )
 
-        record = make_record(
-            source=source,
-            source_text_type=source_text_type,
-            cfg=cfg,
-            tampering=tampering,
-            run_idx=run_idx,
-            attacked_text=attacked_text,
-            error=error,
-            seed=seed,
-        )
-        append_jsonl(out_path, record)
-        completed.add(rid)
-        n_done_now += 1
+    write_lock = threading.Lock()
+    n_done_now = 0
+    n_errors = 0
 
-        if n_done_now % 25 == 0:
-            log.info(
-                f"[{system}] progress: {n_done_now} new, {n_skipped} skipped, "
-                f"{n_errors} errors (of {len(plan)} planned)"
-            )
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = [ex.submit(execute_task, task, attacks) for task in pending]
+        for fut in as_completed(futures):
+            try:
+                rid, record, error = fut.result()
+            except Exception as e:
+                n_errors += 1
+                log.exception(f"[{system}] task crashed: {e!r}")
+                continue
+
+            if error:
+                n_errors += 1
+                log.warning(f"[{system}] {rid} attack failed: {error}")
+
+            with write_lock:
+                append_jsonl(out_path, record)
+            n_done_now += 1
+
+            if n_done_now % 25 == 0:
+                log.info(
+                    f"[{system}] progress: {n_done_now}/{len(pending)} new "
+                    f"({n_skipped} skipped, {n_errors} errors)"
+                )
 
     log.info(
         f"[{system}] done. wrote {n_done_now} new records "
@@ -330,7 +391,9 @@ def run_system(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Phase 3: Apply attacks to Phase 1 texts")
+    parser = argparse.ArgumentParser(
+        description="Phase 3: Apply attacks to Phase 1 texts"
+    )
     parser.add_argument(
         "--system",
         choices=[*SYSTEMS, "all"],
@@ -342,6 +405,26 @@ def main():
         type=Path,
         default=Path("data/experiments"),
         help="Base directory for Phase 1 inputs and Phase 3 outputs",
+    )
+    parser.add_argument(
+        "--subdir",
+        default="recovery_test",
+        help=(
+            "Sub-directory under phase1_texts/ and phase3_attacks/ to read "
+            "inputs from and write outputs to (default: recovery_test). "
+            "Pass --subdir '' to use the top-level dirs. "
+            "If --capacity is set and --subdir is left at the default, "
+            "subdir auto-becomes '{system}_cap{N}'."
+        ),
+    )
+    parser.add_argument(
+        "--capacity",
+        type=int,
+        default=None,
+        help=(
+            "Convenience flag: when set with --system != all and --subdir at default, "
+            "auto-resolves --subdir to '{system}_cap{N}' so attacks read the right Phase 1 variant."
+        ),
     )
     parser.add_argument(
         "--n-stegos",
@@ -368,15 +451,36 @@ def main():
         help="Filter to one or more attack_labels (repeatable). Default: all 5 attacks.",
     )
     parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=8,
+        help=(
+            "Number of concurrent attack workers (default 12). "
+            "Set to 1 for strict deterministic seeding."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print planned counts without making API calls",
     )
     args = parser.parse_args()
 
+    if args.capacity is not None:
+        if args.system == "all":
+            parser.error("--capacity requires --system to be one of topicqa/story/litreview/baseline (not 'all').")
+        if args.subdir == "recovery_test":
+            args.subdir = f"{args.system}_cap{args.capacity}"
+            log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")
+
     phase1_dir = args.data_dir / "phase1_texts"
     output_dir = args.data_dir / "phase3_attacks"
+    if args.subdir:
+        phase1_dir = phase1_dir / args.subdir
+        output_dir = output_dir / args.subdir
     output_dir.mkdir(parents=True, exist_ok=True)
+    log.info("Phase 1 inputs: %s", phase1_dir)
+    log.info("Phase 3 outputs: %s", output_dir)
 
     attack_filter = set(args.attack) if args.attack else None
 
@@ -397,6 +501,7 @@ def main():
             skip_covers=args.skip_covers,
             attack_filter=attack_filter,
             dry_run=args.dry_run,
+            max_workers=max(1, args.max_workers),
         )
 
     log.info("Phase 3 attacks complete.")

@@ -1,17 +1,26 @@
-"""Phase 2c: Stegoanalysis classifier.
+"""Phase 2c: Stegoanalysis classifier (DEPRECATED).
+
+This monolithic script has been split into separate modules:
+  - phase2c_transformer.py   — Signal 1: transformer fine-tuning
+  - phase2c_embeddings.py    — Signal 2: embedding generation + MLP classification
+  - phase2c_llm_judge.py     — Signal 4: LLM-as-judge
+  - phase2c_summary.py       — Aggregator (includes perplexity-only logreg)
+
+This file is kept as a functional fallback. Prefer the new scripts.
+
+---
 
 Two experimental sub-experiments per ``experiment.md``:
 
   * Exp 2a — stego (S) vs same-pipeline cover (C1).  TopicQA, StorySlot only.
   * Exp 2b — stego (S) vs prompted cover (C2).       All three systems.
 
-For each (sub_exp, system) we run up to four signals plus the perplexity
-distribution test:
+For each (sub_exp, system) we run four independent detection signals:
 
   1. Primary: fine-tuned transformer (DistilBERT-base by default), 5-fold
      stratified CV, accuracy / macro-F1 / AUC, with early stopping.
-  2. Baseline: logistic regression on Qwen3-Embedding-8B served by a local
-     llama.cpp server, 5-fold CV. Override the backend with
+  2. Embedding baseline: logistic regression on Qwen3-Embedding-8B served
+     by a local llama.cpp server, 5-fold CV. Override the backend with
      ``--embedder-backend hf`` (HuggingFace transformers) or ``sbert``
      (sentence-transformers, e.g. ``--embedder
      sentence-transformers/all-mpnet-base-v2`` for a fast dev path).
@@ -19,10 +28,20 @@ distribution test:
 
          llama-server -m /path/to/Qwen3-Embedding-8B-Q8_0.gguf \\
              --embeddings --port 11435 --ctx-size 8192
-  3. Perplexity-only logreg: single-feature classifier, 5-fold CV.
-     Reads ``perplexity_all.jsonl`` from Phase 2b — run that first.
+  3. Perplexity-only logreg: single-feature classifier (GPT-2 PPL),
+     5-fold CV. Reads ``perplexity_all.jsonl`` from Phase 2b — run that
+     first. This represents the cheapest possible attacker; reporting it
+     bounds how much detection comes from perplexity alone vs. richer
+     features picked up by signals 1 and 2.
   4. LLM-as-judge: independent third measurement (GPT-4o by default).
-  5. Mann-Whitney U on S vs cover perplexities (replaces "2d" from spec).
+
+Note: a Mann-Whitney U test on the S vs cover perplexity distributions
+was previously included as a fifth signal but has been removed. It is a
+*distribution-shift test*, not a classifier — at n=300 it clears p<0.001
+from any consistent mean shift regardless of practical detectability,
+and the perplexity-only logreg above already reports the actual
+classification rate (with 5-fold CV error bars). The MW test was
+redundant with signal 3 and easy to misread as a detection result.
 
 Outputs go to ``data/experiments/phase2_metrics/stegoanalysis/`` as
 ``classifier_<sub_exp>_<system>.json``.
@@ -52,7 +71,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-from scipy.stats import mannwhitneyu
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
@@ -444,7 +462,7 @@ def run_embedding_baseline(
 
 
 # ---------------------------------------------------------------------------
-# 3. Perplexity-only classifier + Mann-Whitney
+# 3. Perplexity-only classifier
 # ---------------------------------------------------------------------------
 
 
@@ -481,32 +499,6 @@ def run_perplexity_only(
     X = np.array([[p[0]] for p in pairs])
     y = np.array([p[1] for p in pairs])
     return _cv_logreg(X, y)
-
-
-def run_perplexity_test(
-    stego_recs: list[dict],
-    cover_recs: list[dict],
-    ppl_map: dict[str, float],
-) -> dict:
-    s_vals = [ppl_map[r["id"]] for r in stego_recs if r["id"] in ppl_map]
-    c_vals = [ppl_map[r["id"]] for r in cover_recs if r["id"] in ppl_map]
-    s_vals = [v for v in s_vals if v != float("inf")]
-    c_vals = [v for v in c_vals if v != float("inf")]
-    if not s_vals or not c_vals:
-        return {"error": "missing perplexity values for one side"}
-
-    u, p = mannwhitneyu(s_vals, c_vals, alternative="two-sided")
-    n1, n2 = len(s_vals), len(c_vals)
-    rank_biserial = 1.0 - (2.0 * u) / (n1 * n2)
-    return {
-        "u_stat": float(u),
-        "p_value": float(p),
-        "n_stego": n1,
-        "n_cover": n2,
-        "median_stego": float(np.median(s_vals)),
-        "median_cover": float(np.median(c_vals)),
-        "rank_biserial": float(rank_biserial),
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -624,7 +616,7 @@ def run_one(args, sub_exp: str, system: str, ppl_map: dict[str, float]) -> dict:
     }
 
     if not args.skip_transformer:
-        log.info("  [1/5] Transformer (%s)", args.transformer)
+        log.info("  [1/4] Transformer (%s)", args.transformer)
         result["transformer"] = run_transformer(
             texts,
             y,
@@ -638,7 +630,7 @@ def run_one(args, sub_exp: str, system: str, ppl_map: dict[str, float]) -> dict:
 
     if not args.skip_baseline:
         log.info(
-            "  [2/5] Embedding baseline (backend=%s model=%s)",
+            "  [2/4] Embedding baseline (backend=%s model=%s)",
             args.embedder_backend,
             args.embedder,
         )
@@ -654,13 +646,13 @@ def run_one(args, sub_exp: str, system: str, ppl_map: dict[str, float]) -> dict:
         result["embedding_baseline"] = {"skipped": True}
 
     if not args.skip_perplexity_only:
-        log.info("  [3/5] Perplexity-only logreg")
+        log.info("  [3/4] Perplexity-only logreg")
         result["perplexity_only"] = run_perplexity_only(stego_recs, cover_recs, ppl_map)
     else:
         result["perplexity_only"] = {"skipped": True}
 
     if not args.skip_judge:
-        log.info("  [4/5] LLM judge (%s)", args.judge_model)
+        log.info("  [4/4] LLM judge (%s)", args.judge_model)
         out_path = (
             args.data_dir
             / "phase2_metrics"
@@ -673,9 +665,6 @@ def run_one(args, sub_exp: str, system: str, ppl_map: dict[str, float]) -> dict:
         )
     else:
         result["llm_judge"] = {"skipped": True}
-
-    log.info("  [5/5] Mann-Whitney perplexity test")
-    result["perplexity_test"] = run_perplexity_test(stego_recs, cover_recs, ppl_map)
 
     return result
 
@@ -741,16 +730,9 @@ def main() -> None:
     os.environ.setdefault("PYTHONHASHSEED", str(RANDOM_SEED))
 
     ppl_map: dict[str, float] = {}
-    if not (args.skip_perplexity_only and not args.skip_baseline):
-        # Need ppl_map for perplexity-only logreg AND for the Mann-Whitney test
-        # (which always runs). Tolerate missing file only if both are skipped.
-        try:
-            ppl_map = _load_perplexity_map(args.data_dir)
-            log.info("Loaded %d perplexity records", len(ppl_map))
-        except FileNotFoundError as e:
-            if not args.skip_perplexity_only:
-                raise
-            log.warning("%s — Mann-Whitney test will be skipped per pair", e)
+    if not args.skip_perplexity_only:
+        ppl_map = _load_perplexity_map(args.data_dir)
+        log.info("Loaded %d perplexity records", len(ppl_map))
 
     sub_exps = ["2a", "2b"] if args.sub_experiment == "both" else [args.sub_experiment]
     out_dir = args.data_dir / "phase2_metrics" / "stegoanalysis"

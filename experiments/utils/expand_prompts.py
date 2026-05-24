@@ -44,6 +44,7 @@ PAPERS_PATH = Path("src/pca/litreview/references/papers.jsonl")
 TARGET_TOPICQA = 300
 TARGET_STORY = 300
 TARGET_LITREVIEW = 300
+TARGET_BASELINE = 300
 TARGET_MESSAGES = 300
 
 GPT_MODEL = "gpt-4.1"
@@ -318,6 +319,112 @@ def expand_litreview() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Baseline (corporate-email opening seeds for SentenceStegSystem)
+# ---------------------------------------------------------------------------
+
+
+BASELINE_SEED_EXAMPLES = [
+    "Following up on yesterday's sync, I wanted to consolidate the action items before our Thursday review.",
+    "Could you confirm whether the Q3 vendor onboarding deck has been routed through Legal for the standard clause review?",
+    "Quick heads-up: the staging migration window is shifting from Tuesday 02:00 UTC to Wednesday 04:00 UTC.",
+    "I've attached the latest variance report; please flag any cost-center anomalies before Friday close.",
+    "Per our conversation, I'd like to schedule a 30-minute walkthrough of the revised escalation matrix.",
+    "Reminder that the AP reconciliation packet is due by EOD tomorrow with the updated FX rates applied.",
+    "Wanted to share initial thoughts on the proposed reorg of the platform reliability function.",
+    "FYI — the procurement portal will be in read-only mode this weekend for the SSO migration.",
+    "Tagging you in case Compliance flagged anything during the latest control-attestation walkthrough.",
+    "Just got off a call with the regional ops lead; there are a few open items I'd like your read on.",
+]
+
+
+def expand_baseline(client) -> None:
+    path = PROMPTS_DIR / "baseline_prompts.json"
+    if path.exists():
+        data = json.loads(path.read_text())
+        existing = data.get("prompts", [])
+    else:
+        data = {}
+        existing = []
+
+    if len(existing) >= TARGET_BASELINE:
+        log.info(f"baseline already at {len(existing)}, skipping")
+        return
+
+    need = TARGET_BASELINE - len(existing)
+    log.info(f"baseline: {len(existing)} -> {TARGET_BASELINE} (need {need} new)")
+
+    existing_seeds = [p["seed"] for p in existing]
+    seen = {s.strip().lower() for s in existing_seeds}
+    new_seeds: list[str] = []
+    rounds = 0
+
+    system_prompt = (
+        "You generate diverse opening lines for internal corporate emails. Each opening is a "
+        "single sentence (or two short sentences), reads as the natural first line of a real "
+        "workplace email, and spans common business topics: project updates, meetings, process "
+        "improvements, risk/compliance, HR, technical system requirements, business strategy, "
+        "vendor management, finance. Avoid greetings ('Hi team,'), salutations, or sign-offs — "
+        "start mid-thought as professionals do."
+    )
+
+    anchors = existing_seeds[:20] if existing_seeds else BASELINE_SEED_EXAMPLES
+
+    while len(new_seeds) < need and rounds < 8:
+        remaining = need - len(new_seeds)
+        batch = min(remaining + 30, 120)
+        examples_block = "\n".join(f"- {s}" for s in anchors)
+        user_prompt = (
+            f"Here are {len(anchors)} style anchors for corporate email openings:\n\n"
+            f"{examples_block}\n\n"
+            f"Generate {batch} NEW corporate email opening lines in the same style. They must:\n"
+            f"- Be 1–2 sentences, ~10–40 words.\n"
+            f"- Read as the natural opening line of a workplace email (no greeting, no signoff).\n"
+            f"- Span project updates, meetings, process, compliance, HR, technical systems, "
+            f"strategy, vendor management, finance. Avoid clustering on any single topic.\n"
+            f"- Use professional yet natural tone; light use of acronyms is fine.\n"
+            f"- Not duplicate or closely paraphrase the anchors or each other.\n\n"
+            f'Return JSON of the form: {{"openings": ["...", "..."]}}'
+        )
+        log.info(f"baseline GPT call round {rounds + 1}: asking for {batch}")
+        resp = _gpt_json_call(client, system_prompt, user_prompt)
+        got = resp.get("openings", [])
+        log.info(f"  received {len(got)}; deduping")
+        for s in got:
+            if not isinstance(s, str):
+                continue
+            s = s.strip()
+            key = s.lower()
+            if not s or key in seen:
+                continue
+            seen.add(key)
+            new_seeds.append(s)
+            if len(new_seeds) >= need:
+                break
+        rounds += 1
+
+    if len(new_seeds) < need:
+        raise RuntimeError(
+            f"baseline expansion fell short: got {len(new_seeds)}/{need} after {rounds} rounds"
+        )
+
+    next_id = len(existing)
+    for s in new_seeds[:need]:
+        existing.append({"id": next_id, "seed": s})
+        next_id += 1
+
+    data["prompts"] = existing
+    data["expansion"] = {
+        "method": f"{GPT_MODEL} one-shot",
+        "temperature": GPT_TEMPERATURE,
+        "new_ids": [0, TARGET_BASELINE - 1],
+        "rounds": rounds,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    log.info(f"baseline: wrote {len(existing)} prompts to {path}")
+
+
+# ---------------------------------------------------------------------------
 # Messages
 # ---------------------------------------------------------------------------
 
@@ -326,6 +433,7 @@ MESSAGE_SPEC = [
     ("topicqa", 6),
     ("story", 18),
     ("litreview", 20),
+    ("baseline", 3),
 ]
 
 
@@ -363,13 +471,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--target",
-        choices=["topicqa", "story", "litreview", "messages", "all"],
+        choices=["topicqa", "story", "litreview", "baseline", "messages", "all"],
         default="all",
     )
     args = parser.parse_args()
 
     client = None
-    if args.target in ("topicqa", "story", "all"):
+    if args.target in ("topicqa", "story", "baseline", "all"):
         client, _ = make_clients()
 
     if args.target in ("topicqa", "all"):
@@ -378,6 +486,8 @@ def main() -> None:
         expand_story(client)
     if args.target in ("litreview", "all"):
         expand_litreview()
+    if args.target in ("baseline", "all"):
+        expand_baseline(client)
     if args.target in ("messages", "all"):
         regenerate_messages()
 

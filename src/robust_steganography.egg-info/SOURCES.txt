@@ -20,6 +20,7 @@ src/embeddings/core/new_unit_test_system.py
 src/embeddings/core/simulation.py
 src/embeddings/core/steg_system.py
 src/embeddings/core/story_system.py
+src/embeddings/core/story_system_v2.py
 src/embeddings/core/summary_system.py
 src/embeddings/core/topicQA_system.py
 src/embeddings/core/unit_test_system.py
@@ -43,6 +44,7 @@ src/pca/enron_emails/dataset_generation.py
 src/pca/enron_emails/parse_emails.py
 src/pca/enron_emails/prepare_pca_dataset.py
 src/pca/litreview/dataset_generation.py
+src/pca/litreview/semantic_scholar_requests.py
 src/pca/summary/dataset_generation.py
 src/pca/unit_test/dataset_generation.py
 src/robust_steganography.egg-info/PKG-INFO
@@ -84,4 +86,3 @@ src/watermarks/utils/__init__.py
 src/watermarks/utils/config.py
 src/watermarks/utils/debug.py
 src/watermarks/utils/helpers.py
-tests/test_error_correction.py
