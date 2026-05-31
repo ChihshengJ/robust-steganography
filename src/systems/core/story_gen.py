@@ -10,38 +10,7 @@ from .steg_system import StegSystem
 from .hash_functions import BitsPerGroupStub
 from ..config.story_prompts import SLOT_GENERATION_PROMPT, SLOT_DECODE_PROMPT, STORY_SYNTHESIS_PROMPT
 
-
-def _llm(
-    client,
-    model,
-    prompt,
-    system="You are a helpful assistant.",
-    temperature=0,
-    max_tokens=1000,
-    top_p=0.7,
-    extra_body: dict | None = None,
-):
-    for attempt in range(3):
-        try:
-            kwargs = dict(
-                model=model,
-                temperature=temperature,
-                top_p=top_p,
-                max_tokens=max_tokens,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            if extra_body is not None:
-                kwargs["extra_body"] = extra_body
-            r = client.chat.completions.create(**kwargs)
-            return r.choices[0].message.content.strip()
-        except Exception as e:
-            if attempt == 2:
-                raise
-            print(f"  retry {attempt + 1}: {e}")
-            time.sleep(2**attempt)
+from ..utils.new_text import llm
 
 
 def _parse_slots(raw: str) -> list[dict]:
@@ -113,7 +82,7 @@ class StorySystem(StegSystem):
         self._premise = value
 
     def generate_slots(self, premise: str) -> list[dict]:
-        raw = _llm(
+        raw = llm(
             self.local_client,
             self.local_model,
             SLOT_GENERATION_PROMPT.format(n=self.n_slots, premise=premise),
@@ -181,7 +150,7 @@ class StorySystem(StegSystem):
             option_b=slot["B"],
         )
         answer = (
-            _llm(
+            llm(
                 self.client,
                 self.decoder_model,
                 prompt,
@@ -226,7 +195,7 @@ class StorySystem(StegSystem):
             premise=premise,
             events_str=events_str,
         )
-        return _llm(
+        return llm(
             self.client,
             self.response_model,
             prompt,
@@ -235,7 +204,7 @@ class StorySystem(StegSystem):
         )
 
     def paraphrase(self, text: str, model: str | None = None) -> str:
-        return _llm(
+        return llm(
             self.client,
             model or self.response_model,
             f"Rewrite this story completely in your own words, "

@@ -40,12 +40,13 @@ from .core.hash_functions import (
     PCAHash,
     RandomProjectionHash,
 )
-from .core.litreview import LitReviewSystem
-from .core.steg_system import (
+from .core.embeddings.embedding_steg_system import (
+    EmbeddingStegSystem,
     OracleStegSystem,
     SentenceStegSystem,
-    StegSystem,
 )
+from .core.litreview import LitReviewSystem
+from .core.steg_system import StegSystem
 from .core.story_gen import StorySystem
 from .core.topicqa import TopicQASystem
 
@@ -54,6 +55,7 @@ __version__ = "0.1.0"
 __all__ = [
     # Core
     "StegSystem",
+    "EmbeddingStegSystem",
     "OracleStegSystem",
     "SentenceStegSystem",
     "StorySystem",

@@ -22,7 +22,7 @@ from ...utils.sample_utils import (
 from ..encoder import Encoder
 from ..error_correction import ErrorCorrection
 from ..hash_functions import HashFunction
-from ..steg_system import StegSystem
+from .embedding_steg_system import EmbeddingStegSystem
 
 
 def build_prompt(
@@ -67,7 +67,7 @@ def clean_response(response: str, history: dict) -> str:
     return response.strip("\"'")
 
 
-class CotSystem(StegSystem):
+class CotSystem(EmbeddingStegSystem):
     def __init__(
         self,
         client,

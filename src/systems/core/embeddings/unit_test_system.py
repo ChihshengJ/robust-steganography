@@ -17,7 +17,7 @@ from ...utils.new_text import generate_response
 from ..encoder import Encoder
 from ..error_correction import ErrorCorrection
 from ..hash_functions import GenerationContext, HashFunction, MajorityVoteHash
-from ..steg_system import StegSystem
+from .embedding_steg_system import EmbeddingStegSystem
 
 
 @dataclass
@@ -88,7 +88,7 @@ class BehaviorPlan:
         getattr(self, key).extend(new_items)
 
 
-class UnitTestSystem(StegSystem):
+class UnitTestSystem(EmbeddingStegSystem):
     """
     encode/decode covert bits inside HumanEval-style test suites.
 

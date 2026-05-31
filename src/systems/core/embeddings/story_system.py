@@ -11,10 +11,10 @@ from ...utils.sample_utils import BacktrackingEncoder, RejectionSampler
 from ..encoder import Encoder
 from ..error_correction import ErrorCorrection
 from ..hash_functions import HashFunction
-from ..steg_system import StegSystem
+from .embedding_steg_system import EmbeddingStegSystem
 
 
-class StoryStegSystem(StegSystem):
+class StoryStegSystem(EmbeddingStegSystem):
     def __init__(
         self,
         client: Any,

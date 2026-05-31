@@ -30,6 +30,39 @@ REASONING_MODELS = {
 }
 
 
+def llm(
+    client,
+    model,
+    prompt,
+    system="You are a helpful assistant.",
+    temperature=0,
+    max_tokens=1000,
+    top_p=0.7,
+    extra_body: dict | None = None,
+):
+    for attempt in range(3):
+        try:
+            kwargs = dict(
+                model=model,
+                temperature=temperature,
+                top_p=top_p,
+                max_tokens=max_tokens,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            if extra_body is not None:
+                kwargs["extra_body"] = extra_body
+            r = client.chat.completions.create(**kwargs)
+            return r.choices[0].message.content.strip()
+        except Exception as e:
+            if attempt == 2:
+                raise
+            print(f"  retry {attempt + 1}: {e}")
+            time.sleep(2**attempt)
+
+
 def clean_response(text) -> str:
     # Regex to find the last full sentence ending with ., !, or ?
     match = re.search(r"([.!?])[^.!?]*$", text)
@@ -100,12 +133,3 @@ def generate_response(
             print(f"Retry {attempt + 1}: {e}")
             time.sleep(2**attempt)
     return ""
-
-
-if __name__ == "__main__":
-    # Example usage:
-    conversation_history = [
-        "What are you up to today?",
-        "Nothing much, I'm just working on a project.",
-        "Do you want me to take a look? We can grab some coffee.",
-    ]

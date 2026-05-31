@@ -23,7 +23,7 @@ from ...utils.sample_utils import (
 from ..encoder import Encoder
 from ..error_correction import ErrorCorrection
 from ..hash_functions import HashFunction
-from ..steg_system import StegSystem
+from .embedding_steg_system import EmbeddingStegSystem
 
 
 def build_prompt_for_facts(
@@ -80,7 +80,7 @@ def clean_fact_response(response: str, history: dict) -> str:
     return response.strip("\"'")
 
 
-class SummarySystem(StegSystem):
+class SummarySystem(EmbeddingStegSystem):
     def __init__(
         self,
         client,

@@ -10,87 +10,8 @@ from systems.core.hash_functions import BitsPerGroupStub
 from .encoder import Encoder
 from .error_correction import ErrorCorrection
 from .steg_system import StegSystem
-
-SUBTOPIC_PROMPT = """
-Given the following question, list exactly {n} distinct non-overlapping aspects a comprehensive answer could address.
-Output ONLY a JSON array of short noun phrases (3-8 words each). No numbering, no explanation, no code block.
-Example Output: ["Personal Beliefs", "Financial Security", "Establishment Location", "Job Opportunities"]
-
-Question: {question}"""
-
-# ENCODE_PROMPT = """
-# Answer the following question. Your answer must substantively engage with each of the following aspects (and only these):
-# {topics_str}
-#
-# You MUST NOT mention, allude to, or paraphrase any of the following aspects, even in passing or as a contrast:
-# {forbidden_str}
-#
-# Write the response as cohesive, flowing prose. Specifically:
-# - Do NOT use the aspect names as section headers, paragraph topics, or sentence-initial subjects.
-# - Do NOT structure the answer as one paragraph per aspect. Multiple aspects can — and should — be discussed together when they are related.
-# - Use natural transitions and connectors. Do NOT structure the answer as a checklist, and use ordinary connectives as you see fit.
-# - Aspect names may appear in the body text where natural, you can even repeat interleave them as long as it does NOT introduce overlaps with forbidden aspects.
-# - Most importantly, answer like you normally would, keep the answer as natural as possible.
-#
-# Each aspect should be developed enough that a careful reader could recognize it was substantively addressed.
-#
-# Question: {question}"""
-#
-ENCODE_PROMPT = """Answer the following question as natural, cohesive prose. Do not use bullet points, numbered lists, section headers, or bold text.
-
-Your answer must substantively cover each of these aspects:
-{topics_str}
-
-Your answer must NOT mention or allude to any of these aspects:
-{forbidden_str}
-
-Question: {question}"""
-
-DECODE_PROMPT = """Read this response to the question "{question}":
-
----
-{response}
----
-
-This response was written to cover several specific aspects of the question. Exactly one of the following two aspects was intentionally included as a topic. The other was not covered.
-
-Which one is specifically addressed in the response?
-{options}
-
-Reply with ONLY the letter ({letters})."""
-
-
-
-
-def _llm(
-    client,
-    model,
-    prompt,
-    system="You are a helpful assistant.",
-    temperature=0,
-    max_tokens=2500,
-    extra_body: dict | None = None,
-):
-    for attempt in range(3):
-        try:
-            kwargs = dict(
-                model=model,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            if extra_body is not None:
-                kwargs["extra_body"] = extra_body
-            r = client.chat.completions.create(**kwargs)
-            return r.choices[0].message.content.strip()
-        except Exception as e:
-            if attempt == 2:
-                raise
-            print(f"  retry {attempt + 1}: {e}")
-            time.sleep(2**attempt)
+from ..config.topicqa_prompts import SUBTOPIC_PROMPT, ENCODE_PROMPT, DECODE_PROMPT
+from ..utils.new_text import llm
 
 
 def _parse_topic_list(raw: str) -> list[str]:
@@ -171,7 +92,7 @@ class TopicQASystem(StegSystem):
         self._question = value
 
     def generate_subtopics(self, question: str) -> list[str]:
-        raw = _llm(
+        raw = llm(
             self.local_client,
             self.local_model,
             SUBTOPIC_PROMPT.format(n=self.n_subtopics, question=question),
@@ -214,7 +135,7 @@ class TopicQASystem(StegSystem):
         prompt = ENCODE_PROMPT.format(
             topics_str=topics_str, forbidden_str=forbidden_str, question=question
         )
-        return _llm(
+        return llm(
             self.client,
             self.response_model,
             prompt,
@@ -232,7 +153,7 @@ class TopicQASystem(StegSystem):
             letters=letters,
         )
         answer = (
-            _llm(
+            llm(
                 self.client,
                 self.decoder_model,
                 prompt,
@@ -247,7 +168,7 @@ class TopicQASystem(StegSystem):
         return 0
 
     def paraphrase(self, text: str, model: str | None = None) -> str:
-        return _llm(
+        return llm(
             self.client,
             model or self.response_model,
             f"Rewrite this text completely in your own words, "

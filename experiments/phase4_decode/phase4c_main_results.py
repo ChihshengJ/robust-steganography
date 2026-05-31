@@ -82,13 +82,13 @@ CURVE_ATTACKS = (
 # ---------------------------------------------------------------------------
 
 
-def _mean(values: list[float]) -> float | None:
+def _mean(values: list[int] | list[float]) -> float | None:
     if not values:
         return None
     return statistics.fmean(values)
 
 
-def _std(values: list[float]) -> float | None:
+def _std(values: list[int] | list[float]) -> float | None:
     if len(values) < 2:
         return 0.0 if values else None
     return statistics.pstdev(values)
@@ -148,12 +148,21 @@ def load_token_efficiency(
                     log.info("[%s] token efficiency from %s", system, summary_path)
                     continue
             except Exception as e:
-                log.warning("[%s] failed reading %s (%s) — falling back to phase1", system, summary_path, e)
+                log.warning(
+                    "[%s] failed reading %s (%s) — falling back to phase1",
+                    system,
+                    summary_path,
+                    e,
+                )
 
         # Fallback: compute directly from Phase 1 stego records.
         stego_path = phase1_dir / f"{system}_stego.jsonl"
         if not stego_path.exists():
-            log.warning("[%s] no Phase 1 stego file at %s — skipping token efficiency", system, stego_path)
+            log.warning(
+                "[%s] no Phase 1 stego file at %s — skipping token efficiency",
+                system,
+                stego_path,
+            )
             continue
         records = read_jsonl(stego_path)
         if not records:
@@ -207,7 +216,11 @@ def aggregate_system(decoded_path: Path) -> dict:
     # Level 2: collapse runs → one value per stego, then aggregate over stegos.
     cells: dict[tuple[str, float], dict] = {}
     cell_buckets: dict[tuple[str, float], dict[str, list]] = defaultdict(
-        lambda: {"per_stego_ber": [], "per_run_perfect": [], "all_runs_perfect_per_stego": []}
+        lambda: {
+            "per_stego_ber": [],
+            "per_run_perfect": [],
+            "all_runs_perfect_per_stego": [],
+        }
     )
     for (attack_label, tampering, source_id), bers in per_stego.items():
         cell_key = (attack_label, tampering)
@@ -463,8 +476,12 @@ def main():
     )
     args = parser.parse_args()
 
-    capacities = args.capacities if args.capacities is not None else dict(DEFAULT_CAPACITIES)
-    system_subdirs = {sys_name: f"{sys_name}_cap{cap}" for sys_name, cap in capacities.items()}
+    capacities = (
+        args.capacities if args.capacities is not None else dict(DEFAULT_CAPACITIES)
+    )
+    system_subdirs = {
+        sys_name: f"{sys_name}_cap{cap}" for sys_name, cap in capacities.items()
+    }
 
     if args.output_subdir is None:
         # e.g. main_t6_s18_l20_b3 — short tag using initial letter of each system.

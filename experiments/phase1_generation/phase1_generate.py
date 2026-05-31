@@ -49,8 +49,8 @@ from experiments.utils.system_factory import (
 )
 from experiments.utils.token_counter import count_tokens, count_words, round_words
 from systems import CORPORATE_MONOLOGUE
-from systems.core.story_system_v2 import STORY_SYNTHESIS_PROMPT
-from systems.core.topicQA_system import SUBTOPIC_PROMPT
+from systems.config.story_prompts import STORY_SYNTHESIS_PROMPT
+from systems.config.topicqa_prompts import SUBTOPIC_PROMPT
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -80,6 +80,7 @@ def _direct_gpt_call(client, prompt: str, max_tokens: int = 4000) -> str:
                 raise
             log.warning(f"GPT call retry {attempt + 1}: {e}")
             time.sleep(2**attempt)
+    raise TimeoutError()
 
 
 def _direct_local_call(
@@ -115,6 +116,7 @@ def _direct_local_call(
                 raise
             log.warning(f"Local call retry {attempt + 1}: {e}")
             time.sleep(2**attempt)
+    raise TimeoutError()
 
 
 # Option B cover: free-form outline analogue of SLOT_GENERATION_PROMPT (no A/B
@@ -624,7 +626,7 @@ def generate_litreview(
 
     log.info(f"LitReview: {n_prompts} prompts, {len(completed)} records already done")
 
-    from embeddings.core.litreview_v2 import prepare_references
+    from systems.core.litreview import prepare_references
 
     failures_path = output_dir / "litreview_failures.jsonl"
 
@@ -991,7 +993,6 @@ def main():
 
     # --- Messages: inline regen for capacity variant, else load shared messages.json ---
     if args.capacity is not None:
-        # Validate per-system capacity constraints early.
         if args.system == "topicqa":
             n_subtopics_use = (
                 args.n_subtopics

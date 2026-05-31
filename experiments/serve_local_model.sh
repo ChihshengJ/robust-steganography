@@ -2,7 +2,7 @@
 #
 # serve_local_model.sh -- launch llama-server pinned for DETERMINISTIC decoding.
 #
-# TopicQA and Story decode by RE-generating subtopics/slots with the local
+# Long-from Q&A and StoryGen decode by RE-generating subtopics/slots with the local
 # model. That only reproduces the encode-time output if every call sees the
 # identical computation. This script pins the serve command so Phase 1
 # (generation) and Phase 4 (decoding) are byte-for-byte the same.

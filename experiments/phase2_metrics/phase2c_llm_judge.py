@@ -56,7 +56,6 @@ Your output should follow the style below exactly, NO markdown format:
 VERDICT: A or B
 CONFIDENCE: low / medium / high"""
 
-
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
@@ -87,6 +86,7 @@ def _judge_call(client, model: str, prompt: str) -> str:
                 raise
             log.warning("  judge retry %d: %s", attempt + 1, e)
             time.sleep(2**attempt)
+    raise TimeoutError()
 
 
 def _parse_verdict(response: str) -> dict:

@@ -13,33 +13,7 @@ from ..paths import litreview_references
 from .encoder import CharacterEncoder, Encoder
 from .error_correction import ErrorCorrection
 from .steg_system import StegSystem
-
-
-def _llm(
-    client,
-    model,
-    prompt,
-    system="You are a helpful assistant.",
-    temperature=0,
-    max_tokens=1000,
-):
-    for attempt in range(3):
-        try:
-            r = client.chat.completions.create(
-                model=model,
-                temperature=temperature,
-                max_completion_tokens=max_tokens,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            return r.choices[0].message.content.strip()
-        except Exception as e:
-            if attempt == 2:
-                raise
-            print(f"  retry {attempt + 1}: {e}")
-            time.sleep(2**attempt)
+from ..utils.new_text import llm
 
 
 def ref_bit_hash(author_last_name: str, year: int) -> int:
@@ -109,7 +83,7 @@ def prepare_references(raw_refs: list[dict], min_title_words: int = 5) -> list[d
 
 
 def extract_citations(client, model, text: str) -> list[dict]:
-    response = _llm(
+    response = llm(
         client,
         model,
         prompt=text,
@@ -223,11 +197,6 @@ class LitReviewSystem(StegSystem):
         if not self.corpus:
             self.corpus = load_corpus(*litreview_references())
 
-    def encode(self, chunks, history, system_prompt, max_length=200, **kwargs):
-        raise NotImplementedError(
-            "LitReviewSystem encodes via reference selection. Use hide_message directly."
-        )
-
     def hide_message(self, data: Any, seed: int, **kwargs) -> str:
         """Encode data into a literature review for the paper at corpus index `seed`.
 
@@ -331,7 +300,7 @@ class LitReviewSystem(StegSystem):
             for r in selected_refs
         )
 
-        return _llm(
+        return llm(
             self.client,
             self.model,
             prompt=f"References:\n{refs_formatted}",
