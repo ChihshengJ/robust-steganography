@@ -12,7 +12,7 @@ separate run. Enabled by default; turn off with ``--no-baseline``.
 The original ``message_bits`` are looked up from
 ``data/experiments/phase1_texts/{system}_stego.jsonl`` by ``source_id``.
 
-Output schema (matches experiment.md lines 302-316):
+Output schema:
 
     {
       "id": "topicqa_s_000_global_paraphrase_1.0_run0",
@@ -33,8 +33,6 @@ Output schema (matches experiment.md lines 302-316):
     }
 
 Resumable: ids already present in the output JSONL are skipped on resume.
-A tqdm progress bar is shown per system.
-
 Usage:
     python -m experiments.phase4_decode.phase4a_decode --system all
     python -m experiments.phase4_decode.phase4a_decode --system topicqa
@@ -45,7 +43,6 @@ Usage:
 """
 
 from __future__ import annotations
-from embeddings import StegSystem
 
 import argparse
 import logging
@@ -69,6 +66,7 @@ from experiments.utils.system_factory import (
     make_topicqa,
     restore_system_state,
 )
+from systems import StegSystem
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", force=True
@@ -77,13 +75,9 @@ log = logging.getLogger(__name__)
 
 SYSTEMS = ("topicqa", "story", "litreview", "baseline")
 
-BASELINE_LABEL = "no_attack"
-BASELINE_TAMPERING = 0.0
-BASELINE_RUN_IDX = 0
-
 
 # ---------------------------------------------------------------------------
-# System construction (lazy — only build the system we actually decode with)
+# System construction
 # ---------------------------------------------------------------------------
 
 
@@ -96,7 +90,9 @@ def build_system(
     n_slots: int = 20,
 ):
     if system == "topicqa":
-        return make_topicqa(client, local_client, n_subtopics=n_subtopics, group_size=group_size)
+        return make_topicqa(
+            client, local_client, n_subtopics=n_subtopics, group_size=group_size
+        )
     if system == "story":
         return make_story(client, local_client, n_slots=n_slots)
     if system == "litreview":
@@ -112,7 +108,7 @@ def build_system(
 
 
 def baseline_id(source_id: str) -> str:
-    return f"{source_id}_{BASELINE_LABEL}_{BASELINE_TAMPERING}_run{BASELINE_RUN_IDX}"
+    return f"{source_id}_no_attack_0_run0"
 
 
 def make_baseline_record(stego_rec: dict) -> dict:
@@ -122,11 +118,11 @@ def make_baseline_record(stego_rec: dict) -> dict:
         "source_id": stego_rec["id"],
         "source_text_type": "stego",
         "system": stego_rec["system"],
-        "attack_label": BASELINE_LABEL,
-        "attack_type": BASELINE_LABEL,
+        "attack_label": "no_attack",
+        "attack_type": "no_attack",
         "local": False,
-        "tampering_level": BASELINE_TAMPERING,
-        "run_idx": BASELINE_RUN_IDX,
+        "tampering_level": 0.0,
+        "run_idx": 0,
         "original_text": stego_rec["text"],
         "attacked_text": stego_rec["text"],
         "system_state": stego_rec.get("system_state"),
@@ -199,7 +195,9 @@ def run_system(
         r for r in read_jsonl(attack_path) if r.get("source_text_type") == "stego"
     ]
     if attack_filter:
-        attack_records = [r for r in attack_records if r["attack_label"] in attack_filter]
+        attack_records = [
+            r for r in attack_records if r["attack_label"] in attack_filter
+        ]
     log.info(
         "[%s] %d attacked stego records to decode (after filter)",
         system,
@@ -331,7 +329,11 @@ def run_system(
 
     bar.close()
     log.info(
-        "[%s] done. decoded=%d errors=%d perfect=%d", system, n_decoded, n_errors, n_perfect
+        "[%s] done. decoded=%d errors=%d perfect=%d",
+        system,
+        n_decoded,
+        n_errors,
+        n_perfect,
     )
 
 
@@ -425,14 +427,20 @@ def main():
 
     if args.capacity is not None:
         if args.system == "all":
-            parser.error("--capacity requires --system to be one of topicqa/story/litreview/baseline (not 'all').")
+            parser.error(
+                "--capacity requires --system to be one of topicqa/story/litreview/baseline (not 'all')."
+            )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"
             log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")
 
     # Resolve per-system capacity overrides for system reconstruction.
     topicqa_n_subtopics = args.n_subtopics
-    if topicqa_n_subtopics is None and args.capacity is not None and args.system == "topicqa":
+    if (
+        topicqa_n_subtopics is None
+        and args.capacity is not None
+        and args.system == "topicqa"
+    ):
         topicqa_n_subtopics = args.capacity * args.group_size
     if topicqa_n_subtopics is None:
         topicqa_n_subtopics = 12

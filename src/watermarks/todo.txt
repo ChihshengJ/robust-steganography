@@ -1,6 +1,0 @@
-1. Make graphs
-    - m_length and covertext_length vs. success rate
-    - affects of delta
-    - affects of c
-    - success rate of perturbation methods
-    - success rate of attacks

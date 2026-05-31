@@ -6,20 +6,23 @@ import matplotlib.pyplot as plt
 import openai
 from datasets import load_dataset
 
+from embeddings.paths import pca_artifacts_dir
 from embeddings import (
     PCAHash,
     RepetitionCode,
     SummarySystem,
 )
 from watermarks import (
-    Attack,
     GPT2Model,
     LanguageModel,
+)
+from attacks import (
+    Attack,
     NGramShuffleAttack,
     ParaphraseAttack,
     SynonymAttack,
 )
-from watermarks.attacks.translation import TranslationAttack
+from attacks.translation import TranslationAttack
 
 from ..utils import (
     BypassEncoder,
@@ -543,7 +546,7 @@ def main():
 
     ## Use a callback to manipulate the PCA hash
     hash_fn = PCAHash(
-        pca_dir="./src/pca/summary/artifacts",
+        pca_dir=pca_artifacts_dir("summary"),
         bit_reducer=index_reducer(3),
     )
 

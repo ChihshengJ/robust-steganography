@@ -9,7 +9,7 @@ import numpy as np
 from tqdm import tqdm
 from typing_extensions import Callable
 
-from embeddings import Encoder, StegSystem
+from systems import Encoder, StegSystem
 
 
 @dataclass
@@ -186,20 +186,6 @@ class TextLogger:
         self.count += 1
         return True
 
-
-class BypassEncoder(Encoder):
-    """Encoder that passes data through unchanged."""
-
-    def __init__(self):
-        pass
-
-    @override
-    def encode(self, data: list[int]) -> list[int]:
-        return data
-
-    @override
-    def decode(self, bits: list[int]) -> list[int]:
-        return bits
 
 
 def index_reducer(index: int) -> Callable[[np.ndarray], np.ndarray]:

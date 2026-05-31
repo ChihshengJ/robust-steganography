@@ -21,6 +21,8 @@ from embeddings.utils.new_text import generate_response
 from watermarks import (
     GPT2Model,
     LanguageModel,
+)
+from attacks import (
     NGramShuffleAttack,
     ParaphraseAttack,
     SynonymAttack,

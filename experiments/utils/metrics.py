@@ -24,6 +24,7 @@ def cosine_similarity(
     global _SBERT_MODEL
     if _SBERT_MODEL is None:
         from sentence_transformers import SentenceTransformer
+
         _SBERT_MODEL = SentenceTransformer(model_name)
 
     embeddings = _SBERT_MODEL.encode([text_a, text_b])

@@ -5,6 +5,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import openai
 
+from embeddings.paths import pca_artifacts_dir
 from embeddings import (
     PCAHash,
     RepetitionCode,
@@ -12,14 +13,16 @@ from embeddings import (
 )
 from embeddings.config.system_prompts import STORY_GENERATION
 from watermarks import (
-    Attack,
     GPT2Model,
     LanguageModel,
+)
+from attacks import (
+    Attack,
     NGramShuffleAttack,
     ParaphraseAttack,
     SynonymAttack,
 )
-from watermarks.attacks.translation import TranslationAttack
+from attacks.translation import TranslationAttack
 
 from ..utils import (
     BypassEncoder,
@@ -544,7 +547,7 @@ def main():
 
     ## Use a callback to manipulate the PCA hash
     hash_fn = PCAHash(
-        pca_dir="./src/pca/creative_stories/artifacts",
+        pca_dir=pca_artifacts_dir("creative_stories"),
         bit_reducer=index_reducer(2),
     )
 

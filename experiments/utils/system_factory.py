@@ -4,21 +4,20 @@ from __future__ import annotations
 
 import openai
 
-from embeddings import (
+from systems import (
     CORPORATE_MONOLOGUE,
-    LitReviewSystemV2,
-    PCAHash,
+    LitReviewSystem,
     RandomProjectionHash,
     RepetitionCode,
     SentenceStegSystem,
-    StorySystemV2,
+    StorySystem,
     TopicQASystem,
+    BypassEncoder
 )
-from embeddings.core.litreview_v2 import load_corpus
-from measurements.utils import BypassEncoder, index_reducer
+from systems.core.litreview import load_corpus
+from systems.paths import litreview_references
 
-LOCAL_BASE_URL = "http://98.93.39.187:8080/v1"
-# LOCAL_BASE_URL = "http://127.0.0.1:8080/v1"
+LOCAL_BASE_URL = "http://127.0.0.1:8080/v1"
 LOCAL_MODEL = "Qwen3.5-4B-UD-Q8_K_XL.gguf"
 
 
@@ -62,12 +61,12 @@ def make_story(
     client: openai.OpenAI,
     local_client: openai.OpenAI,
     n_slots: int = 16,
-) -> StorySystemV2:
-    """Create a StorySystemV2 with standard experiment parameters.
+) -> StorySystem:
+    """Create a StorySystem with standard experiment parameters.
 
     Capacity = n_slots bits (1 bit per slot ranking).
     """
-    return StorySystemV2(
+    return StorySystem(
         client,
         error_correction=RepetitionCode(1),
         local_client=local_client,
@@ -81,13 +80,10 @@ def make_story(
     )
 
 
-def make_litreview(client: openai.OpenAI) -> LitReviewSystemV2:
-    """Create a LitReviewSystemV2 with corpus loaded."""
-    corpus = load_corpus(
-        "src/pca/litreview/references/corpus.jsonl",
-        "src/pca/litreview/references/references.jsonl",
-    )
-    return LitReviewSystemV2(
+def make_litreview(client: openai.OpenAI) -> LitReviewSystem:
+    """Create a LitReviewSystem with corpus loaded."""
+    corpus = load_corpus(*litreview_references())
+    return LitReviewSystem(
         client,
         error_correction=RepetitionCode(1),
         corpus=corpus,
@@ -100,10 +96,6 @@ def make_litreview(client: openai.OpenAI) -> LitReviewSystemV2:
 def make_baseline(client: openai.OpenAI) -> SentenceStegSystem:
     """Baseline sentence-level steg (Bauer et al.): random-projection hash,
     1 bit/sentence, RepetitionCode(5), corporate-email generation prompt."""
-    hash_fn = PCAHash(
-        pca_dir="./src/pca/enron_emails/artifacts",
-        bit_reducer=index_reducer(8),
-    )
     hash_fn = RandomProjectionHash(seed=108)
     return SentenceStegSystem(
         client,

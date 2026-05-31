@@ -22,9 +22,15 @@ from pathlib import Path
 
 import openai
 
-from embeddings import RepetitionCode, TopicQASystem, StorySystemV2, LitReviewSystemV2
-from embeddings.core.litreview_v2 import load_corpus, prepare_references
-from measurements.utils import BypassEncoder
+from systems import (
+    BypassEncoder,
+    LitReviewSystem,
+    RepetitionCode,
+    StorySystem,
+    TopicQASystem,
+)
+from systems.core.litreview import load_corpus, prepare_references
+from systems.paths import litreview_references
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -43,6 +49,7 @@ BIT_LENGTHS = {"topicqa": 6, "story": 18, "litreview": 15}
 # Self-contained helpers
 # ---------------------------------------------------------------------------
 
+
 def append_jsonl(path: Path, record: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
@@ -53,7 +60,7 @@ def append_jsonl(path: Path, record: dict) -> None:
 
 def read_jsonl(path: Path) -> list[dict]:
     if not path.exists():
-        return [] 
+        return []
     records = []
     with open(path, encoding="utf-8") as f:
         for line in f:
@@ -110,7 +117,7 @@ def direct_gpt_call(client: openai.OpenAI, prompt: str, max_tokens: int = 4000) 
             if attempt == 2:
                 raise
             log.warning(f"GPT call retry {attempt + 1}: {e}")
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
 
 
 def make_record(
@@ -145,6 +152,7 @@ def make_record(
 # System factories
 # ---------------------------------------------------------------------------
 
+
 def _make_clients() -> tuple[openai.OpenAI, openai.OpenAI]:
     client = openai.OpenAI()
     local_client = openai.OpenAI(base_url=LOCAL_BASE_URL, api_key="unused")
@@ -168,7 +176,7 @@ def _make_topicqa(client, local_client):
 
 
 def _make_story(client, local_client):
-    return StorySystemV2(
+    return StorySystem(
         client,
         error_correction=RepetitionCode(1),
         local_client=local_client,
@@ -183,11 +191,8 @@ def _make_story(client, local_client):
 
 
 def _make_litreview(client):
-    corpus = load_corpus(
-        "src/pca/litreview/references/corpus.jsonl",
-        "src/pca/litreview/references/references.jsonl",
-    )
-    return LitReviewSystemV2(
+    corpus = load_corpus(*litreview_references())
+    return LitReviewSystem(
         client,
         error_correction=RepetitionCode(1),
         corpus=corpus,
@@ -199,6 +204,7 @@ def _make_litreview(client):
 # ---------------------------------------------------------------------------
 # TopicQA generation
 # ---------------------------------------------------------------------------
+
 
 def generate_topicqa(client, local_client, output_path: Path):
     system = _make_topicqa(client, local_client)
@@ -290,7 +296,9 @@ def generate_topicqa(client, local_client, output_path: Path):
             )
             append_jsonl(output_path, c2_rec)
             completed.add(c2_rid)
-            log.info(f"  Generated {c2_rid} ({c2_rec['word_count']} words, target={target_words})")
+            log.info(
+                f"  Generated {c2_rid} ({c2_rec['word_count']} words, target={target_words})"
+            )
         else:
             log.info(f"  Skip {c2_rid} (exists)")
 
@@ -298,6 +306,7 @@ def generate_topicqa(client, local_client, output_path: Path):
 # ---------------------------------------------------------------------------
 # StorySlot generation
 # ---------------------------------------------------------------------------
+
 
 def generate_story(client, local_client, output_path: Path):
     system = _make_story(client, local_client)
@@ -389,7 +398,9 @@ def generate_story(client, local_client, output_path: Path):
             )
             append_jsonl(output_path, c2_rec)
             completed.add(c2_rid)
-            log.info(f"  Generated {c2_rid} ({c2_rec['word_count']} words, target={target_words})")
+            log.info(
+                f"  Generated {c2_rid} ({c2_rec['word_count']} words, target={target_words})"
+            )
         else:
             log.info(f"  Skip {c2_rid} (exists)")
 
@@ -397,6 +408,7 @@ def generate_story(client, local_client, output_path: Path):
 # ---------------------------------------------------------------------------
 # LitReview generation
 # ---------------------------------------------------------------------------
+
 
 def generate_litreview(client, output_path: Path):
     system = _make_litreview(client)
@@ -414,7 +426,9 @@ def generate_litreview(client, output_path: Path):
     for p_idx, corpus_idx in enumerate(indices):
         paper = system.corpus[corpus_idx]
         paper_title = paper["title"]
-        log.info(f"LitReview [{p_idx + 1}/{len(indices)}]: [{corpus_idx}] {paper_title[:60]}...")
+        log.info(
+            f"LitReview [{p_idx + 1}/{len(indices)}]: [{corpus_idx}] {paper_title[:60]}..."
+        )
 
         # --- Stego ---
         s_rid = make_record_id("litreview", "stego", p_idx)
@@ -473,8 +487,7 @@ def generate_litreview(client, output_path: Path):
             all_refs = prepare_references(paper["references"])
             c2_refs = rng.sample(all_refs, min(15, len(all_refs)))
             ref_list = "\n".join(
-                f"- {r['author_text']} ({r['year']}). {r['ref_title']}"
-                for r in c2_refs
+                f"- {r['author_text']} ({r['year']}). {r['ref_title']}" for r in c2_refs
             )
             c2_prompt = f"""Write a realistic Related Work section for an academic paper on the topic of: "{paper_title}"
 Cite as "LastName (YEAR)" for single authors or "LastName et al. (YEAR)" for multiple authors.
@@ -498,7 +511,9 @@ References you can use:
             )
             append_jsonl(output_path, c2_rec)
             completed.add(c2_rid)
-            log.info(f"  Generated {c2_rid} ({c2_rec['word_count']} words, target={target_words})")
+            log.info(
+                f"  Generated {c2_rid} ({c2_rec['word_count']} words, target={target_words})"
+            )
         else:
             log.info(f"  Skip {c2_rid} (exists)")
 
@@ -506,6 +521,7 @@ References you can use:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="Dry-run text generation")

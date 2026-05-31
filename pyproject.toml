@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.9,<0.10"]
+build-backend = "uv_build"
 
 [project]
 name = "robust_steganography"
@@ -50,6 +50,10 @@ Homepage = "https://github.com/ChihshengJ/robust_steganography"
 dev = [
     "robust-steganography",
 ]
+
+[tool.uv.build-backend]
+module-root = "src"
+module-name = ["embeddings", "watermarks", "attacks"]
 
 [tool.uv.sources]
 robust-steganography = { workspace = true }

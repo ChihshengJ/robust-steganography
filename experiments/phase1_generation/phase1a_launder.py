@@ -47,7 +47,7 @@ import numpy as np
 from experiments.utils.io import append_jsonl, load_completed_ids, read_jsonl
 from experiments.utils.system_factory import make_clients
 from experiments.utils.token_counter import count_tokens
-from watermarks.attacks.paraphrase import ParaphraseAttack
+from attacks.paraphrase import ParaphraseAttack
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", force=True

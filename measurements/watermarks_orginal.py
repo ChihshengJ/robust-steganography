@@ -11,10 +11,12 @@ from watermarks import (
     Embedder,
     Extractor,
     GPT2Model,
-    NGramShuffleAttack,
-    ParaphraseAttack,
     SmoothCovertextCalculator,
     SmoothPerturb,
+)
+from attacks import (
+    NGramShuffleAttack,
+    ParaphraseAttack,
     SynonymAttack,
 )
 

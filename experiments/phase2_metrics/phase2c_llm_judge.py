@@ -25,7 +25,6 @@ from sklearn.metrics import confusion_matrix
 
 from experiments.utils.io import append_jsonl, load_completed_ids, read_jsonl
 from experiments.utils.stegoanalysis_common import (
-    RANDOM_SEED,
     SUB_EXP_COVER,
     add_common_args,
     iter_tasks,
@@ -190,9 +189,7 @@ def aggregate_judge_results(judged: list[dict], model: str) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Phase 2c — Signal 4: LLM-as-judge"
-    )
+    parser = argparse.ArgumentParser(description="Phase 2c — Signal 4: LLM-as-judge")
     add_common_args(parser)
     parser.add_argument(
         "--judge-model",
@@ -231,8 +228,12 @@ def main() -> None:
         cap = args.max_per_side if args.max_per_side > 0 else None
         stego_recs = _subsample(stego_recs, cap)
         cover_recs = _subsample(cover_recs, cap)
-        log.info("Judging %d stego + %d cover (model=%s)",
-                 len(stego_recs), len(cover_recs), args.judge_model)
+        log.info(
+            "Judging %d stego + %d cover (model=%s)",
+            len(stego_recs),
+            len(cover_recs),
+            args.judge_model,
+        )
 
         model_tag = re.sub(r"[^A-Za-z0-9._-]+", "_", args.judge_model)
         jsonl_path = out_dir / f"llm_judge_{sub_exp}_{system}_{model_tag}.jsonl"

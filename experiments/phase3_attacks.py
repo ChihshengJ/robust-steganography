@@ -44,12 +44,12 @@ from pathlib import Path
 
 import numpy as np
 
+from attacks.paraphrase import ParaphraseAttack
+from attacks.synonym import SynonymAttack
+from attacks.translation import TranslationAttack
 from experiments.utils.io import append_jsonl, load_completed_ids, read_jsonl
 from experiments.utils.system_factory import make_clients
 from experiments.utils.token_counter import count_tokens
-from watermarks.attacks.paraphrase import ParaphraseAttack
-from watermarks.attacks.synonym import SynonymAttack
-from watermarks.attacks.translation import TranslationAttack
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", force=True
@@ -468,7 +468,9 @@ def main():
 
     if args.capacity is not None:
         if args.system == "all":
-            parser.error("--capacity requires --system to be one of topicqa/story/litreview/baseline (not 'all').")
+            parser.error(
+                "--capacity requires --system to be one of topicqa/story/litreview/baseline (not 'all')."
+            )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"
             log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")

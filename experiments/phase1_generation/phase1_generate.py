@@ -34,9 +34,6 @@ from pathlib import Path
 
 import numpy as np
 
-from embeddings import CORPORATE_MONOLOGUE
-from embeddings.core.story_system_v2 import STORY_SYNTHESIS_PROMPT
-from embeddings.core.topicQA_system import SUBTOPIC_PROMPT
 from experiments.utils.io import (
     append_jsonl,
     load_completed_ids,
@@ -51,6 +48,9 @@ from experiments.utils.system_factory import (
     make_topicqa,
 )
 from experiments.utils.token_counter import count_tokens, count_words, round_words
+from systems import CORPORATE_MONOLOGUE
+from systems.core.story_system_v2 import STORY_SYNTHESIS_PROMPT
+from systems.core.topicQA_system import SUBTOPIC_PROMPT
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -321,7 +321,9 @@ def generate_topicqa(
 ):
     """Generate TopicQA texts: 1 S + 1 C1 + 1 C2 per prompt (experiment.md Phase 1)."""
     paths = _out_paths(output_dir, "topicqa")
-    system = make_topicqa(client, local_client, n_subtopics=n_subtopics, group_size=group_size)
+    system = make_topicqa(
+        client, local_client, n_subtopics=n_subtopics, group_size=group_size
+    )
     completed, records_map = _load_checkpoint(paths)
 
     stego_msgs = messages["stego_messages"]
@@ -889,7 +891,6 @@ def generate_baseline(
             log.info(f"  Skip {c2_rid} (exists)")
 
 
-
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -970,7 +971,9 @@ def main():
     # --- Capacity handling: requires a specific system; auto-subdir; inline messages ---
     if args.capacity is not None:
         if args.system == "all":
-            parser.error("--capacity requires --system to be one of topicqa/story/litreview/baseline (not 'all').")
+            parser.error(
+                "--capacity requires --system to be one of topicqa/story/litreview/baseline (not 'all')."
+            )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"
             log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")
@@ -990,8 +993,14 @@ def main():
     if args.capacity is not None:
         # Validate per-system capacity constraints early.
         if args.system == "topicqa":
-            n_subtopics_use = args.n_subtopics if args.n_subtopics is not None else args.capacity * args.group_size
-            expected_bits = (n_subtopics_use // args.group_size) * int(np.log2(args.group_size))
+            n_subtopics_use = (
+                args.n_subtopics
+                if args.n_subtopics is not None
+                else args.capacity * args.group_size
+            )
+            expected_bits = (n_subtopics_use // args.group_size) * int(
+                np.log2(args.group_size)
+            )
             if expected_bits != args.capacity:
                 parser.error(
                     f"topicqa capacity mismatch: n_subtopics={n_subtopics_use}, group_size={args.group_size} "
@@ -1013,15 +1022,22 @@ def main():
         }
         # Persist for traceability + Phase 4 sanity checks.
         msgs_path = output_dir / "messages.json"
-        msgs_path.write_text(json.dumps({
-            "seed": 42 + args.capacity,
-            "rng": "numpy.default_rng",
-            "system": args.system,
-            "capacity": args.capacity,
-            **all_messages,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }, indent=2))
-        log.info(f"Wrote variant messages.json ({args.capacity} bits, {n_prompts_msg} per type) to {msgs_path}")
+        msgs_path.write_text(
+            json.dumps(
+                {
+                    "seed": 42 + args.capacity,
+                    "rng": "numpy.default_rng",
+                    "system": args.system,
+                    "capacity": args.capacity,
+                    **all_messages,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+                indent=2,
+            )
+        )
+        log.info(
+            f"Wrote variant messages.json ({args.capacity} bits, {n_prompts_msg} per type) to {msgs_path}"
+        )
     else:
         with open(prompts_dir / "messages.json") as f:
             all_messages = json.load(f)
@@ -1034,7 +1050,11 @@ def main():
         if args.limit is not None:
             prompts = prompts[: args.limit]
         topicqa_n_subtopics = args.n_subtopics
-        if topicqa_n_subtopics is None and args.capacity is not None and args.system == "topicqa":
+        if (
+            topicqa_n_subtopics is None
+            and args.capacity is not None
+            and args.system == "topicqa"
+        ):
             topicqa_n_subtopics = args.capacity * args.group_size
         if topicqa_n_subtopics is None:
             topicqa_n_subtopics = 12

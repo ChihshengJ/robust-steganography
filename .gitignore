@@ -8,10 +8,10 @@
 .env
 
 # ignore enron email data files
-src/pca/**/*.json
-src/pca/**/*.jsonl
-src/pca/**/*.npy
-src/pca/**/*.pkl
+pca/**/*.json
+pca/**/*.jsonl
+pca/**/*.npy
+pca/**/*.pkl
 
 
 # ignore measurement checkpoints
@@ -29,6 +29,11 @@ data/experiments/phase*
 
 __pycache__/
 .pytest_cache/
+
+# Python build artifacts
+*.egg-info/
+build/
+dist/
 
 # macOS system files
 .harper-dictionary.txt

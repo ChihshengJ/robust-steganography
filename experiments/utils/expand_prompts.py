@@ -33,13 +33,14 @@ from pathlib import Path
 import numpy as np
 
 from experiments.utils.system_factory import make_clients
+from systems.paths import litreview_papers
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 SEED = 42
 PROMPTS_DIR = Path("data/experiments/prompts")
-PAPERS_PATH = Path("src/pca/litreview/references/papers.jsonl")
+PAPERS_PATH = litreview_papers()
 
 TARGET_TOPICQA = 300
 TARGET_STORY = 300
@@ -56,7 +57,9 @@ GPT_TEMPERATURE = 0.9
 # ---------------------------------------------------------------------------
 
 
-def _gpt_json_call(client, system_prompt: str, user_prompt: str, max_tokens: int = 16000) -> dict:
+def _gpt_json_call(
+    client, system_prompt: str, user_prompt: str, max_tokens: int = 16000
+) -> dict:
     """Call GPT-4.1 with JSON mode and retry. Returns parsed JSON dict."""
     for attempt in range(3):
         try:
@@ -75,7 +78,9 @@ def _gpt_json_call(client, system_prompt: str, user_prompt: str, max_tokens: int
             if attempt == 2:
                 raise
             log.warning(f"GPT call retry {attempt + 1}: {e}")
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
+
+    raise TimeoutError()
 
 
 # ---------------------------------------------------------------------------
@@ -256,12 +261,10 @@ def expand_litreview() -> None:
     # where `system.corpus = load_corpus(...)`. That list (1191 papers, in dict
     # iteration order) is NOT the same as papers.jsonl line order. Sourcing from
     # papers.jsonl previously caused index drift.
-    from embeddings.core.litreview_v2 import load_corpus, prepare_references
+    from systems.core.litreview import load_corpus, prepare_references
+    from systems.paths import litreview_references
 
-    corpus = load_corpus(
-        "src/pca/litreview/references/corpus.jsonl",
-        "src/pca/litreview/references/references.jsonl",
-    )
+    corpus = load_corpus(*litreview_references())
     num_papers = len(corpus)
 
     # Filter on USABLE refs (post-`prepare_references`), not raw `referenceCount`.
@@ -270,7 +273,8 @@ def expand_litreview() -> None:
     # headroom over 40 refs to handle adversarial bit patterns.
     MIN_USABLE_REFS = 60
     eligible = [
-        i for i, p in enumerate(corpus)
+        i
+        for i, p in enumerate(corpus)
         if len(prepare_references(p["references"])) >= MIN_USABLE_REFS
     ]
     eligible_set = set(eligible)
