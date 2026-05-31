@@ -1,5 +1,11 @@
-"""Phase 1: Generate stego (S), same-pipeline cover (C1), and prompted cover (C2)
+"""Phase 1: Generate stego (S), same-pipeline cover (C1), and second cover (C2)
 texts for all three systems.
+
+The C2 cover differs by system. For topicqa/litreview/baseline it is a prompted
+GPT-4.1 cover. For story it is the "Option B" cover: a Qwen-generated free-form
+outline synthesized into prose by GPT-4.1 — this holds the plot-origin model
+(Qwen) and prose model (GPT-4.1) constant with the stego pipeline so the cover
+differs only in slot-list vs free outline, not in model style.
 
 One S + one C1 + one C2 per prompt, per experiment.md lines 144-153:
     300 prompts × 1 message × 3 text types = 900 texts per system.
@@ -50,7 +56,6 @@ from experiments.utils.system_factory import (
 from experiments.utils.token_counter import count_tokens, count_words, round_words
 from systems import CORPORATE_MONOLOGUE
 from systems.config.story_prompts import STORY_SYNTHESIS_PROMPT
-from systems.config.topicqa_prompts import SUBTOPIC_PROMPT
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -95,8 +100,8 @@ def _direct_local_call(
     Used for the story system's C2 so the cover generator model matches the
     stego pipeline's plot-determining model (Qwen3.5-4B) instead of GPT-4.1.
     Without this, stego (Qwen3.5 plot scaffold) vs C2 (GPT-4.1 plot) confounds
-    the slot mechanism with a model-style difference. Thinking is disabled to
-    match the slot-generation call configuration.
+    the slot mechanism with a model-style difference.
+    Thinking is disabled to match the slot-generation call configuration.
     """
     for attempt in range(3):
         try:
@@ -119,7 +124,7 @@ def _direct_local_call(
     raise TimeoutError()
 
 
-# Option B cover: free-form outline analogue of SLOT_GENERATION_PROMPT (no A/B
+# Story C2 cover: free-form outline analogue of SLOT_GENERATION_PROMPT (no A/B
 # structure). Constraints mirror the slot prompt so the only difference between
 # stego and this cover is slot-list vs free outline, not the constraint set.
 STORY_OUTLINE_PROMPT = """Given the following story premise, generate exactly {n} concrete story beats that together outline the story.
@@ -186,11 +191,11 @@ def _parse_json_list(raw: str) -> list[str]:
 def _generate_story_outline_cover(
     client, local_client, local_model: str, premise: str, n_beats: int
 ) -> tuple[str, list[str]]:
-    """Option B cover (C3): Qwen generates a free-form outline, GPT-4.1 synthesizes.
+    """Story C2 cover: Qwen generates a free-form outline, GPT-4.1 synthesizes.
 
     Holds the plot-origin model (Qwen) and the prose model (GPT-4.1) constant
     with the stego pipeline. The only difference vs stego is that the plot
-    enters synthesis as a free outline rather than an A/B slot list — this
+    enters synthesis as a free outline rather than an A/B slot list, which
     isolates whether the slot-encoding mechanism itself leaves a trace.
     Uses the same STORY_SYNTHESIS_PROMPT as the stego pipeline.
     """
@@ -201,7 +206,6 @@ def _generate_story_outline_cover(
         max_tokens=2000,
         temperature=0,
     )
-    print(raw)
     beats = _parse_json_list(raw)
     if len(beats) < n_beats:
         log.warning(f"  outline returned {len(beats)} beats, expected {n_beats}")
@@ -209,50 +213,6 @@ def _generate_story_outline_cover(
     synth_prompt = STORY_SYNTHESIS_PROMPT.format(premise=premise, events_str=events_str)
     text = _direct_gpt_call(client, synth_prompt)
     return text, beats
-
-
-# Option B / C3 response prompt for TopicQA: structurally mirrors ENCODE_PROMPT
-# but drops the forbidden block, since C3 has no bit-driven include/forbid
-# selection. The aspect list comes from Qwen directly (n_groups items, matching
-# the "selected" count fed to GPT-4.1 in stego).
-TOPICQA_FREE_RESPONSE_PROMPT = """Answer the following question as natural, cohesive prose. Do not use bullet points, numbered lists, section headers, or bold text.
-
-Your answer must substantively cover each of these aspects:
-{topics_str}
-
-Question: {question}"""
-
-
-def _generate_topicqa_free_cover(
-    client, local_client, local_model: str, question: str, n_aspects: int
-) -> tuple[str, list[str]]:
-    """Option B cover (C3): Qwen generates aspects, GPT-4.1 writes the answer.
-
-    Holds the aspect-generator model (Qwen) and the response model (GPT-4.1)
-    constant with the stego pipeline. The only difference vs stego is that
-    aspects enter response generation as a free list rather than via the
-    grouped, bit-driven include/forbid mechanism — this isolates whether the
-    bit-encoding mechanism itself leaves a trace.
-    """
-    raw = _direct_local_call(
-        local_client,
-        local_model,
-        SUBTOPIC_PROMPT.format(n=n_aspects, question=question),
-        max_tokens=2500,
-        temperature=0,
-    )
-    aspects = _parse_json_list(raw)
-    if len(aspects) < n_aspects:
-        log.warning(
-            f"  topicqa aspect generation returned {len(aspects)} aspects, expected {n_aspects}"
-        )
-    aspects = aspects[:n_aspects]
-    topics_str = "\n".join(f"- {a}" for a in aspects)
-    response_prompt = TOPICQA_FREE_RESPONSE_PROMPT.format(
-        topics_str=topics_str, question=question
-    )
-    text = _direct_gpt_call(client, response_prompt)
-    return text, aspects
 
 
 def _make_record(
@@ -292,7 +252,6 @@ def _out_paths(output_dir: Path, system: str) -> dict[str, Path]:
         "stego": output_dir / f"{system}_stego.jsonl",
         "cover_c1": output_dir / f"{system}_cover_c1.jsonl",
         "cover_c2": output_dir / f"{system}_cover_c2.jsonl",
-        "cover_c3": output_dir / f"{system}_cover_c3.jsonl",
     }
 
 
@@ -426,34 +385,6 @@ def generate_topicqa(
         else:
             log.info(f"  Skip {c2_rid} (exists)")
 
-        # --- Option B cover (C3): Qwen aspects + GPT-4.1 response, no bit selection ---
-        c3_rid = make_record_id("topicqa", "cover_c3", p_idx)
-        if c3_rid not in completed:
-            c3_text, c3_aspects = _generate_topicqa_free_cover(
-                client, local_client, system.local_model, question, system.n_groups
-            )
-            c3_record = _make_record(
-                record_id=c3_rid,
-                system="topicqa",
-                text_type="cover_c3",
-                prompt_idx=p_idx,
-                prompt=question,
-                text=c3_text,
-                message_bits=None,
-                system_state=None,
-                metadata={
-                    "aspects": c3_aspects,
-                    "aspect_generator": system.local_model,
-                },
-                length_target=round_words(stego_record["word_count"]),
-                paired_stego_id=s_rid,
-            )
-            append_jsonl(paths["cover_c3"], c3_record)
-            completed.add(c3_rid)
-            log.info(f"  Generated {c3_rid} ({c3_record['word_count']} words)")
-        else:
-            log.info(f"  Skip {c3_rid} (exists)")
-
 
 # ---------------------------------------------------------------------------
 # StorySlot generation
@@ -540,19 +471,12 @@ def generate_story(
         else:
             log.info(f"  Skip {c1_rid} (exists)")
 
-        # --- Prompted cover (C2) ---
+        # --- Second cover (C2): Qwen outline + GPT-4.1 synthesis, no bit slots ---
         c2_rid = make_record_id("story", "cover_c2", p_idx)
         if c2_rid not in completed:
-            target_words = round_words(stego_record["word_count"])
-            c2_prompt = (
-                f"Write a short story of approximately {target_words} words based on the following premise.\n"
-                f"Use flowing prose with natural pacing. Develop the story through concrete actions, "
-                f"physical detail, and brief dialogue only where it advances the plot. Vary paragraph length naturally.\n"
-                f"Build the story around 15-20 specific concrete elements (locations, objects, methods, "
-                f"character actions). Each scene should be grounded in physical detail rather than introspection.\n\n"
-                f"Premise: {premise}"
+            c2_text, c2_beats = _generate_story_outline_cover(
+                client, local_client, system.local_model, premise, system.n_slots
             )
-            c2_text = _direct_gpt_call(client, c2_prompt)
             c2_record = _make_record(
                 record_id=c2_rid,
                 system="story",
@@ -562,45 +486,18 @@ def generate_story(
                 text=c2_text,
                 message_bits=None,
                 system_state=None,
-                metadata=None,
-                length_target=target_words,
-                paired_stego_id=s_rid,
-            )
-            append_jsonl(paths["cover_c2"], c2_record)
-            completed.add(c2_rid)
-            log.info(
-                f"  Generated {c2_rid} ({c2_record['word_count']} words, target={target_words})"
-            )
-        else:
-            log.info(f"  Skip {c2_rid} (exists)")
-
-        # --- Option B cover (C3): Qwen outline + GPT-4.1 synthesis ---
-        c3_rid = make_record_id("story", "cover_c3", p_idx)
-        if c3_rid not in completed:
-            c3_text, c3_beats = _generate_story_outline_cover(
-                client, local_client, system.local_model, premise, system.n_slots
-            )
-            c3_record = _make_record(
-                record_id=c3_rid,
-                system="story",
-                text_type="cover_c3",
-                prompt_idx=p_idx,
-                prompt=premise,
-                text=c3_text,
-                message_bits=None,
-                system_state=None,
                 metadata={
-                    "outline": c3_beats,
+                    "outline": c2_beats,
                     "outline_generator": system.local_model,
                 },
                 length_target=round_words(stego_record["word_count"]),
                 paired_stego_id=s_rid,
             )
-            append_jsonl(paths["cover_c3"], c3_record)
-            completed.add(c3_rid)
-            log.info(f"  Generated {c3_rid} ({c3_record['word_count']} words)")
+            append_jsonl(paths["cover_c2"], c2_record)
+            completed.add(c2_rid)
+            log.info(f"  Generated {c2_rid} ({c2_record['word_count']} words)")
         else:
-            log.info(f"  Skip {c3_rid} (exists)")
+            log.info(f"  Skip {c2_rid} (exists)")
 
 
 # ---------------------------------------------------------------------------
@@ -921,7 +818,7 @@ def main():
     parser.add_argument(
         "--stego-only",
         action="store_true",
-        help="Generate only stego (S) texts; skip all cover texts (C1/C2/C3).",
+        help="Generate only stego (S) texts; skip all cover texts (C1/C2).",
     )
     parser.add_argument(
         "--subdir",
@@ -989,7 +886,7 @@ def main():
     if args.limit is not None:
         log.info(f"Limiting to first {args.limit} prompt(s) per system")
     if args.stego_only:
-        log.info("Stego-only mode: cover texts (C1/C2/C3) skipped")
+        log.info("Stego-only mode: cover texts (C1/C2) skipped")
 
     # --- Messages: inline regen for capacity variant, else load shared messages.json ---
     if args.capacity is not None:

@@ -17,12 +17,10 @@ from sklearn.preprocessing import StandardScaler
 from experiments.utils.io import read_jsonl
 
 SYSTEMS = ["topicqa", "story", "litreview"]
-SUB_EXP_COVER = {"2a": "cover_c1", "2b": "cover_c2", "2c": "cover_c3"}
+SUB_EXP_COVER = {"2a": "cover_c1", "2b": "cover_c2"}
 SUB_EXP_SYSTEMS = {
     "2a": ["topicqa", "story", "litreview"],
     "2b": ["topicqa", "story", "litreview"],
-    # 2c (Option B: Qwen outline + GPT-4.1 synthesis cover) — story only.
-    "2c": ["story"],
 }
 RANDOM_SEED = 42
 
@@ -120,9 +118,9 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--data-dir", type=Path, default=Path("data/experiments"))
     parser.add_argument(
         "--sub-experiment",
-        choices=["2a", "2b", "2c", "both", "all"],
+        choices=["2a", "2b", "both", "all"],
         default="both",
-        help="'both' = 2a+2b (back-compat); 'all' = 2a+2b+2c.",
+        help="'both'/'all' = 2a+2b.",
     )
     parser.add_argument(
         "--systems",
@@ -133,10 +131,8 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
 
 def iter_tasks(args) -> Iterator[tuple[str, str]]:
     """Yield valid (sub_exp, system) pairs from parsed args."""
-    if args.sub_experiment == "both":
+    if args.sub_experiment in ("both", "all"):
         sub_exps = ["2a", "2b"]
-    elif args.sub_experiment == "all":
-        sub_exps = ["2a", "2b", "2c"]
     else:
         sub_exps = [args.sub_experiment]
     for sub_exp in sub_exps:

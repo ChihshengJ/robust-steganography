@@ -1,11 +1,12 @@
 """Phase 2d — quantitative genre / style diagnostic for the story system.
 
-Motivates the C3 cover (Qwen outline + GPT-4.1 synthesis): we want concrete
-numbers showing that stego and C3 carry a "Qwen-shaped" content fingerprint
-(thriller-leaning, distinctive character names) while C2 (pure GPT-4.1 prose)
-sits noticeably apart on the same axes.
+Characterizes the three story text classes on genre / style axes. The C2 cover
+(Qwen outline + GPT-4.1 synthesis) holds the plot-origin model constant with the
+stego pipeline, so stego and C2 should share a "Qwen-shaped" content fingerprint
+(thriller-leaning, distinctive character names) — this diagnostic gives concrete
+numbers for how close stego sits to each of its covers (C1, C2) on those axes.
 
-Reports, per text class (stego / c2 / c3):
+Reports, per text class (stego / c1 / c2):
 
   1. Dark-genre lexicon density — fraction of tokens drawn from a curated
      violence/death/suspense/threat word list. Higher = more thriller-like.
@@ -13,11 +14,11 @@ Reports, per text class (stego / c2 / c3):
   3. Character-name fingerprints — names extracted via title patterns
      ("Dr./Mr./Ms./Detective ..."), with top-name lists, distinct-name counts,
      and a Jaccard overlap of each class's top-K names vs C2.
-  4. TF-IDF + logistic regression on (stego ∪ c3) vs c2 — what 1- and 2-grams
-     most discriminate the two regimes (paper-ready discriminating-phrase list).
+  4. TF-IDF + logistic regression on stego vs C2 and stego vs C1 — what 1- and
+     2-grams most discriminate the regimes (paper-ready discriminating-phrase list).
 
-For 1 and 2 every contrast (stego vs c2, c3 vs c2) gets a Welch t-test,
-Mann-Whitney U, and Cohen's d so the paper can cite p-values + effect sizes.
+For 1 and 2 every contrast (stego vs c2, stego vs c1, c1 vs c2) gets a Welch
+t-test, Mann-Whitney U, and Cohen's d so the paper can cite p-values + effect sizes.
 
 Usage:
     python -m experiments.phase2_metrics.phase2d_genre_diagnostic
@@ -295,20 +296,16 @@ def main() -> None:
     stego = load_texts(data_dir, "stego")
     cover_c1 = load_texts(data_dir, "cover_c1")
     cover_c2 = load_texts(data_dir, "cover_c2")
-    cover_c3 = load_texts(data_dir, "cover_c3")
-    print(
-        f"  stego={len(stego)} c1={len(cover_c1)} c2={len(cover_c2)} c3={len(cover_c3)}"
-    )
+    print(f"  stego={len(stego)} c1={len(cover_c1)} c2={len(cover_c2)}")
 
     print("Computing dark-lexicon density + VADER sentiment...")
     sia = SentimentIntensityAnalyzer()
     m_stego = per_text_metrics(stego, sia)
     m_c1 = per_text_metrics(cover_c1, sia)
     m_c2 = per_text_metrics(cover_c2, sia)
-    m_c3 = per_text_metrics(cover_c3, sia)
 
     summary_means = {}
-    for name, m in [("stego", m_stego), ("c1", m_c1), ("c2", m_c2), ("c3", m_c3)]:
+    for name, m in [("stego", m_stego), ("c1", m_c1), ("c2", m_c2)]:
         summary_means[name] = {
             "n": int(len(m["dark"])),
             "dark_density_mean": float(np.mean(m["dark"])),
@@ -320,27 +317,25 @@ def main() -> None:
             "vader_pos_mean": float(np.mean(m["pos"])),
         }
 
-    print("Running contrasts (stego vs c2, c3 vs c2)...")
+    print("Running contrasts (stego vs c2, stego vs c1, c1 vs c2)...")
     contrasts = {}
     for metric_key in ("dark", "compound", "neg"):
         contrasts[metric_key] = [
             contrast(m_stego[metric_key], m_c2[metric_key], "stego", "c2"),
-            contrast(m_c3[metric_key], m_c2[metric_key], "c3", "c2"),
-            contrast(m_stego[metric_key], m_c3[metric_key], "stego", "c3"),
+            contrast(m_stego[metric_key], m_c1[metric_key], "stego", "c1"),
+            contrast(m_c1[metric_key], m_c2[metric_key], "c1", "c2"),
         ]
 
     print("Extracting character names...")
     names_stego, tot_stego, distinct_stego = name_distribution(stego)
     names_c1, tot_c1, distinct_c1 = name_distribution(cover_c1)
     names_c2, tot_c2, distinct_c2 = name_distribution(cover_c2)
-    names_c3, tot_c3, distinct_c3 = name_distribution(cover_c3)
 
     name_summary = {}
     for label, counter, total, distinct, n_docs in [
         ("stego", names_stego, tot_stego, distinct_stego, len(stego)),
         ("c1", names_c1, tot_c1, distinct_c1, len(cover_c1)),
         ("c2", names_c2, tot_c2, distinct_c2, len(cover_c2)),
-        ("c3", names_c3, tot_c3, distinct_c3, len(cover_c3)),
     ]:
         name_summary[label] = {
             "n_docs": n_docs,
@@ -353,45 +348,37 @@ def main() -> None:
     name_overlap_vs_c2 = {
         "stego_vs_c2_top20_jaccard": jaccard_topk(names_stego, names_c2, 20),
         "stego_vs_c2_top50_jaccard": jaccard_topk(names_stego, names_c2, 50),
-        "c3_vs_c2_top20_jaccard": jaccard_topk(names_c3, names_c2, 20),
-        "c3_vs_c2_top50_jaccard": jaccard_topk(names_c3, names_c2, 50),
-        "stego_vs_c3_top20_jaccard": jaccard_topk(names_stego, names_c3, 20),
-        "stego_vs_c3_top50_jaccard": jaccard_topk(names_stego, names_c3, 50),
+        "stego_vs_c1_top20_jaccard": jaccard_topk(names_stego, names_c1, 20),
+        "stego_vs_c1_top50_jaccard": jaccard_topk(names_stego, names_c1, 50),
+        "c1_vs_c2_top20_jaccard": jaccard_topk(names_c1, names_c2, 20),
+        "c1_vs_c2_top50_jaccard": jaccard_topk(names_c1, names_c2, 50),
     }
 
-    # Names that appear in stego/c3 but NOT in c2 top lists (and vice versa).
+    # Names that appear in stego but NOT in c2 top lists (and vice versa).
     top_stego = {n for n, _ in names_stego.most_common(30)}
+    top_c1 = {n for n, _ in names_c1.most_common(30)}
     top_c2 = {n for n, _ in names_c2.most_common(30)}
-    top_c3 = {n for n, _ in names_c3.most_common(30)}
     name_set_diffs = {
         "in_stego_top30_not_c2_top30": sorted(top_stego - top_c2),
         "in_c2_top30_not_stego_top30": sorted(top_c2 - top_stego),
-        "in_c3_top30_not_c2_top30": sorted(top_c3 - top_c2),
-        "in_stego_top30_and_c3_top30": sorted(top_stego & top_c3),
+        "in_stego_top30_and_c2_top30": sorted(top_stego & top_c2),
+        "in_stego_top30_and_c1_top30": sorted(top_stego & top_c1),
     }
 
-    print("Fitting TF-IDF discriminator (stego∪c3) vs c2...")
-    discrim_qwen_vs_c2 = tfidf_discriminators(
-        texts_pos=stego + cover_c3,
-        texts_neg=cover_c2,
-        label_pos="qwen_shaped (stego+c3)",
-        label_neg="c2 (pure gpt-4.1)",
-        top_k=25,
-    )
-    print("Fitting TF-IDF discriminator stego vs c2 (baseline)...")
+    print("Fitting TF-IDF discriminator stego vs c2...")
     discrim_stego_vs_c2 = tfidf_discriminators(
         texts_pos=stego,
         texts_neg=cover_c2,
         label_pos="stego",
-        label_neg="c2",
+        label_neg="c2 (qwen outline + gpt-4.1)",
         top_k=25,
     )
-    print("Fitting TF-IDF discriminator c3 vs c2...")
-    discrim_c3_vs_c2 = tfidf_discriminators(
-        texts_pos=cover_c3,
-        texts_neg=cover_c2,
-        label_pos="c3",
-        label_neg="c2",
+    print("Fitting TF-IDF discriminator stego vs c1...")
+    discrim_stego_vs_c1 = tfidf_discriminators(
+        texts_pos=stego,
+        texts_neg=cover_c1,
+        label_pos="stego",
+        label_neg="c1",
         top_k=25,
     )
 
@@ -402,9 +389,8 @@ def main() -> None:
         "name_overlap": name_overlap_vs_c2,
         "name_set_diffs": name_set_diffs,
         "tfidf_discriminators": {
-            "qwen_shaped_vs_c2": discrim_qwen_vs_c2,
             "stego_vs_c2": discrim_stego_vs_c2,
-            "c3_vs_c2": discrim_c3_vs_c2,
+            "stego_vs_c1": discrim_stego_vs_c1,
         },
         "lexicon_size": len(DARK_LEXICON),
     }
@@ -421,7 +407,7 @@ def main() -> None:
         "| class | dark density | VADER compound | VADER neg | VADER pos |"
     )
     md_lines.append("|---|---:|---:|---:|---:|")
-    for cls in ["stego", "c1", "c2", "c3"]:
+    for cls in ["stego", "c1", "c2"]:
         s = summary_means[cls]
         md_lines.append(
             f"| {cls} | {s['dark_density_mean']*100:.2f}% (±{s['dark_density_std']*100:.2f}) "
@@ -453,7 +439,7 @@ def main() -> None:
         "| class | mentions/doc | distinct names | top 10 |"
     )
     md_lines.append("|---|---:|---:|---|")
-    for cls in ["stego", "c1", "c2", "c3"]:
+    for cls in ["stego", "c1", "c2"]:
         s = name_summary[cls]
         top10 = ", ".join(f"{n}×{c}" for n, c in s["top20"][:10])
         md_lines.append(
@@ -462,8 +448,8 @@ def main() -> None:
     md_lines += [
         "",
         f"- stego vs c2 (Jaccard top-20): {name_overlap_vs_c2['stego_vs_c2_top20_jaccard']:.3f}",
-        f"- c3 vs c2    (Jaccard top-20): {name_overlap_vs_c2['c3_vs_c2_top20_jaccard']:.3f}",
-        f"- stego vs c3 (Jaccard top-20): {name_overlap_vs_c2['stego_vs_c3_top20_jaccard']:.3f}",
+        f"- stego vs c1 (Jaccard top-20): {name_overlap_vs_c2['stego_vs_c1_top20_jaccard']:.3f}",
+        f"- c1 vs c2    (Jaccard top-20): {name_overlap_vs_c2['c1_vs_c2_top20_jaccard']:.3f}",
         "",
         "Names in stego top-30 but not c2 top-30: "
         + ", ".join(name_set_diffs["in_stego_top30_not_c2_top30"]),
@@ -471,24 +457,21 @@ def main() -> None:
         "Names in c2 top-30 but not stego top-30: "
         + ", ".join(name_set_diffs["in_c2_top30_not_stego_top30"]),
         "",
-        "Names in c3 top-30 but not c2 top-30: "
-        + ", ".join(name_set_diffs["in_c3_top30_not_c2_top30"]),
-        "",
     ]
 
     md_lines += [
         "## TF-IDF discriminators",
         "",
-        f"(stego+c3) vs c2 — 5-fold CV accuracy: "
-        f"{discrim_qwen_vs_c2['cv_accuracy_mean']:.3f} "
-        f"(±{discrim_qwen_vs_c2['cv_accuracy_std']:.3f})",
+        f"stego vs c2 — 5-fold CV accuracy: "
+        f"{discrim_stego_vs_c2['cv_accuracy_mean']:.3f} "
+        f"(±{discrim_stego_vs_c2['cv_accuracy_std']:.3f})",
         "",
-        "Top 15 n-grams predictive of qwen-shaped (stego+c3):",
+        "Top 15 n-grams predictive of stego:",
     ]
-    for ng, w in discrim_qwen_vs_c2["top_ngrams_for_pos"][:15]:
+    for ng, w in discrim_stego_vs_c2["top_ngrams_for_pos"][:15]:
         md_lines.append(f"- `{ng}`  ({w:+.3f})")
-    md_lines += ["", "Top 15 n-grams predictive of c2 (pure GPT-4.1):"]
-    for ng, w in discrim_qwen_vs_c2["top_ngrams_for_neg"][:15]:
+    md_lines += ["", "Top 15 n-grams predictive of c2 (Qwen outline + GPT-4.1):"]
+    for ng, w in discrim_stego_vs_c2["top_ngrams_for_neg"][:15]:
         md_lines.append(f"- `{ng}`  ({w:+.3f})")
 
     out_md = out_dir / "story_genre_diagnostic.md"

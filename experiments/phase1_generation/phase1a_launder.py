@@ -1,8 +1,8 @@
 """Phase 1a: Launder existing stego texts through a global paraphrase pass.
 
 Experiment A. The Phase 2b classifier separates stego (S) from prompted cover
-(C2) almost perfectly — but Phase 2a/2c show that signal is a *pipeline*
-artifact (S vs C1 and S vs C3 are both at chance), not a property of the
+(C2) almost perfectly — but Phase 2a shows that signal is a *pipeline*
+artifact (S vs C1 is at chance), not a property of the
 encoding. This script tests whether a single global-paraphrase pass launders
 the pipeline fingerprint away: paraphrasing rewrites S through GPT-4.1, the
 same model that produces C2, so paraphrase(S) and C2 should converge.

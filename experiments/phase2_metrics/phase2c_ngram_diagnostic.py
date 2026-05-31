@@ -111,7 +111,7 @@ def main() -> None:
     )
     parser.add_argument("--data-dir", type=Path, default=Path("data/experiments"))
     parser.add_argument(
-        "--sub-experiment", choices=["2a", "2b", "2c"], default="2b"
+        "--sub-experiment", choices=["2a", "2b"], default="2b"
     )
     parser.add_argument("--system", default="litreview")
     parser.add_argument(
