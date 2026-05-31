@@ -111,7 +111,9 @@ def build_summary(
         result["perplexity_only"] = {"status": "not_available"}
 
     # LLM judge
-    judge = _load_json(out_dir / f"llm_judge_{sub_exp}_{system}.json")
+    judge = _load_json(
+        out_dir / f"llm_judge_{sub_exp}_{system}_anthropic_claude-sonnet-4.5.json"
+    )
     result["llm_judge"] = judge if judge else {"status": "not_available"}
 
     return result

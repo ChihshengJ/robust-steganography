@@ -1,12 +1,13 @@
 """Phase 2c — Signal 4: LLM-as-judge stegoanalysis.
 
-Sends each text to an LLM (GPT-4o by default) for independent steganography
-detection.  Checkpoint-resumable via JSONL; produces an aggregated JSON with
-accuracy, confusion matrix, and confidence distribution.
+Sends each text to an LLM judge (via OpenRouter) for independent
+steganography detection.  Checkpoint-resumable via JSONL; produces an
+aggregated JSON with accuracy, confusion matrix, and confidence distribution.
 
 Usage:
-    python -m experiments.phase2_metrics.phase2c_llm_judge \
-        --sub-experiment 2a --systems topicqa --judge-model gpt-4o
+    OPENROUTER_API_KEY=sk-or-... python -m experiments.phase2_metrics.phase2c_llm_judge \
+        --sub-experiment 2a --systems topicqa \
+        --judge-model anthropic/claude-sonnet-4.5
 """
 
 from __future__ import annotations
@@ -14,8 +15,10 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from sklearn.metrics import confusion_matrix
@@ -55,13 +58,28 @@ VERDICT: A or B
 CONFIDENCE: low / medium / high"""
 
 
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+
+def _build_client():
+    import openai
+
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "OPENROUTER_API_KEY env var is not set. Export your OpenRouter key, "
+            "e.g. `export OPENROUTER_API_KEY=sk-or-...`."
+        )
+    return openai.OpenAI(api_key=api_key, base_url=OPENROUTER_BASE_URL)
+
+
 def _judge_call(client, model: str, prompt: str) -> str:
     for attempt in range(3):
         try:
             r = client.chat.completions.create(
                 model=model,
                 temperature=0.0,
-                max_completion_tokens=400,
+                max_tokens=400,
                 messages=[{"role": "user", "content": prompt}],
             )
             return (r.choices[0].message.content or "").strip()
@@ -81,39 +99,69 @@ def _parse_verdict(response: str) -> dict:
     }
 
 
+def _subsample(recs: list[dict], n: int | None) -> list[dict]:
+    """Deterministic subsample: takes the first n records.
+
+    Inputs are pre-sorted by prompt_idx in load_pair, so this is stable
+    across reruns and keeps stego/cover paired (same prompt_idx prefix).
+    """
+    if n is None or n <= 0 or n >= len(recs):
+        return recs
+    return recs[:n]
+
+
 def run_llm_judge(
     stego_recs: list[dict],
     cover_recs: list[dict],
     model: str,
     out_path: Path,
+    workers: int = 8,
 ) -> dict:
-    import openai
-
-    client = openai.OpenAI()
+    client = _build_client()
     completed = load_completed_ids(out_path)
 
     items = [(r, "stego") for r in stego_recs] + [(r, "cover") for r in cover_recs]
+    pending = [(r, side) for r, side in items if r["id"] not in completed]
+    if not pending:
+        return aggregate_judge_results(read_jsonl(out_path), model)
 
-    for rec, side in items:
-        if rec["id"] in completed:
-            continue
+    total = len(pending)
+    log.info("Dispatching %d judge calls with %d workers", total, workers)
+
+    def _worker(rec: dict, side: str) -> tuple[dict, str, str]:
         response = _judge_call(client, model, LLM_JUDGE_PROMPT.format(text=rec["text"]))
-        parsed = _parse_verdict(response)
-        is_stego = side == "stego"
-        predicted_stego = parsed["verdict"] == "A"
-        append_jsonl(
-            out_path,
-            {
-                "id": rec["id"],
-                "side": side,
-                "is_stego": is_stego,
-                "verdict": parsed["verdict"],
-                "predicted_stego": predicted_stego,
-                "correct": is_stego == predicted_stego,
-                "confidence": parsed["confidence"],
-                "raw_response": response,
-            },
-        )
+        return rec, side, response
+
+    done = 0
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_worker, rec, side): rec["id"] for rec, side in pending}
+        for fut in as_completed(futures):
+            rid = futures[fut]
+            try:
+                rec, side, response = fut.result()
+            except Exception as e:
+                log.error("  judge call failed for id=%s: %s", rid, e)
+                continue
+            parsed = _parse_verdict(response)
+            is_stego = side == "stego"
+            predicted_stego = parsed["verdict"] == "A"
+            # Writes happen only from the main thread → safe append.
+            append_jsonl(
+                out_path,
+                {
+                    "id": rec["id"],
+                    "side": side,
+                    "is_stego": is_stego,
+                    "verdict": parsed["verdict"],
+                    "predicted_stego": predicted_stego,
+                    "correct": is_stego == predicted_stego,
+                    "confidence": parsed["confidence"],
+                    "raw_response": response,
+                },
+            )
+            done += 1
+            if done % 25 == 0 or done == total:
+                log.info("  progress: %d / %d", done, total)
 
     return aggregate_judge_results(read_jsonl(out_path), model)
 
@@ -146,7 +194,26 @@ def main() -> None:
         description="Phase 2c — Signal 4: LLM-as-judge"
     )
     add_common_args(parser)
-    parser.add_argument("--judge-model", default="gpt-4o")
+    parser.add_argument(
+        "--judge-model",
+        default="anthropic/claude-sonnet-4.5",
+        help="OpenRouter model slug, e.g. anthropic/claude-sonnet-4.5, "
+        "openai/gpt-4.1, google/gemini-2.5-pro.",
+    )
+    parser.add_argument(
+        "--max-per-side",
+        type=int,
+        default=150,
+        help="Cap per side (stego/cover). Default 150 → ~300 calls per "
+        "(sub-exp, system). Use 0 or a value ≥ dataset size for no cap.",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=8,
+        help="Concurrent in-flight judge calls per (sub-exp, system). "
+        "OpenRouter handles backpressure; 8–16 is usually safe.",
+    )
     args = parser.parse_args()
 
     seed_everything()
@@ -161,8 +228,17 @@ def main() -> None:
             log.warning("Missing data for %s/%s — skipping", sub_exp, system)
             continue
 
-        jsonl_path = out_dir / f"llm_judge_{sub_exp}_{system}.jsonl"
-        result = run_llm_judge(stego_recs, cover_recs, args.judge_model, jsonl_path)
+        cap = args.max_per_side if args.max_per_side > 0 else None
+        stego_recs = _subsample(stego_recs, cap)
+        cover_recs = _subsample(cover_recs, cap)
+        log.info("Judging %d stego + %d cover (model=%s)",
+                 len(stego_recs), len(cover_recs), args.judge_model)
+
+        model_tag = re.sub(r"[^A-Za-z0-9._-]+", "_", args.judge_model)
+        jsonl_path = out_dir / f"llm_judge_{sub_exp}_{system}_{model_tag}.jsonl"
+        result = run_llm_judge(
+            stego_recs, cover_recs, args.judge_model, jsonl_path, workers=args.workers
+        )
         result.update(
             {
                 "sub_experiment": sub_exp,
@@ -173,7 +249,7 @@ def main() -> None:
             }
         )
 
-        json_path = out_dir / f"llm_judge_{sub_exp}_{system}.json"
+        json_path = out_dir / f"llm_judge_{sub_exp}_{system}_{model_tag}.json"
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2, default=str)
         log.info("Wrote %s", json_path)

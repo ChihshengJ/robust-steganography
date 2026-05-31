@@ -3,7 +3,7 @@ import re
 
 from openai import OpenAI
 
-from .attack import Attack
+from .attack import Attack, iter_sentences_with_gaps
 
 SYSTEM_PROMPT_LOCAL = """You are a paraphrasing assistant.
 Rewrite the given sentence using completely different words and phrasing while preserving the exact meaning.
@@ -145,48 +145,34 @@ class ParaphraseAttack(Attack):
 
     def _local_paraphrase(self, text: str, tampering: float) -> str:
         """Paraphrase each sentence independently while preserving structure."""
-        # Split text into sentences while preserving separators
-        parts = re.split(r"([.!?]+(?:\s+|$))", text)
-        new_parts = []
-
-        # parts[::2] are sentences, parts[1::2] are separators
-        for i in range(0, len(parts), 2):
-            sentence = parts[i]
-
-            # Skip empty sentences
-            if not sentence.strip():
-                new_parts.append(sentence)
-                if i + 1 < len(parts):
-                    new_parts.append(parts[i + 1])
+        new_parts: list[str] = []
+        for gap, sentence in iter_sentences_with_gaps(text):
+            new_parts.append(gap)
+            if not sentence:
                 continue
-
-            if random.random() < tampering:
-                try:
-                    response = self.client.chat.completions.create(
-                        model=self.model,
-                        messages=[
-                            {"role": "system", "content": SYSTEM_PROMPT_LOCAL},
-                            {"role": "user", "content": sentence.strip()},
-                        ],
-                        temperature=self.temperature,
-                        top_p=0.95,
-                    )
-                    paraphrased = response.choices[0].message.content.strip()
-                    # Remove any accidentally added punctuation at the end
-                    # since we'll add the separator back
-                    paraphrased = paraphrased.rstrip(".!?")
-                    new_parts.append(paraphrased)
-                except Exception as e:
-                    print(f"Local paraphrase attack failed for sentence: {e}")
-                    new_parts.append(sentence)
-            else:
+            if not sentence.strip() or random.random() >= tampering:
                 new_parts.append(sentence)
-
-            # Add the separator if it exists
-            if i + 1 < len(parts):
-                new_parts.append(parts[i + 1])
+                continue
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT_LOCAL},
+                        {"role": "user", "content": sentence.strip()},
+                    ],
+                    temperature=self.temperature,
+                    top_p=0.95,
+                )
+                paraphrased = response.choices[0].message.content.strip()
+                # Preserve the original sentence's trailing punctuation
+                m = re.search(r"[.!?]+$", sentence.rstrip())
+                trailing = m.group(0) if m else ""
+                paraphrased = paraphrased.rstrip(".!?").rstrip() + trailing
+                new_parts.append(paraphrased)
+            except Exception as e:
+                print(f"Local paraphrase attack failed for sentence: {e}")
+                new_parts.append(sentence)
 
         result = "".join(new_parts)
-        # Clean up any double punctuation
         result = re.sub(r"([.!?])\1+", r"\1", result)
         return result

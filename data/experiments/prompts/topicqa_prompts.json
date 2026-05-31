@@ -1,0 +1,1214 @@
+{
+  "prompts": [
+    {
+      "id": 0,
+      "question": "What are the main challenges facing public education in the United States?"
+    },
+    {
+      "id": 1,
+      "question": "How does climate change affect global food security?"
+    },
+    {
+      "id": 2,
+      "question": "What factors should someone consider when choosing a career in technology?"
+    },
+    {
+      "id": 3,
+      "question": "How has social media changed political discourse?"
+    },
+    {
+      "id": 4,
+      "question": "What are the tradeoffs between renewable and nuclear energy?"
+    },
+    {
+      "id": 5,
+      "question": "How do cities become more livable and sustainable?"
+    },
+    {
+      "id": 6,
+      "question": "What are the key debates around artificial intelligence regulation?"
+    },
+    {
+      "id": 7,
+      "question": "How does globalization affect developing economies?"
+    },
+    {
+      "id": 8,
+      "question": "What should governments consider when designing healthcare systems?"
+    },
+    {
+      "id": 9,
+      "question": "How has remote work changed the modern workplace?"
+    },
+    {
+      "id": 10,
+      "question": "What are the main approaches to reducing income inequality?"
+    },
+    {
+      "id": 11,
+      "question": "How do different cultures approach mental health treatment?"
+    },
+    {
+      "id": 12,
+      "question": "What factors drive innovation in the pharmaceutical industry?"
+    },
+    {
+      "id": 13,
+      "question": "How should societies balance privacy and security in the digital age?"
+    },
+    {
+      "id": 14,
+      "question": "What are the major challenges in space exploration?"
+    },
+    {
+      "id": 15,
+      "question": "How does urbanization affect biodiversity?"
+    },
+    {
+      "id": 16,
+      "question": "What role does early childhood education play in long-term outcomes?"
+    },
+    {
+      "id": 17,
+      "question": "How do trade wars affect global supply chains?"
+    },
+    {
+      "id": 18,
+      "question": "What are the ethical considerations of genetic engineering?"
+    },
+    {
+      "id": 19,
+      "question": "How has streaming technology changed the entertainment industry?"
+    },
+    {
+      "id": 20,
+      "question": "What are the most promising strategies for combating antibiotic resistance?"
+    },
+    {
+      "id": 21,
+      "question": "How does ocean acidification threaten marine ecosystems?"
+    },
+    {
+      "id": 22,
+      "question": "What factors determine whether a country successfully transitions to democracy?"
+    },
+    {
+      "id": 23,
+      "question": "How do autonomous vehicles reshape urban transportation planning?"
+    },
+    {
+      "id": 24,
+      "question": "What are the main arguments for and against universal basic income?"
+    },
+    {
+      "id": 25,
+      "question": "How does misinformation spread differently across social media platforms?"
+    },
+    {
+      "id": 26,
+      "question": "What are the key challenges in achieving nuclear fusion as an energy source?"
+    },
+    {
+      "id": 27,
+      "question": "How do cultural attitudes toward aging differ around the world?"
+    },
+    {
+      "id": 28,
+      "question": "What are the environmental and social impacts of large-scale mining operations?"
+    },
+    {
+      "id": 29,
+      "question": "How does the microbiome influence human health and disease?"
+    },
+    {
+      "id": 30,
+      "question": "What factors contribute to the rise and fall of empires throughout history?"
+    },
+    {
+      "id": 31,
+      "question": "How do different electoral systems interact with different party systems in democratic countries?"
+    },
+    {
+      "id": 32,
+      "question": "What are the philosophical implications of consciousness in artificial intelligence?"
+    },
+    {
+      "id": 33,
+      "question": "How does deforestation in the Amazon affect global weather patterns?"
+    },
+    {
+      "id": 34,
+      "question": "What are the main barriers to achieving gender equality in STEM fields?"
+    },
+    {
+      "id": 35,
+      "question": "How do central banks use monetary policy to manage economic crises?"
+    },
+    {
+      "id": 36,
+      "question": "What are the pros and cons of standardized testing in education?"
+    },
+    {
+      "id": 37,
+      "question": "How does water scarcity affect geopolitical stability in arid regions?"
+    },
+    {
+      "id": 38,
+      "question": "What are the key factors behind the success or failure of startup ecosystems?"
+    },
+    {
+      "id": 39,
+      "question": "How do pandemics reshape public health infrastructure and policy?"
+    },
+    {
+      "id": 40,
+      "question": "What are the main ethical dilemmas in organ transplantation?"
+    },
+    {
+      "id": 41,
+      "question": "How does sleep deprivation affect cognitive performance and long-term health?"
+    },
+    {
+      "id": 42,
+      "question": "What factors influence voter turnout in democratic elections?"
+    },
+    {
+      "id": 43,
+      "question": "How do different economic systems handle the allocation of scarce resources?"
+    },
+    {
+      "id": 44,
+      "question": "What are the key challenges in preserving endangered languages?"
+    },
+    {
+      "id": 45,
+      "question": "How does soil degradation threaten global agricultural sustainability?"
+    },
+    {
+      "id": 46,
+      "question": "What are the main approaches to criminal justice reform?"
+    },
+    {
+      "id": 47,
+      "question": "How do quantum computers differ from classical computers in practical applications?"
+    },
+    {
+      "id": 48,
+      "question": "What role does international law play in resolving territorial disputes?"
+    },
+    {
+      "id": 49,
+      "question": "How does childhood nutrition affect brain development and academic performance?"
+    },
+    {
+      "id": 50,
+      "question": "What are the long-term societal implications of increasing automation in service industries?"
+    },
+    {
+      "id": 51,
+      "question": "How does urban sprawl impact public transportation efficiency and accessibility?"
+    },
+    {
+      "id": 52,
+      "question": "What are the primary challenges in transitioning to a cashless society?"
+    },
+    {
+      "id": 53,
+      "question": "How can international cooperation address the issue of plastic pollution in oceans?"
+    },
+    {
+      "id": 54,
+      "question": "What are the psychological effects of prolonged exposure to digital screens among adolescents?"
+    },
+    {
+      "id": 55,
+      "question": "How do agricultural subsidies influence global trade and food prices?"
+    },
+    {
+      "id": 56,
+      "question": "What cultural factors shape different attitudes toward risk-taking in entrepreneurship?"
+    },
+    {
+      "id": 57,
+      "question": "How might advances in personalized medicine change the healthcare landscape?"
+    },
+    {
+      "id": 58,
+      "question": "What role do trade unions play in the rapidly evolving gig economy?"
+    },
+    {
+      "id": 59,
+      "question": "How does the portrayal of minorities in popular media affect societal norms and attitudes?"
+    },
+    {
+      "id": 60,
+      "question": "What are the environmental consequences of widespread fast fashion consumption?"
+    },
+    {
+      "id": 61,
+      "question": "How does language shape people’s perception of time and decision-making?"
+    },
+    {
+      "id": 62,
+      "question": "What are the most effective strategies for reducing urban air pollution?"
+    },
+    {
+      "id": 63,
+      "question": "How do museums and cultural institutions contribute to collective memory and identity?"
+    },
+    {
+      "id": 64,
+      "question": "What ethical questions arise with the use of drones in civilian life?"
+    },
+    {
+      "id": 65,
+      "question": "How does parental leave policy impact gender equity in the workplace?"
+    },
+    {
+      "id": 66,
+      "question": "What can be learned from historical pandemics to inform future preparedness?"
+    },
+    {
+      "id": 67,
+      "question": "How do cryptocurrencies challenge traditional banking systems and regulations?"
+    },
+    {
+      "id": 68,
+      "question": "What are the consequences of declining birth rates in developed countries?"
+    },
+    {
+      "id": 69,
+      "question": "How does media consolidation affect the diversity of viewpoints in news reporting?"
+    },
+    {
+      "id": 70,
+      "question": "What factors influence the integration of refugees into host societies?"
+    },
+    {
+      "id": 71,
+      "question": "How do national identity and citizenship intersect in multicultural societies?"
+    },
+    {
+      "id": 72,
+      "question": "What are the key considerations in designing accessible public spaces for people with disabilities?"
+    },
+    {
+      "id": 73,
+      "question": "How has the role of libraries evolved in the digital information age?"
+    },
+    {
+      "id": 74,
+      "question": "What are the societal impacts of rising housing costs in global cities?"
+    },
+    {
+      "id": 75,
+      "question": "How do intellectual property laws shape innovation in the creative industries?"
+    },
+    {
+      "id": 76,
+      "question": "What lessons can be drawn from indigenous approaches to land management?"
+    },
+    {
+      "id": 77,
+      "question": "How does international tourism affect local cultures and economies?"
+    },
+    {
+      "id": 78,
+      "question": "What challenges do nations face in managing aging infrastructure?"
+    },
+    {
+      "id": 79,
+      "question": "How do sports events influence diplomatic relations between countries?"
+    },
+    {
+      "id": 80,
+      "question": "What are the implications of increasing lifespan for pension systems?"
+    },
+    {
+      "id": 81,
+      "question": "How does the proliferation of surveillance technology impact civil liberties?"
+    },
+    {
+      "id": 82,
+      "question": "What are the risks and benefits of integrating artificial intelligence into military systems?"
+    },
+    {
+      "id": 83,
+      "question": "How does cultural heritage preservation confront the demands of urban development?"
+    },
+    {
+      "id": 84,
+      "question": "What policies can governments implement to foster lifelong learning?"
+    },
+    {
+      "id": 85,
+      "question": "How do changing family structures affect child development outcomes?"
+    },
+    {
+      "id": 86,
+      "question": "What is the impact of microfinance initiatives on poverty reduction?"
+    },
+    {
+      "id": 87,
+      "question": "How do international sanctions affect civilian populations in targeted countries?"
+    },
+    {
+      "id": 88,
+      "question": "What are the psychological drivers behind conspiracy theory beliefs?"
+    },
+    {
+      "id": 89,
+      "question": "How does access to clean energy influence rural development?"
+    },
+    {
+      "id": 90,
+      "question": "What challenges do researchers face in achieving reproducibility in scientific studies?"
+    },
+    {
+      "id": 91,
+      "question": "How has the rise of eco-tourism altered conservation priorities?"
+    },
+    {
+      "id": 92,
+      "question": "What are the effects of algorithmic bias in automated decision-making systems?"
+    },
+    {
+      "id": 93,
+      "question": "How do labor migration patterns affect both sending and receiving countries?"
+    },
+    {
+      "id": 94,
+      "question": "What role do public spaces play in fostering democratic engagement?"
+    },
+    {
+      "id": 95,
+      "question": "How is the concept of privacy changing in an era of big data?"
+    },
+    {
+      "id": 96,
+      "question": "What are the main obstacles to eradicating neglected tropical diseases?"
+    },
+    {
+      "id": 97,
+      "question": "How does cultural diplomacy contribute to resolving international conflicts?"
+    },
+    {
+      "id": 98,
+      "question": "What are the key tradeoffs in reallocating resources from defense to social programs?"
+    },
+    {
+      "id": 99,
+      "question": "How do rural-urban migration trends shape demographic shifts in developing regions?"
+    },
+    {
+      "id": 100,
+      "question": "What impact do dietary trends have on global agricultural production?"
+    },
+    {
+      "id": 101,
+      "question": "How does corporate social responsibility influence consumer behavior?"
+    },
+    {
+      "id": 102,
+      "question": "What are the challenges of balancing economic development with indigenous rights?"
+    },
+    {
+      "id": 103,
+      "question": "How do peer networks influence academic achievement in schools?"
+    },
+    {
+      "id": 104,
+      "question": "What role do think tanks play in shaping public policy debates?"
+    },
+    {
+      "id": 105,
+      "question": "How does the design of urban green spaces impact mental well-being?"
+    },
+    {
+      "id": 106,
+      "question": "What are the consequences of antibiotic use in industrial agriculture?"
+    },
+    {
+      "id": 107,
+      "question": "How do historical monuments influence contemporary national narratives?"
+    },
+    {
+      "id": 108,
+      "question": "What can be done to enhance financial literacy across different age groups?"
+    },
+    {
+      "id": 109,
+      "question": "How do alternative dispute resolution methods impact the legal system?"
+    },
+    {
+      "id": 110,
+      "question": "What are the implications of genetic ancestry testing for personal identity?"
+    },
+    {
+      "id": 111,
+      "question": "How do music festivals affect local economies and cultural life?"
+    },
+    {
+      "id": 112,
+      "question": "What is the significance of open access publishing for scientific research?"
+    },
+    {
+      "id": 113,
+      "question": "How do international sporting events impact the image of host countries?"
+    },
+    {
+      "id": 114,
+      "question": "What are the main challenges in managing freshwater resources globally?"
+    },
+    {
+      "id": 115,
+      "question": "How does exposure to multiple languages during childhood affect cognitive development?"
+    },
+    {
+      "id": 116,
+      "question": "What are the implications of declining trust in traditional news sources?"
+    },
+    {
+      "id": 117,
+      "question": "How do philanthropic foundations influence global health initiatives?"
+    },
+    {
+      "id": 118,
+      "question": "What factors contribute to the resilience of communities during natural disasters?"
+    },
+    {
+      "id": 119,
+      "question": "How do historical narratives in textbooks shape national consciousness?"
+    },
+    {
+      "id": 120,
+      "question": "What opportunities and risks does the sharing economy present for workers?"
+    },
+    {
+      "id": 121,
+      "question": "How do workplace wellness programs affect employee productivity and satisfaction?"
+    },
+    {
+      "id": 122,
+      "question": "What are the long-term effects of early screen time on child development?"
+    },
+    {
+      "id": 123,
+      "question": "How does the representation of women in STEM leadership influence aspiring professionals?"
+    },
+    {
+      "id": 124,
+      "question": "What is the role of humor in social and political activism?"
+    },
+    {
+      "id": 125,
+      "question": "How do franchise business models affect local entrepreneurship?"
+    },
+    {
+      "id": 126,
+      "question": "What are the implications of school uniforms for student identity and equality?"
+    },
+    {
+      "id": 127,
+      "question": "How do public-private partnerships shape infrastructure development?"
+    },
+    {
+      "id": 128,
+      "question": "What are the benefits and drawbacks of urban rooftop gardening?"
+    },
+    {
+      "id": 129,
+      "question": "How do patent laws influence access to essential medicines?"
+    },
+    {
+      "id": 130,
+      "question": "What factors shape the formation of national cuisines in multicultural societies?"
+    },
+    {
+      "id": 131,
+      "question": "How does international student mobility affect higher education systems?"
+    },
+    {
+      "id": 132,
+      "question": "What are the impacts of seasonal migration on families and communities?"
+    },
+    {
+      "id": 133,
+      "question": "How do environmental education programs influence conservation behaviors?"
+    },
+    {
+      "id": 134,
+      "question": "What are the economic and social impacts of hosting large-scale cultural festivals?"
+    },
+    {
+      "id": 135,
+      "question": "How does narrative storytelling contribute to scientific communication?"
+    },
+    {
+      "id": 136,
+      "question": "What are the main challenges of integrating blockchain technology into supply chains?"
+    },
+    {
+      "id": 137,
+      "question": "How do public monuments reflect shifting societal values?"
+    },
+    {
+      "id": 138,
+      "question": "What role do local news outlets play in sustaining community ties?"
+    },
+    {
+      "id": 139,
+      "question": "What are the educational implications of gamification in classrooms?"
+    },
+    {
+      "id": 140,
+      "question": "How do wildlife corridors contribute to biodiversity conservation?"
+    },
+    {
+      "id": 141,
+      "question": "What factors influence the success of grassroots social movements?"
+    },
+    {
+      "id": 142,
+      "question": "How does the growth of coworking spaces reflect changing work cultures?"
+    },
+    {
+      "id": 143,
+      "question": "What are the potential consequences of a declining global insect population?"
+    },
+    {
+      "id": 144,
+      "question": "How do land tenure systems affect economic development in rural areas?"
+    },
+    {
+      "id": 145,
+      "question": "What are the main obstacles to effective disaster risk communication?"
+    },
+    {
+      "id": 146,
+      "question": "How do evolving gender roles influence popular culture representations?"
+    },
+    {
+      "id": 147,
+      "question": "What is the significance of food labeling regulations for consumer choices?"
+    },
+    {
+      "id": 148,
+      "question": "How do language barriers impact international scientific collaboration?"
+    },
+    {
+      "id": 149,
+      "question": "What are the benefits and limitations of citizen science projects?"
+    },
+    {
+      "id": 150,
+      "question": "How has the role of the extended family changed in contemporary societies?"
+    },
+    {
+      "id": 151,
+      "question": "How do international remittances shape economic development in migrant-sending countries?"
+    },
+    {
+      "id": 152,
+      "question": "What factors contribute to the sustainability of artisanal and small-scale fisheries?"
+    },
+    {
+      "id": 153,
+      "question": "How does the rise of influencer marketing shape consumer preferences?"
+    },
+    {
+      "id": 154,
+      "question": "What are the implications of digital nomadism for regional economies?"
+    },
+    {
+      "id": 155,
+      "question": "How do museums address issues of cultural appropriation in exhibitions?"
+    },
+    {
+      "id": 156,
+      "question": "What is the importance of wetlands in mitigating climate change?"
+    },
+    {
+      "id": 157,
+      "question": "How does financial technology impact access to banking in underserved regions?"
+    },
+    {
+      "id": 158,
+      "question": "What are the ethical challenges of using predictive analytics in law enforcement?"
+    },
+    {
+      "id": 159,
+      "question": "How do changing dietary habits influence global food systems?"
+    },
+    {
+      "id": 160,
+      "question": "What are the impacts of 24-hour news cycles on public perception of current events?"
+    },
+    {
+      "id": 161,
+      "question": "How does food waste contribute to environmental degradation?"
+    },
+    {
+      "id": 162,
+      "question": "What role do volunteer organizations play in humanitarian emergencies?"
+    },
+    {
+      "id": 163,
+      "question": "How do developments in bioprinting affect future medical treatments?"
+    },
+    {
+      "id": 164,
+      "question": "What are the challenges of maintaining public trust during government scandals?"
+    },
+    {
+      "id": 165,
+      "question": "How does space commercialization influence scientific research priorities?"
+    },
+    {
+      "id": 166,
+      "question": "How do art biennials and triennials affect the global art market?"
+    },
+    {
+      "id": 167,
+      "question": "What are the consequences of overfishing on coastal communities?"
+    },
+    {
+      "id": 168,
+      "question": "How do national education curricula address the legacies of colonialism?"
+    },
+    {
+      "id": 169,
+      "question": "What role does satire play in challenging political authority?"
+    },
+    {
+      "id": 170,
+      "question": "How do rising sea levels threaten small island nations?"
+    },
+    {
+      "id": 171,
+      "question": "What are the impacts of synthetic biology on agriculture?"
+    },
+    {
+      "id": 172,
+      "question": "How does the growth of international volunteerism affect local development projects?"
+    },
+    {
+      "id": 173,
+      "question": "What are the implications of smart city technologies for urban equity?"
+    },
+    {
+      "id": 174,
+      "question": "How do online learning platforms transform access to education in remote areas?"
+    },
+    {
+      "id": 175,
+      "question": "What are the main obstacles to achieving universal internet access?"
+    },
+    {
+      "id": 176,
+      "question": "How do international trade agreements impact domestic labor markets?"
+    },
+    {
+      "id": 177,
+      "question": "What are the challenges and opportunities of urban farming in megacities?"
+    },
+    {
+      "id": 178,
+      "question": "How does intergenerational trauma manifest in communities affected by conflict?"
+    },
+    {
+      "id": 179,
+      "question": "What is the role of traditional ecological knowledge in modern conservation?"
+    },
+    {
+      "id": 180,
+      "question": "How does access to arts education influence overall student achievement?"
+    },
+    {
+      "id": 181,
+      "question": "What are the long-term effects of rising household debt on economic stability?"
+    },
+    {
+      "id": 182,
+      "question": "How do major sporting leagues address issues of racial and gender discrimination?"
+    },
+    {
+      "id": 183,
+      "question": "What opportunities and risks does 3D printing present for manufacturing industries?"
+    },
+    {
+      "id": 184,
+      "question": "How does nostalgia influence contemporary marketing strategies?"
+    },
+    {
+      "id": 185,
+      "question": "What are the social impacts of youth unemployment in urban areas?"
+    },
+    {
+      "id": 186,
+      "question": "How does the privatization of public services affect the quality of those services?"
+    },
+    {
+      "id": 187,
+      "question": "What factors shape the evolution of national constitutions?"
+    },
+    {
+      "id": 188,
+      "question": "How do legal frameworks address the challenges of digital inheritance?"
+    },
+    {
+      "id": 189,
+      "question": "What are the benefits and challenges of bilingual education programs?"
+    },
+    {
+      "id": 190,
+      "question": "How do historical peace agreements inform current conflict resolution strategies?"
+    },
+    {
+      "id": 191,
+      "question": "What is the impact of mental health stigma on health-seeking behavior?"
+    },
+    {
+      "id": 192,
+      "question": "How do family planning policies affect demographic trends in emerging economies?"
+    },
+    {
+      "id": 193,
+      "question": "What are the potential societal consequences of universal facial recognition technology?"
+    },
+    {
+      "id": 194,
+      "question": "How do cooperative business models support local economic resilience?"
+    },
+    {
+      "id": 195,
+      "question": "What are the cultural impacts of the global spread of hip-hop music?"
+    },
+    {
+      "id": 196,
+      "question": "How does microplastic pollution affect human health and the food chain?"
+    },
+    {
+      "id": 197,
+      "question": "What role do international organizations play in coordinating disaster relief?"
+    },
+    {
+      "id": 198,
+      "question": "How do gender stereotypes persist in advertising and marketing?"
+    },
+    {
+      "id": 199,
+      "question": "What opportunities and challenges exist in the restoration of abandoned urban spaces?"
+    },
+    {
+      "id": 200,
+      "question": "How do mentorship programs influence professional development outcomes?"
+    },
+    {
+      "id": 201,
+      "question": "What are the implications of using biometric data for border security?"
+    },
+    {
+      "id": 202,
+      "question": "How does virtual reality technology affect empathy and perspective-taking?"
+    },
+    {
+      "id": 203,
+      "question": "What are the economic implications of robotics in agriculture?"
+    },
+    {
+      "id": 204,
+      "question": "How do zero-waste movements challenge traditional consumer behaviors?"
+    },
+    {
+      "id": 205,
+      "question": "What factors contribute to the persistence of informal settlements in cities?"
+    },
+    {
+      "id": 206,
+      "question": "How does mobile banking change financial inclusion in developing countries?"
+    },
+    {
+      "id": 207,
+      "question": "What challenges face the preservation of intangible cultural heritage?"
+    },
+    {
+      "id": 208,
+      "question": "How do cross-border environmental issues shape regional diplomacy?"
+    },
+    {
+      "id": 209,
+      "question": "What are the implications of gig economy platforms for worker protections?"
+    },
+    {
+      "id": 210,
+      "question": "How does the portrayal of science in fiction influence public understanding?"
+    },
+    {
+      "id": 211,
+      "question": "What are the main ethical concerns surrounding animal testing in research?"
+    },
+    {
+      "id": 212,
+      "question": "How do major infrastructure projects affect displacement of local populations?"
+    },
+    {
+      "id": 213,
+      "question": "What opportunities and risks are associated with gene drives in pest control?"
+    },
+    {
+      "id": 214,
+      "question": "How do indigenous languages contribute to biodiversity conservation?"
+    },
+    {
+      "id": 215,
+      "question": "What are the psychological effects of long-term care facility residency on the elderly?"
+    },
+    {
+      "id": 216,
+      "question": "How do non-traditional family forms affect legal frameworks and social policy?"
+    },
+    {
+      "id": 217,
+      "question": "What is the impact of arts-based therapy on mental health treatment?"
+    },
+    {
+      "id": 218,
+      "question": "How do global remittance flows respond to economic crises?"
+    },
+    {
+      "id": 219,
+      "question": "What challenges exist in regulating decentralized autonomous organizations?"
+    },
+    {
+      "id": 220,
+      "question": "How does access to affordable childcare influence workforce participation?"
+    },
+    {
+      "id": 221,
+      "question": "What are the implications of time zone differences on global collaboration?"
+    },
+    {
+      "id": 222,
+      "question": "How do international film festivals shape film production and distribution trends?"
+    },
+    {
+      "id": 223,
+      "question": "What are the economic and environmental impacts of ride-sharing services?"
+    },
+    {
+      "id": 224,
+      "question": "How does humor in educational materials affect student learning outcomes?"
+    },
+    {
+      "id": 225,
+      "question": "What factors drive the emergence of new religious movements?"
+    },
+    {
+      "id": 226,
+      "question": "How do apprenticeship programs bridge skill gaps in the labor market?"
+    },
+    {
+      "id": 227,
+      "question": "What are the consequences of e-waste for environmental justice?"
+    },
+    {
+      "id": 228,
+      "question": "How do media literacy initiatives counteract the spread of false information?"
+    },
+    {
+      "id": 229,
+      "question": "What is the role of translation in global literature dissemination?"
+    },
+    {
+      "id": 230,
+      "question": "How do housing cooperatives contribute to affordable living solutions?"
+    },
+    {
+      "id": 231,
+      "question": "What are the impacts of international wildlife trafficking on global biodiversity?"
+    },
+    {
+      "id": 232,
+      "question": "How does the concept of universal design influence architecture and product development?"
+    },
+    {
+      "id": 233,
+      "question": "What opportunities and challenges come with open data initiatives in government?"
+    },
+    {
+      "id": 234,
+      "question": "How do storytelling traditions evolve in multicultural societies?"
+    },
+    {
+      "id": 235,
+      "question": "What are the implications of AI-powered language translation for cross-cultural communication?"
+    },
+    {
+      "id": 236,
+      "question": "How does climate migration influence urban planning strategies?"
+    },
+    {
+      "id": 237,
+      "question": "What are the main barriers to scaling up renewable energy in developing countries?"
+    },
+    {
+      "id": 238,
+      "question": "How does the commodification of personal data affect consumer rights?"
+    },
+    {
+      "id": 239,
+      "question": "What are the challenges of regulating hate speech on global digital platforms?"
+    },
+    {
+      "id": 240,
+      "question": "How does access to public transportation influence social mobility?"
+    },
+    {
+      "id": 241,
+      "question": "What role do local food movements play in shaping regional diets?"
+    },
+    {
+      "id": 242,
+      "question": "How does gender representation in political office affect policymaking?"
+    },
+    {
+      "id": 243,
+      "question": "What are the psychological and social effects of single-child families?"
+    },
+    {
+      "id": 244,
+      "question": "How do science parks contribute to regional economic development?"
+    },
+    {
+      "id": 245,
+      "question": "What opportunities and concerns arise from brain-computer interface technology?"
+    },
+    {
+      "id": 246,
+      "question": "How do school choice policies impact educational equity?"
+    },
+    {
+      "id": 247,
+      "question": "What are the effects of air travel on the spread of infectious diseases?"
+    },
+    {
+      "id": 248,
+      "question": "How do contemporary art practices reflect and critique social issues?"
+    },
+    {
+      "id": 249,
+      "question": "What is the impact of fast-food proliferation on traditional food cultures?"
+    },
+    {
+      "id": 250,
+      "question": "How do social enterprises differ from traditional businesses in their objectives and impact?"
+    },
+    {
+      "id": 251,
+      "question": "What challenges do small island developing states face in achieving energy security?"
+    },
+    {
+      "id": 252,
+      "question": "How does misinformation during election cycles threaten democratic processes?"
+    },
+    {
+      "id": 253,
+      "question": "What are the benefits and limitations of inclusive playgrounds for children of all abilities?"
+    },
+    {
+      "id": 254,
+      "question": "How does digital archiving preserve and transform access to historical records?"
+    },
+    {
+      "id": 255,
+      "question": "What are the ecological impacts of monoculture farming systems?"
+    },
+    {
+      "id": 256,
+      "question": "How do youth subcultures influence mainstream fashion trends?"
+    },
+    {
+      "id": 257,
+      "question": "What are the main challenges in achieving universal health coverage?"
+    },
+    {
+      "id": 258,
+      "question": "How does the domestication of urban wildlife affect ecosystems?"
+    },
+    {
+      "id": 259,
+      "question": "What opportunities and risks does remote medical consultation present for healthcare delivery?"
+    },
+    {
+      "id": 260,
+      "question": "How do cultural festivals foster intercultural understanding and tolerance?"
+    },
+    {
+      "id": 261,
+      "question": "What are the effects of chronic noise pollution on urban populations?"
+    },
+    {
+      "id": 262,
+      "question": "How do teacher training programs impact educational quality?"
+    },
+    {
+      "id": 263,
+      "question": "What are the consequences of privatizing water resources?"
+    },
+    {
+      "id": 264,
+      "question": "How does the increased use of surveillance in schools affect student-teacher relationships?"
+    },
+    {
+      "id": 265,
+      "question": "What role do expatriate communities play in shaping foreign relations?"
+    },
+    {
+      "id": 266,
+      "question": "How does pricing carbon emissions impact business and consumer behavior?"
+    },
+    {
+      "id": 267,
+      "question": "What are the societal implications of extending the legal voting age to younger citizens?"
+    },
+    {
+      "id": 268,
+      "question": "How do emerging infectious diseases affect rural healthcare systems?"
+    },
+    {
+      "id": 269,
+      "question": "What are the challenges and benefits of multilingual societies?"
+    },
+    {
+      "id": 270,
+      "question": "How does the representation of the LGBTQ+ community in media shape societal attitudes?"
+    },
+    {
+      "id": 271,
+      "question": "What factors influence the sustainability of urban transportation systems?"
+    },
+    {
+      "id": 272,
+      "question": "How do interfaith initiatives promote peace in multi-religious societies?"
+    },
+    {
+      "id": 273,
+      "question": "What are the implications of cash transfer programs for poverty alleviation?"
+    },
+    {
+      "id": 274,
+      "question": "How does augmented reality technology change the retail experience?"
+    },
+    {
+      "id": 275,
+      "question": "What are the risks and benefits of deep-sea mining for rare minerals?"
+    },
+    {
+      "id": 276,
+      "question": "How do memory and identity interact in oral history traditions?"
+    },
+    {
+      "id": 277,
+      "question": "What challenges do cultural policy makers face in the digital age?"
+    },
+    {
+      "id": 278,
+      "question": "How does the perception of beauty standards influence self-esteem among adolescents?"
+    },
+    {
+      "id": 279,
+      "question": "What are the impacts of informal labor markets on social protection systems?"
+    },
+    {
+      "id": 280,
+      "question": "How do scientific collaborations between developed and developing countries address global challenges?"
+    },
+    {
+      "id": 281,
+      "question": "What is the role of gender quotas in promoting equality in leadership positions?"
+    },
+    {
+      "id": 282,
+      "question": "How does food sovereignty differ from food security in addressing local needs?"
+    },
+    {
+      "id": 283,
+      "question": "What are the environmental consequences of building large-scale hydroelectric dams?"
+    },
+    {
+      "id": 284,
+      "question": "How do student exchange programs foster global citizenship?"
+    },
+    {
+      "id": 285,
+      "question": "What are the psychological impacts of living in high-density urban environments?"
+    },
+    {
+      "id": 286,
+      "question": "How do creative industries drive urban regeneration?"
+    },
+    {
+      "id": 287,
+      "question": "What are the main challenges of universalizing early childhood education?"
+    },
+    {
+      "id": 288,
+      "question": "How does solidarity economy differ from mainstream capitalist practices?"
+    },
+    {
+      "id": 289,
+      "question": "What are the effects of heritage tourism on cultural preservation?"
+    },
+    {
+      "id": 290,
+      "question": "How do advances in speech recognition technology affect accessibility and communication?"
+    },
+    {
+      "id": 291,
+      "question": "What are the key considerations in expanding public transit infrastructure?"
+    },
+    {
+      "id": 292,
+      "question": "How does crowd-sourced data influence disaster response strategies?"
+    },
+    {
+      "id": 293,
+      "question": "What are the implications of micro-targeted advertising for political campaigns?"
+    },
+    {
+      "id": 294,
+      "question": "How do global value chains affect labor conditions in developing countries?"
+    },
+    {
+      "id": 295,
+      "question": "What challenges do heritage languages face in immigrant communities?"
+    },
+    {
+      "id": 296,
+      "question": "How does media coverage of scientific topics impact public trust in science?"
+    },
+    {
+      "id": 297,
+      "question": "What are the implications of declining rural populations for national economies?"
+    },
+    {
+      "id": 298,
+      "question": "How do urban heat islands affect public health outcomes?"
+    },
+    {
+      "id": 299,
+      "question": "What are the benefits and drawbacks of universal preschool education?"
+    }
+  ],
+  "expansion": {
+    "method": "gpt-4.1 one-shot",
+    "temperature": 0.9,
+    "new_ids": [
+      50,
+      299
+    ],
+    "rounds": 1,
+    "timestamp": "2026-04-24T06:21:41.408361+00:00"
+  }
+}

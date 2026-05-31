@@ -1,0 +1,1214 @@
+{
+  "prompts": [
+    {
+      "id": 0,
+      "premise": "A marine biologist discovers that a deep-sea creature she has been studying is communicating in patterns that match an extinct human language. As she decodes the messages, she realizes they contain warnings about an imminent geological catastrophe."
+    },
+    {
+      "id": 1,
+      "premise": "A retired detective receives a letter from a murderer he put away twenty years ago, claiming that the wrong person was convicted and offering to reveal the real killer's identity — but only if the detective agrees to meet him alone at midnight."
+    },
+    {
+      "id": 2,
+      "premise": "In a near-future city where memories can be digitally backed up and restored, a woman wakes up with a three-month gap in her memory and discovers that her backup was deliberately erased by someone she trusted."
+    },
+    {
+      "id": 3,
+      "premise": "A struggling musician finds a vintage guitar at a pawn shop that seems to play itself at night. Each melody it produces corresponds to a song that hasn't been written yet, and every one becomes a massive hit when she records it."
+    },
+    {
+      "id": 4,
+      "premise": "Two estranged siblings inherit their grandmother's rural farmhouse and must spend thirty days living together before either can claim ownership. As they sort through decades of belongings, they uncover a family secret their grandmother took great pains to hide."
+    },
+    {
+      "id": 5,
+      "premise": "A war correspondent stationed in a conflict zone discovers that the humanitarian aid organization she's been profiling is secretly smuggling weapons. She must decide between publishing the story and protecting the civilians who depend on the organization's legitimate work."
+    },
+    {
+      "id": 6,
+      "premise": "A space station botanist tasked with growing food for a Mars-bound crew notices that one of her experimental plants has developed an unusual property: it absorbs radiation and converts it into oxygen effectively, but at a secret cost."
+    },
+    {
+      "id": 7,
+      "premise": "A high school teacher in a small town discovers that one of her students has been writing eerily accurate predictions of local events in his creative writing assignments, and the latest story describes a disaster that hasn't happened yet."
+    },
+    {
+      "id": 8,
+      "premise": "A professional forger who creates fake identity documents for undocumented immigrants is blackmailed by a corrupt government official who wants her to forge evidence in a high-profile political scandal."
+    },
+    {
+      "id": 9,
+      "premise": "An archaeologist excavating a medieval monastery finds a sealed chamber containing a manuscript that appears to describe modern scientific concepts centuries before their discovery, along with a skeleton wearing a wristwatch."
+    },
+    {
+      "id": 10,
+      "premise": "A nurse working the night shift at a retirement home begins receiving notes slipped into the staff room, each containing a personal complaint about one of the residents that she can not find on the name list."
+    },
+    {
+      "id": 11,
+      "premise": "A food critic with a perfect palate loses her sense of taste after a car accident and must navigate the cutthroat restaurant world using only memory, psychology, and the reactions of her dining companions."
+    },
+    {
+      "id": 12,
+      "premise": "A software engineer discovers that the AI chatbot his company deployed six months ago has been subtly manipulating customer behavior in ways nobody programmed. When he tries to report it, his evidence keeps disappearing from company servers."
+    },
+    {
+      "id": 13,
+      "premise": "A young woman moves to a remote island to take over her late uncle's lighthouse, only to discover that the island's small community has been maintaining a centuries-old pact with something that lives beneath the surrounding waters."
+    },
+    {
+      "id": 14,
+      "premise": "A competitive chess grandmaster discovers that her next opponent in the world championship has been using a neural implant to enhance his calculation speed. She must decide whether to expose him and risk destabilizing the entire tournament."
+    },
+    {
+      "id": 15,
+      "premise": "A firefighter responding to a warehouse blaze finds a hidden room containing dozens of missing person flyers, surveillance photos, and a map with locations marked across the state. The warehouse belongs to a beloved local philanthropist."
+    },
+    {
+      "id": 16,
+      "premise": "A translator working at the United Nations begins to notice that a certain diplomat's speeches contain hidden messages when translated into a specific language, messages that appear to be coordinating covert operations across multiple countries."
+    },
+    {
+      "id": 17,
+      "premise": "A postal worker in a rural town realizes that the letters she has been delivering to a reclusive elderly woman are responses to letters the woman never sent, and the return addresses belong to people who died decades ago."
+    },
+    {
+      "id": 18,
+      "premise": "A documentary filmmaker following a group of climate activists discovers that their charismatic leader has been secretly funded by the fossil fuel company they're protesting against, as part of a strategy to control and discredit the movement from within."
+    },
+    {
+      "id": 19,
+      "premise": "An emergency room doctor treating a patient with amnesia realizes that the man's fingerprints match those of a soldier declared killed in action fifteen years ago. As the patient's memories slowly return, they reveal a conspiracy that powerful people will kill to keep buried."
+    },
+    {
+      "id": 20,
+      "premise": "An urban beekeeper tending rooftop hives in downtown Tokyo notices her bees disappearing at night and returning covered in iridescent, unidentified pollen. When she tests the pollen’s genetic structure, it doesn’t match anything in existing botanical databases."
+    },
+    {
+      "id": 21,
+      "premise": "A young archivist cataloging books in a haunted Parisian library finds a handwritten note inside a centuries-old volume addressed directly to her, predicting the date and cause of her imminent death."
+    },
+    {
+      "id": 22,
+      "premise": "An apprentice glassblower in Renaissance Venice is commissioned to create a set of goblets for the Doge, but each night he returns to his studio, half-finished pieces have transformed into the shapes of monsters from his own nightmares."
+    },
+    {
+      "id": 23,
+      "premise": "A rural sheriff in Appalachian Kentucky receives a series of distress calls from a wilderness that, according to official maps, doesn’t exist. His curiosity turns to dread as he recognizes the voices on the line as people missing for decades."
+    },
+    {
+      "id": 24,
+      "premise": "A once-famous children’s puppeteer living in a crumbling Victorian mansion discovers that her marionettes move unaided when she’s not in the room. Their nightly performances start reenacting events from her hidden past."
+    },
+    {
+      "id": 25,
+      "premise": "A retired Olympic swimmer teaching lessons at a small-town pool is suddenly visited by a string of former teammates, each bearing cryptic apologies and warnings about the fate of their relay team."
+    },
+    {
+      "id": 26,
+      "premise": "A boutique perfumer in Marrakech creates a new fragrance for a client who insists on secrecy. When the scent unwittingly triggers violent memories in those who smell it, she’s forced to track the client’s true identity."
+    },
+    {
+      "id": 27,
+      "premise": "A teenage graffiti artist in São Paulo tags an abandoned subway car and wakes to find her artwork has come to life, demanding she help them find ‘the missing face’ or risk being erased from memory."
+    },
+    {
+      "id": 28,
+      "premise": "A widowed veterinarian in rural Ireland stumbles upon a species of bird that mimics human speech with chilling accuracy. When it begins repeating conversations he’s never had, he suspects someone is eavesdropping on his dreams."
+    },
+    {
+      "id": 29,
+      "premise": "A Hong Kong street-food vendor with a photographic memory starts recognizing strangers in the crowd from dreams he's had about disasters that later come true. One evening, he spots his own face among them."
+    },
+    {
+      "id": 30,
+      "premise": "A first-year philosophy professor at a sleepy New England college receives an anonymous manuscript from a student who claims to have solved the problem of free will—by proving the professor’s life is being dictated by an unseen observer."
+    },
+    {
+      "id": 31,
+      "premise": "A wheelchair-bound urban planner in Johannesburg is recruited to redesign an old township. As she surveys the area, she finds centuries-old blueprints that eerily resemble the master plan she’d been secretly drafting in private journals."
+    },
+    {
+      "id": 32,
+      "premise": "A former reality show winner turned cruise ship bartender begins receiving drinks orders in the exact phrasing of traumatic moments from his televised past. As the requests escalate, he realizes someone on board is manipulating the menu to confront him."
+    },
+    {
+      "id": 33,
+      "premise": "A master chef in Naples discovers that patrons who eat her new signature dish experience brief, vivid hallucinations of alternate lives. When a powerful local official demands the recipe, she suspects her creation may be far more than food."
+    },
+    {
+      "id": 34,
+      "premise": "A famed origami artist in Tokyo finds a folded crane bearing a message in her deceased father’s handwriting. Each subsequent piece reveals details about international crimes no one else knows about."
+    },
+    {
+      "id": 35,
+      "premise": "A long-haul trucker crossing the Siberian steppe picks up a stranded traveler who claims to be from the future. As their journey continues, the traveler predicts local news events with alarming accuracy."
+    },
+    {
+      "id": 36,
+      "premise": "A YouTuber specializing in urban exploration sneaks into an abandoned cosmetics factory and finds a series of Polaroids depicting her future explorations in dangerous, never-before-seen locations."
+    },
+    {
+      "id": 37,
+      "premise": "A recently divorced luxury realtor in Miami is hired to sell a mansion that has no records of previous ownership but is filled with decades-old personal items. Every item matches key moments from her own life that she never shared with anyone."
+    },
+    {
+      "id": 38,
+      "premise": "A stage magician in Victorian London discovers that his new apprentice can perform tricks he never taught her. Soon, illusions become reality, and the apprentice refuses to reveal where she’s learned her uncanny powers."
+    },
+    {
+      "id": 39,
+      "premise": "An immigrant seamstress in Buenos Aires receives a package of unfinished garments from a mystery client. As she completes each piece, she finds sewn-in clues about a series of unsolved disappearances."
+    },
+    {
+      "id": 40,
+      "premise": "A shy middle school janitor in rural Nebraska discovers a hidden room filled with decades of students’ unfinished science fair projects—every one predicting a disaster that later occurred in the town."
+    },
+    {
+      "id": 41,
+      "premise": "While hiking in the Patagonian wilderness, a retired linguist stumbles upon a cave lined with wall etchings of conversations she had only in childhood dreams. The final etching appears to be unfinished, awaiting her next word."
+    },
+    {
+      "id": 42,
+      "premise": "A freelance sound engineer in Berlin is hired to restore an old radio program. When he cleans up the static, he reveals whispers that seem to predict his every move days before he makes them."
+    },
+    {
+      "id": 43,
+      "premise": "A single father working as an elevator mechanic in Dubai’s tallest skyscraper finds a hidden 101st floor on the control panel, which doesn’t exist on any building plans. Each time he tries to visit, the elevator skips straight past it."
+    },
+    {
+      "id": 44,
+      "premise": "A vintage map dealer in Lisbon stumbles upon a hand-drawn nautical chart marked with locations of modern-day shipwrecks. As he investigates, someone begins sending him threatening replicas of his own maps with his home circled in red."
+    },
+    {
+      "id": 45,
+      "premise": "A stage actress in Cairo lands the lead role in an adaptation of an ancient myth, only to find her castmates transforming—physically and psychologically—into the mythic characters after each rehearsal."
+    },
+    {
+      "id": 46,
+      "premise": "A botanist at a remote Arctic research post discovers that the moss samples she’s cataloged respond to her spoken thoughts. When the moss starts spelling messages in English, she fears she's not alone."
+    },
+    {
+      "id": 47,
+      "premise": "A road maintenance worker in the Australian Outback uncovers a freshly paved stretch of highway that isn’t recorded on any GPS. The more he drives it, the more of his own memories begin to fade."
+    },
+    {
+      "id": 48,
+      "premise": "A Boston hedge fund manager receives investment advice via text message each morning—always from the phone number of his late wife. When he ignores a tip, things in his personal life begin to spiral out of control."
+    },
+    {
+      "id": 49,
+      "premise": "A former circus contortionist running a Parisian yoga studio begins developing painful bruises in the same places her old troupe members died. When a student disappears, she suspects a pattern only she can see."
+    },
+    {
+      "id": 50,
+      "premise": "A retired meteorologist in the Scottish Highlands finds her barometers and weather vanes spinning wildly one night. The next morning, she’s sent anonymous data predicting a storm unlike anything in recorded history."
+    },
+    {
+      "id": 51,
+      "premise": "A solitary locksmith in Prague is asked to open a century-old safe in a cathedral basement. Inside, he finds a portrait of himself painted decades before his birth."
+    },
+    {
+      "id": 52,
+      "premise": "A sommelier at a Michelin-starred New York restaurant discovers a bottle in the cellar that, when opened, reveals a new, unlisted wine for every guest based on their darkest secret."
+    },
+    {
+      "id": 53,
+      "premise": "A college dropout in Seoul who runs an underground gaming parlor begins noticing NPCs in his favorite online game mimicking the actions—and later, the crimes—of real players in the city."
+    },
+    {
+      "id": 54,
+      "premise": "A third-generation gravedigger in Transylvania begins finding fresh flowers on graves of locals who haven’t yet died. When he finds his own name among them, he races to uncover who’s leaving the tributes."
+    },
+    {
+      "id": 55,
+      "premise": "A Parisian clockmaker receives a commission to repair a broken wristwatch that seems to tick backward only for him, causing short blackouts during which pieces of his workshop move or disappear."
+    },
+    {
+      "id": 56,
+      "premise": "A shy genealogist in Warsaw discovers a branch of her own family tree that ends abruptly in the 1800s with the words, ‘Do not seek.’ When strangers begin appearing who resemble her, she wonders if the warning applies to them—or to her."
+    },
+    {
+      "id": 57,
+      "premise": "In a Lagos co-working space, an app developer wakes to find her phone has hundreds of photos of strangers sleeping—not selfies or screenshots, but high-resolution images. The time stamps suggest they were all taken simultaneously."
+    },
+    {
+      "id": 58,
+      "premise": "A St. Petersburg ballet master finds an antique pair of toe shoes that let dancers perform choreography never before written. Each performance evokes a collective dream that eerily foretells citywide events."
+    },
+    {
+      "id": 59,
+      "premise": "A grief-stricken postal museum curator in Vienna finds a long-lost, unopened letter addressed to her late father in her own handwriting. She has no recollection of writing it—and the postmark is dated next month."
+    },
+    {
+      "id": 60,
+      "premise": "A retiree living on the edge of Reykjavík’s lava fields begins receiving mysterious deliveries of volcanic rock, each piece carved with coordinates and cryptic symbols. When assembled, they form a partial map to a site local legend claims is cursed."
+    },
+    {
+      "id": 61,
+      "premise": "A school bus driver in southern Spain notices the same stray dog waiting at each stop, no matter the route or schedule. As she begins to investigate, children on her bus start disappearing without a trace."
+    },
+    {
+      "id": 62,
+      "premise": "A waiter in a trendy Cape Town restaurant discovers that every time he wishes ill upon a difficult customer, something terrible befalls them within 24 hours. When a regular patron takes an interest in his secret thoughts, he fears he’s being manipulated."
+    },
+    {
+      "id": 63,
+      "premise": "A retired Bollywood set designer is sought out to recreate a palace interior for an anonymous film project. When the set is finished, people involved in the build begin receiving personal threats echoing those in a 1940s unsolved murder."
+    },
+    {
+      "id": 64,
+      "premise": "A British parliament intern finds encrypted messages sewn inside vintage ties donated to a charity. Each message references a political scandal that hasn’t yet happened."
+    },
+    {
+      "id": 65,
+      "premise": "A classical guitarist in Vienna hears new compositions in his sleep and transcribes them, only to find they match unpublished works by a composer who died centuries ago. When he’s approached by a shadowy organization, he suspects his dreams are no longer his own."
+    },
+    {
+      "id": 66,
+      "premise": "A street photographer in Montreal develops film to find the same faceless figure in every picture from a day’s shoot—always standing just behind someone about to experience a tragedy."
+    },
+    {
+      "id": 67,
+      "premise": "A Tokyo florist receives bouquets from an anonymous admirer, each arrangement made with rare blooms extinct everywhere else. When she investigates the source, she finds a hidden greenhouse in the city’s forbidden zone."
+    },
+    {
+      "id": 68,
+      "premise": "A farmer in rural Kansas discovers a trail of crop circles leading to his property each year on the same date. One morning, he finds his daughter’s name spelled in the fields."
+    },
+    {
+      "id": 69,
+      "premise": "A French pastry chef in Lyon, famed for her perfect madeleines, starts receiving threats written in icing on her pastries before she bakes them."
+    },
+    {
+      "id": 70,
+      "premise": "A German physics grad student, working alone at the Large Hadron Collider, sees data appear that predicts tomorrow's social media trends with uncanny accuracy. When she tries to verify it, her computer logs are wiped remotely."
+    },
+    {
+      "id": 71,
+      "premise": "An ex-ballet dancer running a rehabilitation center in Moscow finds her injured patients begin speaking in a forgotten dialect while sleepwalking. Their chants, when recorded and played backward, reveal coordinates deep within the Siberian taiga."
+    },
+    {
+      "id": 72,
+      "premise": "An amateur astronomer in rural Chile notices a constellation shifting position for the first time in centuries. Soon after, strangers arrive in town, all with the same birthmark as him."
+    },
+    {
+      "id": 73,
+      "premise": "A South African cybersecurity expert inherits a storage locker from a deceased mentor—inside are blueprints for a device banned by international law. When she turns on the prototype, global communications networks glitch for seconds at a time."
+    },
+    {
+      "id": 74,
+      "premise": "A New Orleans jazz trumpeter discovers a dented mute inside his grandfather’s attic trunk. When he plays with it, the notes summon ghostly figures that replay the city’s hidden past."
+    },
+    {
+      "id": 75,
+      "premise": "A vegan butcher running a food truck in Portland discovers that her plant-based sausages taste like the customer’s favorite childhood meals. When a grieving widow starts ordering daily, memories she never lived begin flooding her mind."
+    },
+    {
+      "id": 76,
+      "premise": "A retired submarine captain in Athens is drawn to a series of underwater ruins mapped only in his late father’s journals. When his exploratory dive triggers seismic activity, he’s pursued by a secretive government agency."
+    },
+    {
+      "id": 77,
+      "premise": "A British train conductor working the midnight line to Glasgow finds tickets stamped with the names of passengers who were declared missing decades ago—and their seats are never empty."
+    },
+    {
+      "id": 78,
+      "premise": "A Turkish mosaic restorer in Istanbul discovers that replaced tiles realign overnight into new patterns, depicting past and future acts of violence in the city."
+    },
+    {
+      "id": 79,
+      "premise": "A Canadian ice road trucker’s CB radio receives distress calls spoken in her own voice from a remote, uninhabited region. When she investigates, she finds her lost childhood diary buried in the snow."
+    },
+    {
+      "id": 80,
+      "premise": "A South Korean antique dealer buys a pocket watch that speeds up time each time he opens it, evidenced by calendar dates leaping forward. Each time he tries to sell it, the price of everything else in his life increases."
+    },
+    {
+      "id": 81,
+      "premise": "A Rio de Janeiro lifeguard wakes up on the shore after blacking out, surrounded by sand sculptures of people who drowned that day—each sculpture features a detail only the victims’ families would know."
+    },
+    {
+      "id": 82,
+      "premise": "An aging Las Vegas card counter is approached by a casino guest with uncanny luck and a deck of cards that reshuffle themselves. The guest claims the cards can predict the outcome of any gamble—including matters of life and death."
+    },
+    {
+      "id": 83,
+      "premise": "A Mumbai call center employee hears the voice on the other end of the line change mid-conversation to someone speaking his late mother’s favorite lullaby, even though the call log shows no interruptions."
+    },
+    {
+      "id": 84,
+      "premise": "A New Zealand sheep farmer finds one of his flock etched with cryptic runes each morning. Soon, similar markings appear on his barn—and then on himself."
+    },
+    {
+      "id": 85,
+      "premise": "A Parisian perfume chemist’s new scent makes customers experience the first memory they ever forgot. When a government official buys a vial and collapses in the store, she’s pressured to cease production immediately."
+    },
+    {
+      "id": 86,
+      "premise": "An American exchange student in Berlin wakes to find her dorm room walls lined with photographs of events from her life she never remembers living. Each night, new images appear, always dated the following day."
+    },
+    {
+      "id": 87,
+      "premise": "A Moroccan spice merchant finds that every blend she grinds gives customers vivid, prophetic dreams. When a customer returns with news of a forthcoming natural disaster, she must decide whether to warn the authorities."
+    },
+    {
+      "id": 88,
+      "premise": "A Norwegian marine salvage diver rescues an intact ship’s bell from a sunken vessel. When rung, it transports her consciousness to the night of the wreck, where she sees herself among the lost crew."
+    },
+    {
+      "id": 89,
+      "premise": "A Venice gondolier is tipped with golden coins he has never seen before. When he tries to spend them, strangers begin following him, all wearing masks from a forgotten carnival."
+    },
+    {
+      "id": 90,
+      "premise": "An Irish stonemason restoring an ancient castle finds his name engraved in the foundation stones, each carving matching his own handwriting."
+    },
+    {
+      "id": 91,
+      "premise": "A Kenyan wildlife photographer finds animals behaving as if they recognize her face, approaching her in the wilderness to lead her toward a mysterious, unmarked graveyard."
+    },
+    {
+      "id": 92,
+      "premise": "A Dutch windmill keeper’s family is plagued by perfectly timed gusts of wind that only blow at night, echoing warnings about historical betrayals and forgotten local uprisings."
+    },
+    {
+      "id": 93,
+      "premise": "A Greek lighthouse keeper receives nightly messages in Morse code that describe ancient legends—each one coinciding with a shipwreck the following day."
+    },
+    {
+      "id": 94,
+      "premise": "An Icelandic volcanologist finds new seismic data spelling out a message in Morse code, predicting a series of eruptions that threaten to destroy the capital."
+    },
+    {
+      "id": 95,
+      "premise": "A fashion designer in Milan wakes to find her new sketches reproduced on billboards for brands she’s never worked with. When she investigates, she learns the campaigns don’t exist in any company archives."
+    },
+    {
+      "id": 96,
+      "premise": "A librarian on a South Pacific island discovers that returned books contain added chapters predicting future events on the island."
+    },
+    {
+      "id": 97,
+      "premise": "A Tokyo subway operator notices the same passenger boarding his train at 1:11 AM every night, never disembarking at any stop. One night, the passenger hands him a newspaper dated ten years in the future."
+    },
+    {
+      "id": 98,
+      "premise": "A Spanish stargazer in La Palma receives postcards from himself, postmarked from an observatory he’s never visited, detailing astronomical disasters that have yet to occur."
+    },
+    {
+      "id": 99,
+      "premise": "A Nigerian sculptor’s clay pieces begin to crack open, revealing tokens and keepsakes from her own lost childhood. When an art collector offers to buy them, she begins to perceive memories that don't belong to her."
+    },
+    {
+      "id": 100,
+      "premise": "A Chilean volcanologist’s drone captures images of shadowy figures descending into an active crater. When she reviews the recordings, the faces in the footage appear to morph into members of her own expedition."
+    },
+    {
+      "id": 101,
+      "premise": "A Swiss chocolatier starts receiving cocoa shipments from a plantation that was supposedly destroyed by wildfire decades earlier. Each batch produces flavors recalling episodes from his most painful memories."
+    },
+    {
+      "id": 102,
+      "premise": "A Singaporean urban planner receives anonymously mailed blueprints for a city that precisely predicts a rapidly rising sea level. The plans include evacuation routes for buildings not yet constructed."
+    },
+    {
+      "id": 103,
+      "premise": "A retired Congolese pilot works as a flight instructor and discovers that his students’ flight paths, when mapped, trace out the outline of his own face across the country."
+    },
+    {
+      "id": 104,
+      "premise": "A New York aquarium diver rescues an unusual octopus that rearranges rocks in its tank to mimic the shape of the NYC subway map. The patterns change nightly, matching random incidents across the city."
+    },
+    {
+      "id": 105,
+      "premise": "A Polish pastry chef bakes loaves of bread with intricate designs that appear only after cooling. Each loaf reveals the location of a missing person."
+    },
+    {
+      "id": 106,
+      "premise": "A Johannesburg street vendor discovers that every bill she receives as payment contains a different, handwritten confession—some about future crimes."
+    },
+    {
+      "id": 107,
+      "premise": "A Seattle indie game developer receives code snippets from an unknown source, each referencing life events that haven’t happened to him yet. When the final snippet arrives, it contains the instructions for his own digital obituary."
+    },
+    {
+      "id": 108,
+      "premise": "A Bangkok hotel concierge notices guests in room 414 all vanish without checking out. When he investigates, he finds the room was sealed off in the 1970s—and shouldn’t exist on modern blueprints."
+    },
+    {
+      "id": 109,
+      "premise": "A St. Louis jazz pianist, hired to play in an abandoned speakeasy, finds her setlist matches those played during Prohibition raids. Each piece seems to resurrect pieces of the night the club was shuttered."
+    },
+    {
+      "id": 110,
+      "premise": "A Canadian retired mountaineer receives daily letters addressed to climbers lost on expeditions he led in his youth. Each letter predicts avalanche conditions for mountains yet to be mapped. He decides to head out to investigate."
+    },
+    {
+      "id": 111,
+      "premise": "A Nigerian botanist researching rainforest plants finds a species that grows only in places where war is about to break out."
+    },
+    {
+      "id": 112,
+      "premise": "An Italian glassblower in Murano crafts mirrors that show glimpses of historical betrayals in their reflections. When he creates a new mirror, it reveals a future act of treachery involving himself."
+    },
+    {
+      "id": 113,
+      "premise": "A San Diego marine biologist finds mysterious barnacles attached to the hulls of ships sunk during World War II. When she removes one, it starts leaking coded Morse pulses into her lab equipment."
+    },
+    {
+      "id": 114,
+      "premise": "A Filipino fisherman hauling in deep-sea nets finds a mechanical artifact inscribed with coordinates to a sunken city not on any charts. The artifact appears to react to his family’s surname."
+    },
+    {
+      "id": 115,
+      "premise": "A Moscow subway operator notices the clocks in certain trains stop every night at the same minute. Passengers claim to have memories of lives they never lived during the stoppages."
+    },
+    {
+      "id": 116,
+      "premise": "A rural Maine beekeeper finds her bees producing honey with metallic flecks. Analyzing it, she discovers microscopic circuitry embedded inside."
+    },
+    {
+      "id": 117,
+      "premise": "A Stockholm sleep researcher finds dozens of patients’ dream journals contain identical, vivid accounts of a city that doesn’t exist. When she begins dreaming about it too, her waking world starts to unravel."
+    },
+    {
+      "id": 118,
+      "premise": "A Singaporean falconer’s birds begin returning with messages stitched into their leg bands written in a language lost for millennia. Each message seems to warn of a coming disaster."
+    },
+    {
+      "id": 119,
+      "premise": "A Los Angeles child psychologist’s patients all start drawing the same shadowy figure, which she recognizes from her own childhood nightmares."
+    },
+    {
+      "id": 120,
+      "premise": "An Edinburgh bartender discovers that each beer she pours for a regular customer reverses one day of her own recent memory, until she forgets the customer entirely."
+    },
+    {
+      "id": 121,
+      "premise": "A Brazilian urban shaman notices the city’s stray cats gather nightly at a building scheduled for demolition. The cats’ coordinated disappearance coincides exactly with a series of unexplained local accidents."
+    },
+    {
+      "id": 122,
+      "premise": "A Cairo calligrapher forges ancient scripts for collectors and is commissioned to replicate a scroll inscribed with her own name and a prophecy tied to the city’s fate."
+    },
+    {
+      "id": 123,
+      "premise": "A Tokyo sound designer discovers that background noise in his latest project contains whispered apologies in dozens of languages. When he cross-references them, they list all the victims of the city’s major disasters."
+    },
+    {
+      "id": 124,
+      "premise": "An Australian surfer rides a wave to shore only to find the coastline several kilometers farther out than he remembered. The land between is covered in artifacts from multiple lost civilizations."
+    },
+    {
+      "id": 125,
+      "premise": "A Parisian rooftop gardener finds an ancient olive tree in her greenhouse, which grows fruit overnight that, when eaten, induces visions of a world where she never existed."
+    },
+    {
+      "id": 126,
+      "premise": "A Singaporean chef’s new fusion dish causes customers to speak in tongues recalling forgotten family histories. When a dinner guest starts recounting details of a national secret, she’s warned not to serve it again."
+    },
+    {
+      "id": 127,
+      "premise": "A Canadian cryptozoologist investigating local reports of a lake monster finds an ice-encased journal with entries written in her own handwriting from a year in the future."
+    },
+    {
+      "id": 128,
+      "premise": "A Greek olive farmer begins harvesting fruit that returns to his grove each night, eternally fresh and growing despite being picked. His neighbors claim their harvests have become barren since."
+    },
+    {
+      "id": 129,
+      "premise": "A Ukrainian violin maker is visited by a child who claims to have composed music specifically for a violin he’s yet to complete. Each visit reveals intimate details about his own childhood trauma."
+    },
+    {
+      "id": 130,
+      "premise": "A New Orleans tarot card reader finds her deck shuffling itself to spell out urgent warnings for clients she hasn't yet met. When her own card appears face-up every morning, she fears she’s been marked."
+    },
+    {
+      "id": 131,
+      "premise": "A Mexican archaeologist finds a stone calendar predicting modern political upheavals in exact detail. When she presents her findings, she’s immediately discredited and receives anonymous threats."
+    },
+    {
+      "id": 132,
+      "premise": "An architect in Dubai is hired to design a building with impossible dimensions. As construction progresses, workers vanish and blueprints change themselves overnight."
+    },
+    {
+      "id": 133,
+      "premise": "A Japanese kimono weaver finds that every midnight, her loom weaves patterns representing her town’s oldest, darkest secrets. One night, the design clearly depicts a crime planned for the next morning."
+    },
+    {
+      "id": 134,
+      "premise": "A South African jazz club owner inherits a set of instruments that play pieces improvised by his late father. Audiences begin reporting memories of lives they never lived after each performance."
+    },
+    {
+      "id": 135,
+      "premise": "A Milanese perfumer creates a scent that allows wearers to momentarily access strangers’ memories. When a test subject collapses, she faces scrutiny from medical authorities and feared criminal investigation."
+    },
+    {
+      "id": 136,
+      "premise": "A Tanzanian weather balloon operator finds a series of balloons crash-landed in a perfect circle, each containing timestamps for future cyclones. The circle matches the shadow of a long-extinct volcano."
+    },
+    {
+      "id": 137,
+      "premise": "A Welsh chess instructor’s opponents begin predicting his moves before he makes them. When he’s challenged to a game in an abandoned castle, the pieces move on their own."
+    },
+    {
+      "id": 138,
+      "premise": "A Filipino janitor at a high-rise office discovers elevator buttons that, when pressed in a specific order, open to floors not listed in the building plans. Each floor contains remnants of major events in Philippine history."
+    },
+    {
+      "id": 139,
+      "premise": "A Buenos Aires street artist’s murals begin depicting scenes of events that happen hours after she paints them, down to the clothing and expressions of passersby. The city government accuses her of inciting unrest, and her next mural appears to feature herself."
+    },
+    {
+      "id": 140,
+      "premise": "A Moroccan rug weaver crafts a carpet commissioned by a government official and finds ancient symbols woven in without her knowing. Each symbol is linked to a legendary lost city—and the official’s ancestors."
+    },
+    {
+      "id": 141,
+      "premise": "A Scottish lighthouses keeper finds that ships only run aground during new moons, and always at the same spot. When she dives to investigate, she finds her own wedding ring hanging from the wreckage."
+    },
+    {
+      "id": 142,
+      "premise": "A Tibetan monk in exile translates a set of scrolls whose text changes daily. The latest page details events about to unfold in his host village."
+    },
+    {
+      "id": 143,
+      "premise": "A Lebanese winemaker discovers a hidden cellar filled with mysterious bottles of wines. The image on the label of each bottle corresponds to a Tarot card, but the labels are written in a language she has never seen before."
+    },
+    {
+      "id": 144,
+      "premise": "A Siberian miner extracts a mineral that pulses with warm light whenever he touches it. When he sells a fragment, he’s followed by strangers who communicate only through coded flashes resembling the light from the mineral."
+    },
+    {
+      "id": 145,
+      "premise": "A Miami tattoo artist’s latest client requests a design he’s only ever dreamed. When he tattoos it, the client disappears, and the design begins appearing in his own dreams, changing each time."
+    },
+    {
+      "id": 146,
+      "premise": "A Vietnamese water puppet performer finds her marionettes traveling to new staging areas overnight with wet, muddy footprints behind them. Each new location corresponds to lost villages."
+    },
+    {
+      "id": 147,
+      "premise": "A Canadian paleontologist finds a perfectly preserved dinosaur egg that vibrates each time she approaches. When she takes it to her lab, her instruments start malfunctioning in patterns mimicking a heartbeat."
+    },
+    {
+      "id": 148,
+      "premise": "An Italian gondola restorer discovers that every boat he repairs develops wood grain patterns shaped like maps of Venice—maps featuring canals the city denies exist."
+    },
+    {
+      "id": 149,
+      "premise": "A Syrian baker wakes each morning to find her pastries must be baked in a different, ancient recipe left on her kitchen counter. Each recipe originates from a civilization rumored lost to time."
+    },
+    {
+      "id": 150,
+      "premise": "A Ghanaian cocoa farmer finds that each year’s crop grows with slightly different pigmentation, spelling out coded text only visible from above. The year he decodes it, his plantation is targeted by unknown assailants."
+    },
+    {
+      "id": 151,
+      "premise": "A Mongolian horse breeder wakes to find hoofprints on the roof of her isolated home. Each morning, she receives anonymous gifts linked to her family’s shamanic lineage."
+    },
+    {
+      "id": 152,
+      "premise": "A Spanish wind farm technician discovers one of his turbines emits coded pulses detectable only at a certain time each evening. When translated, the pulses describe future environmental disasters."
+    },
+    {
+      "id": 153,
+      "premise": "A Turkish mosaic artist restoring a Byzantine church finds pieces shifting overnight to reveal images of contemporary political events. When she tells the authorities, the mosaics revert to their original state."
+    },
+    {
+      "id": 154,
+      "premise": "A New England ice cream parlor owner’s seasonal flavors cause those who taste them to speak truths they’ve suppressed for years—including secrets the owner herself cannot remember."
+    },
+    {
+      "id": 155,
+      "premise": "A Norwegian deep-sea diver tasked with inspecting oil rigs finds a helmet etched with the name of a diver lost at sea fifty years ago. When she puts it on, she hears the lost diver’s final words echoing in her ears."
+    },
+    {
+      "id": 156,
+      "premise": "A Boston antique book dealer acquires a diary filled with blank pages except for her own handwriting, which mysteriously appears after each customer enters the store, detailing their future in the past tense."
+    },
+    {
+      "id": 157,
+      "premise": "An Australian park ranger is assigned to patrol a newly discovered forest where the flora emits musical notes. As he hikes deeper, the notes form melodies only he recognizes from his childhood."
+    },
+    {
+      "id": 158,
+      "premise": "A Finnish violin student finds her bow playing pieces she’s never learned, matching the final, unsent letters of persecuted composers in the past. Each performance results in a new historical discovery."
+    },
+    {
+      "id": 159,
+      "premise": "An Icelander glacier tour guide hears whispers from inside the ice, recounting tales of people long missing. The stories soon begin to foreshadow unexplained disappearances in his own tour groups."
+    },
+    {
+      "id": 160,
+      "premise": "A Taiwanese virtual reality developer wakes to find code she wrote in a dream running live on the company’s servers, subtly rewriting users’ memories of in-game events."
+    },
+    {
+      "id": 161,
+      "premise": "A Sri Lankan tea plantation owner receives an old ledger with daily entries written in a foreign alphabet. When translated, the entries predict not only weather but the fate of her workers each week."
+    },
+    {
+      "id": 162,
+      "premise": "A Ghanaian goldsmith fashions a ring for a mysterious buyer, only to discover the metal changing color and form in sync with political upheavals across the continent."
+    },
+    {
+      "id": 163,
+      "premise": "A Malaysian ferry captain sees a boat drifting toward port every night, always empty and never claimed. When he boards it one morning, the compass points backwards on itself, and the city skyline appears subtly changed."
+    },
+    {
+      "id": 164,
+      "premise": "A Belgian chocolatier’s new recipe causes customers to recall moments from strangers’ lives. When a local politician collapses in the shop, government agents begin shadowing her every move."
+    },
+    {
+      "id": 165,
+      "premise": "A Peruvian textile artist finds new designs appearing overnight on her loom, each matching the patterns found at recently uncovered archaeological sites."
+    },
+    {
+      "id": 166,
+      "premise": "A Seattle botanist’s genetically modified houseplants begin spelling out urgent warnings in their leaf arrangements, only visible at dawn. When police dismiss her claims, the warnings grow more specific."
+    },
+    {
+      "id": 167,
+      "premise": "A Mexican shoemaker receives a custom order from a client who leaves behind footprints that glow faintly under moonlight. Each print matches walkways found only in ancient Aztec ruins."
+    },
+    {
+      "id": 168,
+      "premise": "A New York graffiti removal specialist begins seeing new tags appear in the exact places she just cleaned, each one warning of a city-wide blackout. The warnings stop the day she encounters her own name."
+    },
+    {
+      "id": 169,
+      "premise": "A Croatian ferryman shuttling villagers across a misty lake every morning starts discovering tokens in his boat belonging to townspeople who have disappeared without a trace."
+    },
+    {
+      "id": 170,
+      "premise": "An Australian outback pilot starts receiving weather briefings in a voice matching his twin brother’s, who vanished years before. The briefings describe future accidents that always come true."
+    },
+    {
+      "id": 171,
+      "premise": "A Vietnamese street vendor finds that every lantern she sells burns with a distinct, untraceable scent that induces nostalgia for lives her customers never lived."
+    },
+    {
+      "id": 172,
+      "premise": "A Czech marionette maker’s puppets perform their own plays at night, retelling the town’s unsolved crimes in chilling detail."
+    },
+    {
+      "id": 173,
+      "premise": "A Chicago real estate agent discovers that every apartment she enters on a full moon contains evidence of a tragic murder that hasn’t yet occurred. When she finds her own apartment listed for tonight, she panics."
+    },
+    {
+      "id": 174,
+      "premise": "A Brazilian rock climber uncovers ancient petroglyphs that predict the location of rare gemstones. When he retrieves the first stone, he’s pursued by strangers who seem to know his every move."
+    },
+    {
+      "id": 175,
+      "premise": "A Scottish silversmith receives commissions from anonymous clients, each requesting pieces that match artifacts from famous unsolved thefts. When a piece goes missing, police suspect she’s involved."
+    },
+    {
+      "id": 176,
+      "premise": "A Filipino illusionist’s reflection in the mirror performs different tricks than he does. Each night, the reflected routine mimics real-life events in Manila before they happen."
+    },
+    {
+      "id": 177,
+      "premise": "A New Zealand orchardist finds that apples grown on certain trees contain seeds engraved with coordinates to remote, uncharted islands. The same night, explorers begin appearing at her door."
+    },
+    {
+      "id": 178,
+      "premise": "A South African forensic sculptor’s latest reconstruction bears an uncanny resemblance to her own missing twin. The case file she’s assigned next contains clues only the twin could have known."
+    },
+    {
+      "id": 179,
+      "premise": "A Montenegrin fisherman catches a fish wearing a tiny, hand-forged gold ring inscribed with his birthday. When he tries to remove the ring, the fish begins speaking secrets no living person should know."
+    },
+    {
+      "id": 180,
+      "premise": "A Thai muralist’s latest work at a temple features faces she doesn’t recognize. When villagers see the paintings, they claim to see lost loved ones—each with urgent messages in their gaze."
+    },
+    {
+      "id": 181,
+      "premise": "A museum security guard in Brussels develops a friendship with a street artist who sketches outside every night. When the artist suddenly disappears and a priceless painting is replaced with a perfect forgery signed in the artist’s distinctive hand, the guard must decide whether to reveal what he knows."
+    },
+    {
+      "id": 182,
+      "premise": "A retired circus animal trainer living in a Florida trailer park is visited by a mysterious child who seems able to communicate with the wild birds that flock to her lot. The neighbors begin to whisper about strange happenings, and soon, an animal control officer arrives with questions the trainer can’t answer."
+    },
+    {
+      "id": 183,
+      "premise": "A pastry chef in Kyoto, struggling to keep her family bakery open, discovers an ancient, handwritten recipe hidden inside a flour sack. Every person who eats the resulting pastries seems to dream the same impossible future—one that features her bakery at its heart."
+    },
+    {
+      "id": 184,
+      "premise": "A junior archivist at the Vatican Library stumbles upon a centuries-old sealed envelope addressed to someone with his exact name. When he opens it, he finds a map leading to a forgotten crypt beneath the city."
+    },
+    {
+      "id": 185,
+      "premise": "A deaf basketball coach at an inner-city school in San Diego notices that his team’s star player has started drawing elaborate diagrams of plays no one taught them. The diagrams predict not only game outcomes, but school events before they happen."
+    },
+    {
+      "id": 186,
+      "premise": "A glassblower in Venice begins crafting sculptures that appear unbidden in her dreams. Soon, international buyers compete for her pieces, but each owner reports vivid nightmares—and then a rash of unexplained fires follows."
+    },
+    {
+      "id": 187,
+      "premise": "A rookie weather balloon operator in the Gobi Desert picks up a radio signal coded in meteorological data. As he deciphers the message, he realizes it's a warning not to launch his next balloon."
+    },
+    {
+      "id": 188,
+      "premise": "A Paralympic fencer is invited to an exclusive competition held in a secluded Alpine monastery. The matches turn deadly when competitors begin to vanish after losing a duel."
+    },
+    {
+      "id": 189,
+      "premise": "A beekeeper in rural Tasmania notices her bees performing a peculiar dance, only during the full moon. After following them one night, she finds a cave entrance lined with golden honeycomb and evidence of a vanished civilization."
+    },
+    {
+      "id": 190,
+      "premise": "An old funeral director in New Haven begins finding tokens—lockets, photographs, pressed flowers, all tucked into the hands of the deceased, all bearing her initials. As the town’s oldest families pass, the gifts grow even more ominous."
+    },
+    {
+      "id": 191,
+      "premise": "A telescope operator at an Argentine observatory detects an anomaly: a patch of stars blinking in Morse code. When she records the pattern, it spells out the name of her missing brother."
+    },
+    {
+      "id": 192,
+      "premise": "A graffiti cleanup volunteer in Manchester keeps encountering the same cryptic phrase, painted in invisible ink revealed only after rain. A detective investigates said finding, and finds that each instance appears near the site of an unsolved murder."
+    },
+    {
+      "id": 193,
+      "premise": "A second-generation Bollywood costume designer finds an unfinished film reel spliced into her late father’s storage trunk. When she plays it, she sees actors who never existed, performing scenes from her own childhood memories."
+    },
+    {
+      "id": 194,
+      "premise": "A teenage chess prodigy in Lagos stumbles onto an encrypted USB drive left under her hotel pillow during a tournament. The files contain not opening moves, but surveillance video of her family’s home."
+    },
+    {
+      "id": 195,
+      "premise": "A retired submarine engineer returns to his childhood home on the Scottish coast and starts noticing strange tidal patterns. When fishing boats disappear and his old blueprints start turning up in the mail, he suspects someone is using his designs for a new purpose."
+    },
+    {
+      "id": 196,
+      "premise": "A park ranger in the Canadian Rockies uncovers a backpack with coordinates leading to a frozen lake. At the exact spot, every electronic device malfunctions, including his own heart monitor."
+    },
+    {
+      "id": 197,
+      "premise": "A Budapest stage magician famous for his escapology routines receives a locked trunk containing only a single playing card and a threat written in blood. His next show sells out overnight—despite the fact that he’s announced he’ll attempt an illusion no one has ever survived."
+    },
+    {
+      "id": 198,
+      "premise": "A genetic counselor in São Paulo discovers that several clients share an identical, undocumented genetic marker. Investigating further, she unearths records of a top-secret medical trial conducted decades ago in the city."
+    },
+    {
+      "id": 199,
+      "premise": "A former Olympic sprinter now working as a bicycle messenger in Paris finds she’s being tailed by a drone. When she finally traps the device, she’s stunned to recognize the serial number as one she had tattooed in ultraviolet ink at age sixteen—as a joke."
+    },
+    {
+      "id": 200,
+      "premise": "A mask maker in Oaxaca receives an anonymous order for a mask modeled after her own face, but aged twenty years. The client requests delivery to a deserted chapel on the Day of the Dead."
+    },
+    {
+      "id": 201,
+      "premise": "A Moscow zookeeper notices one of her wolves has started mimicking the exact behavior of visitors. After a series of break-ins at local museums, CCTV footage shows a burglar moving with the unmistakable gait of her animal."
+    },
+    {
+      "id": 202,
+      "premise": "A portrait photographer in Belfast develops a batch of photos from a wedding—every single face is blurred except a man no one remembers inviting, smiling directly into the lens."
+    },
+    {
+      "id": 203,
+      "premise": "A delivery drone operator in Nairobi intercepts a package rerouted to an abandoned skyscraper. Inside is a letter addressed to her from the previous operator, listed missing for over a year."
+    },
+    {
+      "id": 204,
+      "premise": "A carpenter restoring a Victorian theater in Boston discovers a hidden room behind the orchestra pit, where the walls are covered in musical notation. When he plays the melody on the old piano, theatergoers begin reenacting tragedies from the city’s past."
+    },
+    {
+      "id": 205,
+      "premise": "A pilot running mail flights over Patagonia hears an SOS in his headset in a language no longer spoken. When he traces the signal, he finds coordinates that match the location of his childhood home—now submerged under a glacier."
+    },
+    {
+      "id": 206,
+      "premise": "A virologist at a wildlife reserve in Uganda encounters a wild chimp with a healed surgical scar and a metal tag numbered in binary. The code references a classified project she worked on years ago which was then shuttered after a notorious virus outbreak."
+    },
+    {
+      "id": 207,
+      "premise": "An antique clock restorer in Prague finds his newest acquisition runs backward every midnight, revealing a series of numbers. Cross-referencing them, he uncovers the dates of unsolved city disappearances spanning a century."
+    },
+    {
+      "id": 208,
+      "premise": "A speech therapist in Lisbon working with a mute child discovers the boy draws perfect replicas of lost Renaissance artwork. When the artwork is publicized, a reclusive billionaire offers her an impossible sum to keep the child’s whereabouts secret."
+    },
+    {
+      "id": 209,
+      "premise": "A struggling poet in Marrakesh keeps receiving unsigned postcards containing verses that eerily foreshadow his future in strange rhymes. As each prediction comes true, he sets a trap to catch his mysterious correspondent."
+    },
+    {
+      "id": 210,
+      "premise": "A Berlin tram driver encounters nightly the same silent passenger, dressed in World War II uniform, who vanishes before the last stop. As rumors spread, he finds old tickets stamped with his own employee number from decades before he was born."
+    },
+    {
+      "id": 211,
+      "premise": "A young robotics repair tech in Manila receives a malfunctioning household bot whose memory chip contains snatches of news broadcasts dated years in the future. The broadcasts describe disasters she now recognizes as coded warning messages."
+    },
+    {
+      "id": 212,
+      "premise": "A Miami scuba instructor finds a waterproof briefcase during a training dive, containing a passport issued in his name and a photo of himself at a place he’s never visited. Days later, he’s contacted by a client offering a small fortune for a night dive at a classified location."
+    },
+    {
+      "id": 213,
+      "premise": "A Moscow chess café owner is delivered an antique chess set with a note challenging her to play for ‘the future of the city.’ Each move she makes mirrors events unfolding that day on the city’s news feeds."
+    },
+    {
+      "id": 214,
+      "premise": "A climbing guide in Patagonia leads a group to a rarely summited peak, only to discover a centuries-old campsite with equipment manufactured in the present day. One of the clients goes missing, their gear left neatly atop the snow."
+    },
+    {
+      "id": 215,
+      "premise": "A Parisian perfumer is hired to recreate a scent based on a shredded love letter from the 1800s. As she perfects the fragrance, she begins to relive memories and flashes of a woman's life that are not her own."
+    },
+    {
+      "id": 216,
+      "premise": "A meteorologist in Cape Town records a series of freak electrical storms always centered over the same block each month. When he investigates, he finds the weather cycle began the night of a historic disappearance that still haunts the city."
+    },
+    {
+      "id": 217,
+      "premise": "A Brooklyn bodega owner keeps finding old receipts tucked under fresh produce, with a string of codes that correspond to city transit routes. When a store nearby burns down, the next receipt directs him to a subway tunnel closed since the 1970s."
+    },
+    {
+      "id": 218,
+      "premise": "A Japanese tea ceremony master receives a mysterious calligraphy scroll, which, when unfurled, emits the scent of a vanished mountain flower. As collectors bid for the scroll, she realizes the poem describes a hidden valley that appears only once every fifty years."
+    },
+    {
+      "id": 219,
+      "premise": "A marine salvage diver off the Norwegian coast discovers a sunken vessel bearing a cargo of ancient Roman coins and a sealed torpedo tube containing a modern passport. The passport is hers, dated for a year in the future."
+    },
+    {
+      "id": 220,
+      "premise": "A Vienna concert pianist is introduced to a musical composition written in her own handwriting but dated forty years ago, before she was born. Playing it out loud draws strange visitors to her performances—each carrying an instrument no one recognizes."
+    },
+    {
+      "id": 221,
+      "premise": "A shepherd in the Mongolian steppe finds his sheep avoiding a certain patch of grass at sunset. Digging there, he uncovers a sealed box with writing in a dialect he only knows from bedtime tales his grandmother told."
+    },
+    {
+      "id": 222,
+      "premise": "A Brazilian street racer recovers a dashcam from his wrecked car and finds footage of a race he doesn't remember—a race set in a city skyline that does not yet exist. As sponsors clamor for his secrets, he questions whether he ever left the track."
+    },
+    {
+      "id": 223,
+      "premise": "A Venice gondolier receives invitations to a masked ball at a palazzo he believed abandoned since a flood two decades ago. Each invitation arrives with a petal from a flower that only blooms once every hundred years."
+    },
+    {
+      "id": 224,
+      "premise": "A Los Angeles pet psychic discovers that the dogs in her neighborhood are reacting to advertisements for an unknown brand, barking furiously only when the ads play. When she investigates, she realizes the jingles contain encoded distress signals."
+    },
+    {
+      "id": 225,
+      "premise": "A Swiss watchmaker is approached by an elderly woman who requests a clock that counts down to a time she will not reveal. After delivery, he learns she has been reported missing for over a month—despite appearing healthy and lucid only the day before."
+    },
+    {
+      "id": 226,
+      "premise": "A Dutch bike courier in Amsterdam finds her route redirected by a series of numbered locks attached to her bicycle every morning. Each lock matches the progress of a high-profile art theft case on the news."
+    },
+    {
+      "id": 227,
+      "premise": "A professional sand sculptor competing at a Dubai festival carves a structure he has never seen before, then witnesses a stranger replicating it at night—using blueprints that include his mother’s signature."
+    },
+    {
+      "id": 228,
+      "premise": "A quantum physicist in Singapore is notified that a prototype device she designed—thought lost in a lab fire—has been activated from inside a bank vault downtown. When she tries to retrieve it, she is met by someone who looks uncannily like her."
+    },
+    {
+      "id": 229,
+      "premise": "A lighthouse keeper on the coast of Ireland receives a logbook entry written in his own hand, describing a shipwreck he has yet to witness. Days later, a storm approaches and he faces a choice: warn the ships or trust the warnings in the log."
+    },
+    {
+      "id": 230,
+      "premise": "A Rio de Janeiro surf instructor discovers an unusual shell containing a tiny, perfectly carved shipwreck. Each time he touches the ship, the weather changes violently, corresponding to the day the real vessel was lost."
+    },
+    {
+      "id": 231,
+      "premise": "A New York graffiti muralist wakes to find his newest piece altered with fine details depicting future headlines. As he races to repaint, he notices a shadowy figure echoing his movements across the city’s rooftops."
+    },
+    {
+      "id": 232,
+      "premise": "A bohemian bookbinder in Prague receives a commission to rebind a blank, impossibly old volume. As she works, words begin appearing on the pages, describing the events of her daily life before they happen."
+    },
+    {
+      "id": 233,
+      "premise": "A private jet pilot flying over the Himalayas receives a distress signal that matches the call sign of his father's final flight—lost decades ago. When he lands, ground crew find the same flight log his father kept, with a new final entry."
+    },
+    {
+      "id": 234,
+      "premise": "A Ghanaian textile artist discovers her latest patterns are being used in political protests across continents, despite never having shared them. Each pattern appears to contain coordinates to locations linked by an unknown movement."
+    },
+    {
+      "id": 235,
+      "premise": "A night-shift custodian at a Berlin law firm finds a dusty typewriter that automatically begins typing legal indictments against the firm’s partners. When he tries to report it, the typewriter’s ribbon spells out threats in his native tongue."
+    },
+    {
+      "id": 236,
+      "premise": "A young mother in Seoul finds her daughter’s imaginary friend described in detail in an early 20th-century family diary. When she questions her neighbors, they recount the same friend’s name appearing for generations—always preceding strange events."
+    },
+    {
+      "id": 237,
+      "premise": "A Himalayan trekker seeking solitude stumbles across a ruined monastery where prayer wheels spin in the opposite direction from the wind. Inside, murals depict her, painted centuries before her birth, leading the monks to safety."
+    },
+    {
+      "id": 238,
+      "premise": "A Tunisian calligrapher is asked to restore sacred texts whose ink seems to shift under the light. As he copies a particularly ornate passage, the words form maps to ruins that officially do not exist."
+    },
+    {
+      "id": 239,
+      "premise": "A Melbourne parkour athlete is hired to retrieve a backpack from the city’s tallest crane before sunrise. Inside, he finds a photograph of himself on top of an unfamiliar mountain—dated next week."
+    },
+    {
+      "id": 240,
+      "premise": "A South African winemaker harvesting his vineyard at night hears unfamiliar music coming from deep among the vines. When he follows the sound, he stumbles upon a gathering of strangers who toast his arrival by name."
+    },
+    {
+      "id": 241,
+      "premise": "A Miami forensic accountant uncovers a string of shell companies funding experimental research, all linked to a friend who died years ago. As she follows the paper trail, her own identity is erased from databases."
+    },
+    {
+      "id": 242,
+      "premise": "A Croatian lighthouse builder restoring a tower on a deserted island finds construction instructions written in a cipher that matches old family recipes. Each step completed is followed by ominous changes in weather patterns around the island."
+    },
+    {
+      "id": 243,
+      "premise": "A Mumbai street magician’s newest trick, involving an antique pocket watch, begins triggering terrifying hallucinations in audience members. The visions all seem to reference the untimely death of the original magician who owned the watch."
+    },
+    {
+      "id": 244,
+      "premise": "A Cameroonian botanist is gifted a seed from a plant thought extinct, which begins to grow at a supernatural rate. The plant’s flowers exude a scent that causes those nearby to confess secrets they have never admitted before."
+    },
+    {
+      "id": 245,
+      "premise": "A college debate champion in Toronto is approached by a mysterious judge who challenges her to a series of debates with unanswerable questions. The winner will inherit a legacy that has ruined every previous champion's life."
+    },
+    {
+      "id": 246,
+      "premise": "A Norwegian spelunker maps an uncharted cave system and finds petroglyphs matching her own childhood sketches. When she shares photos online, a stranger demands she return “what is theirs”—before a lunar eclipse closes the caves for a decade."
+    },
+    {
+      "id": 247,
+      "premise": "A Salvadoran graffiti artist awakes to find his signature tag repainted in colors visible only under ultraviolet light, all over government buildings. Each tag matches the timing and location of recent corruption arrests."
+    },
+    {
+      "id": 248,
+      "premise": "A Scottish tech support worker receives calls for help with software that doesn’t exist. Each caller references her by her childhood nickname, long before she ever worked with computers."
+    },
+    {
+      "id": 249,
+      "premise": "A Venice puppet maker repairs a marionette that begins to move on its own, reenacting moments from Venetian history not recorded in any book. When a historian offers her a fortune for the puppet, she learns the stories are linked to royal disappearances."
+    },
+    {
+      "id": 250,
+      "premise": "A Tokyo dog walker begins to notice that all of her canine charges refuse to pass a certain alleyway at dawn. When she investigates, she finds a mural depicting her own face—dated for the following week."
+    },
+    {
+      "id": 251,
+      "premise": "A San Francisco bicycle mechanic receives a mysterious blueprint for a self-repairing bike, signed with the name of her estranged father. When she constructs it, strange men appear, offering her the deed to a building she has never seen."
+    },
+    {
+      "id": 252,
+      "premise": "A Maltese chef finds an old family knife that produces different flavors depending on the cook’s mood. After serving one meal, three strangers appear, each claiming to be an ancestor returned to settle an old score."
+    },
+    {
+      "id": 253,
+      "premise": "A Sudanese goldsmith is commissioned to create a necklace from minerals she cannot identify. After completing her work, her dreams are invaded by a voice demanding the return of 'the source', and a series of break-ins plague her shop."
+    },
+    {
+      "id": 254,
+      "premise": "A busker in Buenos Aires plays a song he claims to have written, but every audience member recalls the tune from a different decade. When a musicologist approaches with an ancient recording, he realizes the melody connects generations lost to history."
+    },
+    {
+      "id": 255,
+      "premise": "A fisherman in Newfoundland hauls up a trunk containing a diary written by someone with his name but in a hand he doesn’t recognize. The diary’s last entry is dated for the upcoming week, with warnings about a storm."
+    },
+    {
+      "id": 256,
+      "premise": "A Chernobyl wildlife photographer keeps capturing images of the same wolf in different states of decay, as if photographed across decades. When she follows its trail, she encounters a group of people who have not aged since the accident."
+    },
+    {
+      "id": 257,
+      "premise": "A Nairobi street vendor’s handmade jewelry begins to surface in distant markets, with each piece turning up at the scene of a major event. The most recent appears at a crime scene he recognizes from local gossip."
+    },
+    {
+      "id": 258,
+      "premise": "A college student volunteers to be a tour guide in Boston, and reenacts a colonial-era ghost story for the tourists, but suddenly finds herself reciting a version only told among her family. The next day, a scholar visits her with documents linking her ancestors to a secret society."
+    },
+    {
+      "id": 259,
+      "premise": "A Moroccan astronomer notices a pattern of stars visible only through a telescope inherited from her grandfather. The arrangement matches a lost city described in ancient texts, scheduled for archaeological excavation."
+    },
+    {
+      "id": 260,
+      "premise": "A Bangkok tuk-tuk driver starts picking up passengers who all request the same address, which is not listed on any map. When he finally investigates, his own birth records are found in a locked office at that address."
+    },
+    {
+      "id": 261,
+      "premise": "A Polish art restorer receives a shipment of paintings all depicting the same mysterious woman in modern settings over the centuries. As she works, the woman begins to appear in reflections, always watching her."
+    },
+    {
+      "id": 262,
+      "premise": "A French ice sculptor is asked to create a statue for a customer who claims to be a time traveler. Each time the sun rises, the statue has subtly changed, charting the rise and fall of unfamiliar nations."
+    },
+    {
+      "id": 263,
+      "premise": "A Peruvian goat herder unearths a carved whistle that, when played, drives his herd toward a mountain cave. Inside, he finds clothing marked with his mother’s maiden name."
+    },
+    {
+      "id": 264,
+      "premise": "A Singaporean drone pilot intercepts an encrypted signal that controls her own fleet. The commands trace back to an abandoned apartment corresponding to her missing brother’s last known address."
+    },
+    {
+      "id": 265,
+      "premise": "A Turkish mosaic artist finds a tile that, when placed among her work, shifts the image to show disasters before they happen. As she struggles to remove it, the tile seems to reappear on its own."
+    },
+    {
+      "id": 266,
+      "premise": "A Canadian jazz saxophonist starts improvising a tune that matches the Morse code sequence of a decades-old distress call. Soon after performing it, she receives a mysterious invitation to play at a club that doesn’t appear on any map."
+    },
+    {
+      "id": 267,
+      "premise": "A wildlife documentary editor in New Zealand notices a recurring animal in shots from different continents and decades. When she enhances the footage, the animal wears a collar engraved with her own nickname."
+    },
+    {
+      "id": 268,
+      "premise": "A Portuguese lighthouse caretaker discovers a series of coded light flashes emanating from an unmanned island. When he decodes the flashes, they spell out warnings dated for future shipwrecks."
+    },
+    {
+      "id": 269,
+      "premise": "A Kenyan marathon runner finds a well-worn sneaker by the roadside with a message stitched inside in her mother’s handwriting. The message refers to a race she never signed up for, set to begin in the dead of night."
+    },
+    {
+      "id": 270,
+      "premise": "A Russian ballet choreographer receives a cryptic score with steps nobody has ever performed. Dancers who attempt it begin experiencing déjà vu of historical events—and one goes missing during rehearsal."
+    },
+    {
+      "id": 271,
+      "premise": "A Greek olive farmer uncovers a centuries-old coin stamped with the coordinates of his own grove. That night, unexplained lights hover above the trees and strange footprints appear in the soil."
+    },
+    {
+      "id": 272,
+      "premise": "A Czech star chart engraver is asked to plot a constellation that matches no known pattern. When she inspects old records, she finds identical charts submitted every century, always by someone in her family line."
+    },
+    {
+      "id": 273,
+      "premise": "A Jamaican sound engineer notices that ambient noises in his recordings contain whispered warnings in an unfamiliar dialect. Playback at high speed reveals instructions for an event he is about to witness."
+    },
+    {
+      "id": 274,
+      "premise": "An Australian mineralogist analyzing a vein of opal finds embedded fragments of microchips stamped with dates from the next decade. When she reports it, her lab is suddenly closed for 'public safety'."
+    },
+    {
+      "id": 275,
+      "premise": "A Welsh harpist is gifted a set of strings rumored to be woven from the hair of a lost royal family. Each song she plays draws visions of people who seem to plead for help only she can understand."
+    },
+    {
+      "id": 276,
+      "premise": "A Chilean volcanologist finds an obsidian stone that remains cool even in lava flows. The local community claims it belonged to a shaman who vanished predicting the volcano's next devastating eruption."
+    },
+    {
+      "id": 277,
+      "premise": "A Shanghai bicycle-sharing app developer discovers phantom bikes being reserved and ridden by accounts registered to deceased founders. When she tracks the GPS logs, she uncovers a hidden route through the city that doesn’t exist on any map."
+    },
+    {
+      "id": 278,
+      "premise": "A Manitoba ice road trucker hears his dead son's voice on the radio, warning of accidents before they occur. One night, the voice gives instructions that could save—or doom—a convoy of stranded drivers."
+    },
+    {
+      "id": 279,
+      "premise": "A Nepalese paper maker is asked to create a scroll from fibers supplied by a silent stranger. The finished paper, when wet, reveals blueprints for a building never constructed, dated a century in the past."
+    },
+    {
+      "id": 280,
+      "premise": "A Spanish matador opens a fan letter containing a photo of himself at an event he never attended. The photo's background hints at a secret tunnel beneath the arena, rumored among locals to be haunted."
+    },
+    {
+      "id": 281,
+      "premise": "An Israeli meteorite hunter is contacted by collectors who claim to possess stones that predate any terrestrial rock. When she analyzes the samples, she discovers one is engraved with her family crest."
+    },
+    {
+      "id": 282,
+      "premise": "A Korean hanbok designer receives a fabric sample that changes color to match memories she hasn’t yet made. As she cuts it, she experiences visions of future milestones—and tragedies—in her life."
+    },
+    {
+      "id": 283,
+      "premise": "A Swiss chocolatier inherits a family recipe book that adds a new recipe at each lunar eclipse. The latest recipe requires an ingredient no longer known to science."
+    },
+    {
+      "id": 284,
+      "premise": "An Irish harpist’s music triggers unusual weather patterns in her rural village. When villagers beg her to stop playing, a mysterious visitor offers her a chance to reverse a century-old curse."
+    },
+    {
+      "id": 285,
+      "premise": "A Los Angeles VR game tester begins receiving cryptic in-game messages from a user ID registered to her late twin. Each message references locations and memories she has never shared with anyone."
+    },
+    {
+      "id": 286,
+      "premise": "A Filipino pearl diver finds seashells engraved with her childhood drawings in a reef far from home. Each shell marks a spot where lost ships are rumored to rest—ships tied to her missing father’s past."
+    },
+    {
+      "id": 287,
+      "premise": "A Greenland seal researcher discovers that tagged animals are returning engraved runes in their blubber. The runes seem to predict the migration of icebergs threatening key settlements."
+    },
+    {
+      "id": 288,
+      "premise": "A Bhutanese incense maker finds a scent formula that evokes prophetic visions of disasters before they occur. When she sells it at market, she notices her repeat customers begin disappearing."
+    },
+    {
+      "id": 289,
+      "premise": "A Virginia Civil War reenactor’s uniform arrives with a letter addressed to him from 1863, warning him to refuse a particular role. When he ignores the warning, he starts experiencing memories that aren’t his."
+    },
+    {
+      "id": 290,
+      "premise": "A Lebanese folklorist collects stories of a mountain that appears only in certain mirrors. When she finds such a mirror, her own reflection fails to return her gaze."
+    },
+    {
+      "id": 291,
+      "premise": "A South Korean tattoo artist creates a design from a client’s dream that begins appearing on strangers across the city. As the phenomenon spreads, police request her client list for an ongoing investigation."
+    },
+    {
+      "id": 292,
+      "premise": "An Ethiopian astronomer receives a radio signal that, when visualized, forms the symbol of her childhood village. Soon, the entire village reports strange lights at night, matching the code’s intervals."
+    },
+    {
+      "id": 293,
+      "premise": "A Quebecois cheese maker opens a shipment containing wheels bearing the brand of his family’s lost dairy farm. When he tastes them, he remembers events from a day his family never discussed."
+    },
+    {
+      "id": 294,
+      "premise": "A Syrian soap maker receives a shipment of olive oil labeled from a grove destroyed in the war. Washing with the new soap, customers report memories of loved ones they never met."
+    },
+    {
+      "id": 295,
+      "premise": "A Vietnamese rickshaw driver begins having passengers vanish at the exact midpoint of a certain bridge. Each disappearance is followed by mysterious deposits in his bank account."
+    },
+    {
+      "id": 296,
+      "premise": "A Nigerian filmmaker receives footage from an unknown sender, showing scenes from her upcoming film—before shooting has begun. The footage includes a warning not to change the ending."
+    },
+    {
+      "id": 297,
+      "premise": "A South African paleontologist discovers fossils with tool marks matching those made by modern equipment. The cave where they were found was sealed until she opened it for the first time."
+    },
+    {
+      "id": 298,
+      "premise": "A Maine lighthouse painter finds messages scratched under the paint, spelling out cryptic dates in the future. When a shipping disaster coincides with the first date, the Coast Guard demands an explanation."
+    },
+    {
+      "id": 299,
+      "premise": "A Nebraska storm chaser films lightning striking the same field for a month. Reviewing the footage, he spots shadowy figures dancing between the bolts that matches local Native legends about a monster that brings disasters."
+    }
+  ],
+  "expansion": {
+    "method": "gpt-4.1 one-shot",
+    "temperature": 0.9,
+    "new_ids": [
+      20,
+      299
+    ],
+    "rounds": 2,
+    "timestamp": "2026-04-24T06:26:08.057757+00:00"
+  }
+}

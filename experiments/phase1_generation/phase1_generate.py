@@ -44,10 +44,11 @@ from experiments.utils.io import (
     make_record_id,
 )
 from experiments.utils.system_factory import (
+    make_baseline,
     make_clients,
     make_litreview,
     make_story,
-    make_topicqa, make_baseline,
+    make_topicqa,
 )
 from experiments.utils.token_counter import count_tokens, count_words, round_words
 

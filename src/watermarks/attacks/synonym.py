@@ -9,7 +9,7 @@ from textattack.transformations.word_swaps import (
     WordSwapWordNet,
 )
 
-from .attack import Attack
+from .attack import Attack, iter_sentences_with_gaps
 
 
 class SynonymAttack(Attack):
@@ -102,26 +102,13 @@ class SynonymAttack(Attack):
 
     def _local_synonym(self, text: str, tampering: float) -> str:
         """Apply synonym replacement sentence by sentence."""
-        # Split text into sentences while preserving separators
-        parts = re.split(r"([.!?]+(?:\s+|$))", text)
-        new_parts = []
-
-        # parts[::2] are sentences, parts[1::2] are separators
-        for i in range(0, len(parts), 2):
-            sentence = parts[i]
-
-            # Skip empty sentences
+        new_parts: list[str] = []
+        for gap, sentence in iter_sentences_with_gaps(text):
+            new_parts.append(gap)
+            if not sentence:
+                continue
             if not sentence.strip():
                 new_parts.append(sentence)
             else:
-                # Apply synonym replacement to this sentence
                 new_parts.append(self._replace_words_in_text(sentence, tampering))
-
-            # Add the separator if it exists
-            if i + 1 < len(parts):
-                new_parts.append(parts[i + 1])
-
-        result = "".join(new_parts)
-        print("Debug local synonym:")
-        print(f"parts:\n{parts}\nnew_parts:\n{result}")
-        return result
+        return "".join(new_parts)

@@ -17,7 +17,8 @@ from embeddings import (
 from embeddings.core.litreview_v2 import load_corpus
 from measurements.utils import BypassEncoder, index_reducer
 
-LOCAL_BASE_URL = "http://127.0.0.1:8080/v1"
+LOCAL_BASE_URL = "http://98.93.39.187:8080/v1"
+# LOCAL_BASE_URL = "http://127.0.0.1:8080/v1"
 LOCAL_MODEL = "Qwen3.5-4B-UD-Q8_K_XL.gguf"
 
 
