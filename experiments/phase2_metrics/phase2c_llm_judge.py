@@ -32,6 +32,9 @@ from experiments.utils.stegoanalysis_common import (
     seed_everything,
     stegoanalysis_dir,
 )
+from systems.env import load_env
+
+load_env()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -56,13 +59,13 @@ Your output should follow the style below exactly, NO markdown format:
 VERDICT: A or B
 CONFIDENCE: low / medium / high"""
 
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+OPENROUTER_BASE_URL = "https://api.openai.com/v1"
 
 
 def _build_client():
     import openai
 
-    api_key = os.environ.get("OPENROUTER_API_KEY")
+    api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError(
             "OPENROUTER_API_KEY env var is not set. Export your OpenRouter key, "

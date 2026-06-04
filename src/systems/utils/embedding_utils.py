@@ -11,40 +11,6 @@ from openai import (
 )
 
 
-# from sentence_transformers import SentenceTransformer
-#
-#
-# def compute_embeddings_local_pair(texts1, texts2, normalize, engine):
-#     # Load model
-#     model = SentenceTransformer(engine)
-#
-#     # compute embeddings
-#     embeddings_1 = model.encode(texts1)
-#     embeddings_2 = model.encode(texts2)
-#
-#     # Normalize embeddings if normalize is True
-#     if normalize:
-#         embeddings_1 = [normalize_embedding(e) for e in embeddings_1]
-#         embeddings_2 = [normalize_embedding(e) for e in embeddings_2]
-#
-#     return [embeddings_1, embeddings_2]
-#
-#
-# def compute_embeddings_local(texts, normalize, engine):
-#     # Load model
-#     model = SentenceTransformer(engine)
-#
-#     # compute embeddings
-#     embeddings = model.encode(texts)
-#
-#     # Normalize embeddings if normalize is True
-#     if normalize:
-#         embeddings = [normalize_embedding(e) for e in embeddings]
-#
-#     return embeddings
-#
-#
-
 def compute_embeddings(texts, normalize, engine, client):
     embeddings = compute_embeddings_concurrently(texts, engine, client)
 
@@ -53,7 +19,6 @@ def compute_embeddings(texts, normalize, engine, client):
         embeddings = [normalize_embedding(e) for e in embeddings]
 
     return embeddings
-
 
 
 # Get the embedding for a single text from the OpenAI API

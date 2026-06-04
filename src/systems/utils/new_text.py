@@ -1,4 +1,3 @@
-# This file contains the code to sample a new message
 import json
 import os
 import re

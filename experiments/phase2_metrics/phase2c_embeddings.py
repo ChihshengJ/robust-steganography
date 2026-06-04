@@ -52,6 +52,9 @@ from experiments.utils.stegoanalysis_common import (
     seed_everything,
     stegoanalysis_dir,
 )
+from systems.env import load_env
+
+load_env()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -166,9 +169,7 @@ def embed_with_google(
             "GOOGLE_API_KEY environment variable is required for text-embedding-005"
         )
 
-    url = (
-        f"https://aiplatform.googleapis.com/v1/publishers/google/models/{model_name}:predict?key={api_key}"
-    )
+    url = f"https://aiplatform.googleapis.com/v1/publishers/google/models/{model_name}:predict?key={api_key}"
 
     session = requests.Session()
 

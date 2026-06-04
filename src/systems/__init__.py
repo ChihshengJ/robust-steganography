@@ -1,14 +1,19 @@
-"""
-Embeddings-based steganography system for hiding messages in text
-"""
+from .env import load_env as _load_env
 
-# Core system
+_load_env()
+
+
 # System Prompts
 from .config.system_prompts import (
     CORPORATE_MONOLOGUE,
     CORPORATE_MONOLOGUE_ALT,
     ONE_WAY_MONOLOGUE,
     TWO_WAY_DYNAMIC,
+)
+from .core.embeddings.embedding_steg_system import (
+    EmbeddingStegSystem,
+    OracleStegSystem,
+    SentenceStegSystem,
 )
 
 # Simulation
@@ -39,11 +44,6 @@ from .core.hash_functions import (
     OracleHash,
     PCAHash,
     RandomProjectionHash,
-)
-from .core.embeddings.embedding_steg_system import (
-    EmbeddingStegSystem,
-    OracleStegSystem,
-    SentenceStegSystem,
 )
 from .core.litreview import LitReviewSystem
 from .core.steg_system import StegSystem
