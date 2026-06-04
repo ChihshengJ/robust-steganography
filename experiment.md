@@ -1,5 +1,12 @@
 # Experiment Pipeline: LLM Steganography Paper
 
+> **⚠️ Historical design document — not the canonical guide.**
+> This is the original plan the pipeline was built from. Parts are now outdated
+> (e.g. the `expN_*.py` script names and the `phase5_standalone/` layout were
+> never adopted — the implementation lives in `experiments/phase{1,2,3,4}*`).
+> **For reproduction, follow `README.md` and `scripts/` — the code is the source
+> of truth.** This file is kept for design rationale and context only.
+
 ## Context
 
 We're building experiments for a paper on LLM steganography. We have three steganography systems that encode secret bits into LLM-generated text. The core contribution is "discrete combinatorial selection with forced-choice decoding" — encoding lives in *which* semantic content the model chooses to include, not in token-level or embedding-level signals.

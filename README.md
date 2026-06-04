@@ -29,6 +29,7 @@ The project is organized as follows:
     - **phase2_metrics/**: Scripts for steganalysis experiments dataset generation and evaluation.
     - **phase3_attacks**: Script for generating attacked stegotexts.
     - **phase4_decode**: Scripts for decoding attacked stegotexts and generating final results for the recovery accuracy tests.
+- **scripts/**: Bash wrappers that chain the phases for reproduction (`run_all.sh`, `smoke_test.sh`, per-phase scripts). See [`scripts/README.md`](scripts/README.md).
 - **data/experiments/**: Designated path for experiment data storage.
 - **data/litreview/**: Reference corpus for the LitReview system, scraped from the Semantic Scholar API, shipped as a runnable example dataset. `references/` holds the corpus (`corpus.jsonl`, `references.jsonl`, `papers.jsonl`) and `semantic_scholar_requests.py` is the scraper used to regenerate it.
 - **measurements/ (legacy)**: Complete scripts for the evaluation on Perry et al.'s steganography scheme.
@@ -37,6 +38,101 @@ The project is organized as follows:
 
 ## Reproduction
 
+The experiments run as four phases. Bash wrappers in [`scripts/`](scripts/)
+chain them; the underlying modules (`python -m experiments.phase*`) are fully
+parameterized if you want finer control. `experiment.md` is the original design
+doc and is partly outdated — **the code and this section are the source of
+truth** (see the note at the top of that file).
+
+### Install
+
+```bash
+uv sync                       # installs the package + deps from uv.lock
+cp .env.example .env          # then fill in OPENAI_API_KEY (see the file)
+```
+
+`scripts/*` default to plain `python`; to run them under uv, export
+`PYTHON="uv run python"`.
+
+Extra one-time data some steps need:
+
+- **NLTK** (synonym attack / style diagnostics): `python -m nltk.downloader wordnet punkt vader_lexicon`
+- **HuggingFace models** download automatically on first use (`gpt2-large`, `distilbert-base-uncased`, `all-mpnet-base-v2`, BERTScore).
+
+### What each phase needs
+
+| Phase | Script | OpenAI API | Local llama.cpp server | GPU (else slow CPU/MPS) |
+| --- | --- | :---: | :---: | :---: |
+| 1. Generate texts | `phase1_generate.sh` | ✅ | TopicQA/Story only | — |
+| 2. Metrics + stegoanalysis | `phase2_metrics.sh` | optional¹ | — | recommended |
+| 3. Apply attacks | `phase3_attacks.sh` | ✅ | — | — |
+| 4. Decode + score | `phase4_decode.sh` | ✅ (decode) | TopicQA/Story decode | recommended (4b) |
+
+¹ Only the optional `RUN_LLM_JUDGE` / `RUN_EMBEDDINGS` stegoanalysis signals
+call out (OpenRouter / Google); the default Phase 2 signals are local-only.
+
+### Local model server (TopicQA & Story)
+
+TopicQA and Story decode by **re-generating** their subtopics/slots with a local
+model, so generation and decoding must be byte-for-byte identical. Launch the
+pinned llama.cpp server in a separate terminal and leave it up for Phases 1 & 4:
+
+```bash
+scripts/serve_local_model.sh /path/to/Qwen3.5-4B-UD-Q8_K_XL.gguf
+```
+
+Point elsewhere or swap the GGUF via `LOCAL_BASE_URL` / `LOCAL_MODEL` (see
+`.env.example`). LitReview and the baseline don't use it. You can verify a serve
+command reproduces a prior run with
+`python -m experiments.check_subtopic_repro`.
+
+### Quick check first (free)
+
+```bash
+scripts/smoke_test.sh          # imports + no-API dry-runs; no OpenAI credit spent
+```
+
+### Full run
+
+```bash
+scripts/run_all.sh             # both tracks at native capacity (API + GPU heavy)
+scripts/run_all.sh detectability   # or run one track
+scripts/run_all.sh robustness
+```
+
+The pipeline has two data tracks; `run_all.sh` does both:
+
+- **Detectability** (steganalysis + quality): the full 300-per-class dataset at
+  native capacity in top-level `phase1_texts/`, scored by Phase 2.
+- **Robustness** (recovery under attack): the first 30 stegos per system in
+  `{system}_cap{N}/`, attacked in Phase 3 and decoded in Phase 4. Native
+  capacities are TopicQA 6, Story 18, LitReview 20, baseline 3 bits.
+
+Running phases by hand (everything is checkpoint-resumable; re-running skips
+finished records):
+
+```bash
+# Detectability
+SYSTEM=topicqa SUBDIR='' scripts/phase1_generate.sh
+scripts/phase2_metrics.sh
+
+# Robustness (per system, with its native capacity)
+SYSTEM=litreview CAPACITY=20 scripts/phase1_generate.sh
+SYSTEM=litreview CAPACITY=20 scripts/phase3_attacks.sh
+SYSTEM=litreview CAPACITY=20 scripts/phase4_decode.sh
+```
+
+See [`scripts/README.md`](scripts/README.md) for every env knob.
+
+### Where experiments live (phase → paper)
+
+| Paper experiment | Produced by |
+| --- | --- |
+| Exp 1 — attack validation (BERTScore/BLEU/TER) | `phase4_decode/phase4b_attack_metrics.py` |
+| Exp 2 — steganalysis (classifier, embeddings, LLM-judge, perplexity) | `phase2_metrics/phase2c_*` + `phase1_generation/phase1a_launder.py` |
+| Exp 3 — main recovery results / attack curves | `phase4_decode/phase4c_main_results.py` |
+| Exp 5 — text quality (token efficiency, perplexity) | `phase2_metrics/phase2a_token_counts.py`, `phase2b_perplexity.py` |
+| Style/genre diagnostics | `phase2_metrics/phase2d_genre_diagnostic.py`, `phase2c_ngram_diagnostic.py` |
 
 ### Attacks
 

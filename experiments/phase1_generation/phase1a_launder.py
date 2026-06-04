@@ -26,10 +26,10 @@ Attack config matches Phase 3's `global_paraphrase`:
     ParaphraseAttack(model="gpt-4.1", temperature=0.7), called local=False.
 
 Usage:
-    python -m experiments.phase1a_launder --system all
-    python -m experiments.phase1a_launder --system topicqa --n-stegos 5   # smoke test
-    python -m experiments.phase1a_launder --system all --dry-run
-    python -m experiments.phase1a_launder --system story --runs 3 --max-workers 16
+    python -m experiments.phase1_generation.phase1a_launder --system all
+    python -m experiments.phase1_generation.phase1a_launder --system topicqa --n-stegos 5   # smoke test
+    python -m experiments.phase1_generation.phase1a_launder --system all --dry-run
+    python -m experiments.phase1_generation.phase1a_launder --system story --runs 3 --max-workers 16
 """
 
 from __future__ import annotations

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import openai
 
 from systems import (
@@ -17,15 +19,29 @@ from systems import (
 from systems.core.litreview import load_corpus
 from systems.paths import litreview_references
 
-LOCAL_BASE_URL = "http://127.0.0.1:8080/v1"
-LOCAL_MODEL = "Qwen3.5-4B-UD-Q8_K_XL.gguf"
+# Local (llama.cpp / OpenAI-compatible) server used for deterministic subtopic
+# and slot generation. Overridable from the environment so the same scripts run
+# against a different host, port, or GGUF model without editing source. The
+# defaults match experiments/serve_local_model.sh (PORT=8080); LOCAL_MODEL must
+# equal the basename of the GGUF you serve (the alias llama-server reports on
+# /v1/models). `import systems` has already loaded .env by this point, so values
+# defined there are visible here.
+LOCAL_BASE_URL = os.environ.get("LOCAL_BASE_URL", "http://127.0.0.1:8080/v1")
+LOCAL_MODEL = os.environ.get("LOCAL_MODEL", "Qwen3.5-4B-UD-Q8_K_XL.gguf")
 
 
-def make_clients() -> tuple[openai.OpenAI, openai.OpenAI]:
-    """Create the OpenAI API client and local Ollama client."""
+def make_clients(
+    local_base_url: str | None = None,
+) -> tuple[openai.OpenAI, openai.OpenAI]:
+    """Create the OpenAI API client and the local llama.cpp client.
+
+    The remote client honours OpenAI's own env vars (``OPENAI_API_KEY``, and
+    ``OPENAI_BASE_URL`` if you front it with a proxy). The local client points
+    at ``local_base_url`` (default: ``LOCAL_BASE_URL`` / ``$LOCAL_BASE_URL``).
+    """
     client = openai.OpenAI()
     local_client = openai.OpenAI(
-        base_url=LOCAL_BASE_URL,
+        base_url=local_base_url or LOCAL_BASE_URL,
         api_key="unused",
     )
     return client, local_client

@@ -24,10 +24,13 @@ Output layout matches experiment.md lines 33-42 (separate files per text_type):
         litreview_cover_c2.jsonl
 
 Usage:
-    python -m experiments.phase1_generate --system topicqa
-    python -m experiments.phase1_generate --system story
-    python -m experiments.phase1_generate --system litreview
-    python -m experiments.phase1_generate --system all
+    python -m experiments.phase1_generation.phase1_generate --system topicqa
+    python -m experiments.phase1_generation.phase1_generate --system story
+    python -m experiments.phase1_generation.phase1_generate --system litreview
+    python -m experiments.phase1_generation.phase1_generate --system all
+
+    # Native-capacity robustness variant (auto-subdir {system}_cap{N}):
+    python -m experiments.phase1_generation.phase1_generate --system topicqa --capacity 6
 """
 
 import argparse
