@@ -4,37 +4,43 @@
 
 This repo is the official codebase for the paper _Robust Semantic Steganography with Large Language Models_.
 Inspired by [Perry et al. (2025)'s study](https://arxiv.org/abs/2504.08977) on robust steganography schemes,
-we present a general steganography scheme that is secure and robust to extreme global paraphrase attacks using the semantic channels of various Natural Language Generation tasks. 
+we present a general steganography scheme that is secure and robust to extreme semantics-preserving attacks using the semantic channels of various Natural Language Generation tasks.
 
 ### Dynamic Semantic Unit Encoding Pipeline
 
+This pipeline is aimed to solve two problems:
+
+1. Given that natural language (or text) is a tight channel with relatively low entropy, how do we encode bits in this channel while making it invisible?
+2. LLMs makes attacks on text steganography extremely cheap and effective, how do we utilize them to encode secrets that withstand the extremest attacks?
+
+We propose this dynamic semantic unit encoding pipeline that partially solves these two problems by encoding secret bits within semantic channels.
+![A simple illustration of how the pipeline works](https://github.com/ChihshengJ/robust-steganography/reasources/figure_1.png)
 
 ### Legacy Embedding-based models
-
 
 ## Directory Structure
 
 The project is organized as follows:
+
 - **src/**: Root of the project package, which includes the code for the steganography pipelines and attacks.
-    - **systems/**: Root of the pipeline modules.
-        - **core/**: Base class for all steganography pipelines and three pipelines mentioned in the paper.
-            - **embeddings/ (legacy)**: Pipelines that use semantic hash and rejection sampling, which failed to be robust, hense dropped from the paper entirely.
-        - **utils/**: utils for all steganography schemes, including text generation, rejection sampling, and backtracking.
-        - **configs/**: Prompts and default settings for pipelines and the backtracker.
-        - **path**: Routes PCA model artifacts to the embedding-based systems.
-    - **attacks/**: Root of the attack modules, includes attack base class, ngram shuffle attack, paraphrase attack, synonym attack, and round-trip translation attack.
+  - **systems/**: Root of the pipeline modules.
+    - **core/**: Base class for all steganography pipelines and three pipelines mentioned in the paper.
+      - **embeddings/ (legacy)**: Pipelines that use semantic hash and rejection sampling, which failed to be robust, hense dropped from the paper entirely.
+    - **utils/**: utils for all steganography schemes, including text generation, rejection sampling, and backtracking.
+    - **configs/**: Prompts and default settings for pipelines and the backtracker.
+    - **path**: Routes PCA model artifacts to the embedding-based systems.
+  - **attacks/**: Root of the attack modules, includes attack base class, ngram shuffle attack, paraphrase attack, synonym attack, and round-trip translation attack.
 - **experiments/**: Contains scripts for dataset generation and all the experiments we conducted for the paper.
-    - **dry_run/**: Small scale runs we used for exploration.
-    - **phase1_generation/**: Scripts for generate the entire dataset for all experiments mentioned in the paper.
-    - **phase2_metrics/**: Scripts for steganalysis experiments dataset generation and evaluation.
-    - **phase3_attacks**: Script for generating attacked stegotexts.
-    - **phase4_decode**: Scripts for decoding attacked stegotexts and generating final results for the recovery accuracy tests.
+  - **dry_run/**: Small scale runs we used for exploration.
+  - **phase1_generation/**: Scripts for generate the entire dataset for all experiments mentioned in the paper.
+  - **phase2_metrics/**: Scripts for steganalysis experiments dataset generation and evaluation.
+  - **phase3_attacks**: Script for generating attacked stegotexts.
+  - **phase4_decode**: Scripts for decoding attacked stegotexts and generating final results for the recovery accuracy tests.
 - **scripts/**: Bash wrappers that chain the phases for reproduction (`run_all.sh`, `smoke_test.sh`, per-phase scripts). See [`scripts/README.md`](scripts/README.md).
 - **data/experiments/**: Designated path for experiment data storage.
 - **data/litreview/**: Reference corpus for the LitReview system, scraped from the Semantic Scholar API, shipped as a runnable example dataset. `references/` holds the corpus (`corpus.jsonl`, `references.jsonl`, `papers.jsonl`) and `semantic_scholar_requests.py` is the scraper used to regenerate it.
 - **measurements/ (legacy)**: Complete scripts for the evaluation on Perry et al.'s steganography scheme.
 - **pca/ (legacy)**: Complete scripts for generating datasets for training PCA models used by the legacy embedding-based models. (The LitReview reference corpus that used to live here has moved to `data/litreview/`.)
-
 
 ## Reproduction
 
@@ -61,12 +67,12 @@ Extra one-time data some steps need:
 
 ### What each phase needs
 
-| Phase | Script | OpenAI API | Local llama.cpp server | GPU (else slow CPU/MPS) |
-| --- | --- | :---: | :---: | :---: |
-| 1. Generate texts | `phase1_generate.sh` | ✅ | TopicQA/Story only | — |
-| 2. Metrics + stegoanalysis | `phase2_metrics.sh` | optional¹ | — | recommended |
-| 3. Apply attacks | `phase3_attacks.sh` | ✅ | — | — |
-| 4. Decode + score | `phase4_decode.sh` | ✅ (decode) | TopicQA/Story decode | recommended (4b) |
+| Phase                      | Script               | OpenAI API  | Local llama.cpp server | GPU (else slow CPU/MPS) |
+| -------------------------- | -------------------- | :---------: | :--------------------: | :---------------------: |
+| 1. Generate texts          | `phase1_generate.sh` |     ✅      |   TopicQA/Story only   |            —            |
+| 2. Metrics + stegoanalysis | `phase2_metrics.sh`  |  optional¹  |           —            |       recommended       |
+| 3. Apply attacks           | `phase3_attacks.sh`  |     ✅      |           —            |            —            |
+| 4. Decode + score          | `phase4_decode.sh`   | ✅ (decode) |  TopicQA/Story decode  |    recommended (4b)     |
 
 ¹ Only the optional `RUN_LLM_JUDGE` / `RUN_EMBEDDINGS` stegoanalysis signals
 call out (OpenRouter / Google); the default Phase 2 signals are local-only.
@@ -126,13 +132,13 @@ See [`scripts/README.md`](scripts/README.md) for every env knob.
 
 ### Where experiments live (phase → paper)
 
-| Paper experiment | Produced by |
-| --- | --- |
-| Exp 1 — attack validation (BERTScore/BLEU/TER) | `phase4_decode/phase4b_attack_metrics.py` |
-| Exp 2 — steganalysis (classifier, embeddings, LLM-judge, perplexity) | `phase2_metrics/phase2c_*` + `phase1_generation/phase1a_launder.py` |
-| Exp 3 — main recovery results / attack curves | `phase4_decode/phase4c_main_results.py` |
-| Exp 5 — text quality (token efficiency, perplexity) | `phase2_metrics/phase2a_token_counts.py`, `phase2b_perplexity.py` |
-| Style/genre diagnostics | `phase2_metrics/phase2d_genre_diagnostic.py`, `phase2c_ngram_diagnostic.py` |
+| Paper experiment                                                     | Produced by                                                                 |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Exp 1 — attack validation (BERTScore/BLEU/TER)                       | `phase4_decode/phase4b_attack_metrics.py`                                   |
+| Exp 2 — steganalysis (classifier, embeddings, LLM-judge, perplexity) | `phase2_metrics/phase2c_*` + `phase1_generation/phase1a_launder.py`         |
+| Exp 3 — main recovery results / attack curves                        | `phase4_decode/phase4c_main_results.py`                                     |
+| Exp 5 — text quality (token efficiency, perplexity)                  | `phase2_metrics/phase2a_token_counts.py`, `phase2b_perplexity.py`           |
+| Style/genre diagnostics                                              | `phase2_metrics/phase2d_genre_diagnostic.py`, `phase2c_ngram_diagnostic.py` |
 
 ### Attacks
 
@@ -159,7 +165,6 @@ The project includes several text modification attacks to test robustness:
 - Configurable temperature for controlling variation
 - Much stronger than local edit-based attacks
 - Expected to defeat the watermarking scheme
-
 
 ## Use Cases
 
