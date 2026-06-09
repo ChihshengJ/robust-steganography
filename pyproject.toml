@@ -53,7 +53,7 @@ dev = [
 
 [tool.uv.build-backend]
 module-root = "src"
-module-name = ["embeddings", "watermarks", "attacks"]
+module-name = ["systems", "attacks"]
 
 [tool.uv.sources]
 robust-steganography = { workspace = true }

@@ -6,7 +6,7 @@ This repo is the official codebase for the paper _Robust Semantic Steganography 
 Inspired by [Perry et al. (2025)'s study](https://arxiv.org/abs/2504.08977) on robust steganography schemes,
 we present a general steganography scheme that is secure and robust to extreme semantics-preserving attacks using the semantic channels of various Natural Language Generation tasks.
 
-### Dynamic Semantic Unit Encoding Pipeline
+## Dynamic Semantic Unit Encoding Pipeline
 
 This pipeline is aimed to solve two problems:
 
@@ -14,9 +14,21 @@ This pipeline is aimed to solve two problems:
 2. LLMs makes attacks on text steganography extremely cheap and effective, how do we utilize them to encode secrets that withstand the extremest attacks?
 
 We propose this dynamic semantic unit encoding pipeline that partially solves these two problems by encoding secret bits within semantic channels.
-![A simple illustration of how the pipeline works](https://github.com/ChihshengJ/robust-steganography/reasources/figure_1.png)
 
-### Legacy Embedding-based models
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ChihshengJ/robust-steganography/refs/heads/main/resources/figure_1.png" width="60%">
+</p>
+
+For any monitored channel to still be functional, attacks on alleged-steganography content needs to be at least semantics-preserving.
+This means that global paraphrase attack (or other similar attacks) is the attack that poses the greatest threats to steganographic communication.
+The frivolous nature of generated contents opens up the possibility to encode secret bits in the semantic space.
+
+### Legacy Embedding-based systems
+
+The legacy embedding-based systems are extensions of Perry et al.'s embedding steganography scheme.
+We switched the sentence-based system with a story plotline-based system, a event summary-based system, and a unit test system.
+The general idea is that instead using sentences as the base for bit-encoding and rejection sampling, we use more abstract semantic units that can be retrieved by LLMs to encode the payload.
+This design not only solved the bit ordering issue that global paraphrase attacks might introduce, but also ensures the
 
 ## Directory Structure
 
@@ -44,11 +56,8 @@ The project is organized as follows:
 
 ## Reproduction
 
-The experiments run as four phases. Bash wrappers in [`scripts/`](scripts/)
-chain them; the underlying modules (`python -m experiments.phase*`) are fully
-parameterized if you want finer control. `experiment.md` is the original design
-doc and is partly outdated — **the code and this section are the source of
-truth** (see the note at the top of that file).
+The experiments run as four phases. Bash wrappers in [`scripts/`](scripts/) chain them;
+the underlying modules (`python -m experiments.phase*`) are fully parameterized if you want finer control.
 
 ### Install
 
@@ -67,17 +76,17 @@ Extra one-time data some steps need:
 
 ### What each phase needs
 
-| Phase                      | Script               | OpenAI API  | Local llama.cpp server | GPU (else slow CPU/MPS) |
-| -------------------------- | -------------------- | :---------: | :--------------------: | :---------------------: |
-| 1. Generate texts          | `phase1_generate.sh` |     ✅      |   TopicQA/Story only   |            —            |
-| 2. Metrics + stegoanalysis | `phase2_metrics.sh`  |  optional¹  |           —            |       recommended       |
-| 3. Apply attacks           | `phase3_attacks.sh`  |     ✅      |           —            |            —            |
-| 4. Decode + score          | `phase4_decode.sh`   | ✅ (decode) |  TopicQA/Story decode  |    recommended (4b)     |
+| Phase                      | Script               |    OpenAI API     |       llama.cpp server       | GPU (else slow CPU/MPS) |
+| -------------------------- | -------------------- | :---------------: | :--------------------------: | :---------------------: |
+| 1. Generate texts          | `phase1_generate.sh` |     required      |  Long-form QA/StoryGen only  |            —            |
+| 2. Metrics + stegoanalysis | `phase2_metrics.sh`  |     optional¹     |              —               |       recommended       |
+| 3. Apply attacks           | `phase3_attacks.sh`  |     required      |              —               |            —            |
+| 4. Decode + score          | `phase4_decode.sh`   | required (decode) | Long-form QA/StoryGen decode |    recommended (4b)     |
 
 ¹ Only the optional `RUN_LLM_JUDGE` / `RUN_EMBEDDINGS` stegoanalysis signals
 call out (OpenRouter / Google); the default Phase 2 signals are local-only.
 
-### Local model server (TopicQA & Story)
+### Local model server (Long-form QA & StoryGen)
 
 TopicQA and Story decode by **re-generating** their subtopics/slots with a local
 model, so generation and decoding must be byte-for-byte identical. Launch the
@@ -95,14 +104,14 @@ command reproduces a prior run with
 ### Quick check first (free)
 
 ```bash
-scripts/smoke_test.sh          # imports + no-API dry-runs; no OpenAI credit spent
+scripts/smoke_test.sh   # imports + no-API dry-runs; no OpenAI credit spent
 ```
 
 ### Full run
 
 ```bash
-scripts/run_all.sh             # both tracks at native capacity (API + GPU heavy)
-scripts/run_all.sh detectability   # or run one track
+scripts/run_all.sh  # both tracks at native capacity (API + GPU heavy)
+scripts/run_all.sh detectability    # or run one track
 scripts/run_all.sh robustness
 ```
 
@@ -130,15 +139,15 @@ SYSTEM=litreview CAPACITY=20 scripts/phase4_decode.sh
 
 See [`scripts/README.md`](scripts/README.md) for every env knob.
 
-### Where experiments live (phase → paper)
+### Experiment Scripts to Paper Mapping
 
-| Paper experiment                                                     | Produced by                                                                 |
-| -------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Exp 1 — attack validation (BERTScore/BLEU/TER)                       | `phase4_decode/phase4b_attack_metrics.py`                                   |
-| Exp 2 — steganalysis (classifier, embeddings, LLM-judge, perplexity) | `phase2_metrics/phase2c_*` + `phase1_generation/phase1a_launder.py`         |
-| Exp 3 — main recovery results / attack curves                        | `phase4_decode/phase4c_main_results.py`                                     |
-| Exp 5 — text quality (token efficiency, perplexity)                  | `phase2_metrics/phase2a_token_counts.py`, `phase2b_perplexity.py`           |
-| Style/genre diagnostics                                              | `phase2_metrics/phase2d_genre_diagnostic.py`, `phase2c_ngram_diagnostic.py` |
+| Paper experiment                                             | Produced by                                                                 |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Main recovery results / attack curves                        | `phase4_decode/phase4c_main_results.py`                                     |
+| Steganalysis (classifier, embeddings, LLM-judge, perplexity) | `phase2_metrics/phase2c_*` + `phase1_generation`                            |
+| Attack validation (BERTScore/BLEU/TER)                       | `phase4_decode/phase4b_attack_metrics.py`                                   |
+| Text quality (token efficiency, perplexity)                  | `phase2_metrics/phase2a_token_counts.py`, `phase2b_perplexity.py`           |
+| Style/genre diagnostics                                      | `phase2_metrics/phase2d_genre_diagnostic.py`, `phase2c_ngram_diagnostic.py` |
 
 ### Attacks
 
@@ -159,12 +168,15 @@ The project includes several text modification attacks to test robustness:
    - Preserves sentence structure and formatting
 
 3. **LLM-based Paraphrasing** (`attacks/paraphrase.py`)
+   - Uses GPT-4.1 to completely rephrase text while preserving meaning
+   - Can operate globally or sentence-by-sentence
+   - Configurable temperature for controlling variation
+   - Much stronger than local edit-based attacks
 
-- Uses GPT-4 to completely rephrase text while preserving meaning
-- Can operate globally or sentence-by-sentence
-- Configurable temperature for controlling variation
-- Much stronger than local edit-based attacks
-- Expected to defeat the watermarking scheme
+4. **Round-Trip Translation** (`attacks/translation.py`)
+   - Uses GPT-4.1 to translate stegtexts from Language A to language B, then back to language A
+   - Can operate globally or sentence-by-sentence
+   - Configurable temperature for controlling variation
 
 ## Use Cases
 
@@ -176,21 +188,10 @@ The steganography systems in this library can be used for various privacy-preser
 - Protect messages from being altered or tampered with during transmission
 - Allow verification of message authenticity even if intermediaries modify the text
 
-### Covert File Storage
+### For AI Agents
 
-- Hide entire files within seemingly innocent text documents
-- Convert binary data into natural-looking text for border crossings or inspections
-- Store sensitive information in plain sight
-
-### Cloud Storage Privacy
-
-- Store private files on cloud platforms disguised as creative writing
-- Make sensitive data appear as:
-  - Collections of poetry or short stories
-  - Novel drafts or writing exercises
-  - Personal journal entries
-  - Blog posts or articles
-- Avoid drawing attention to encrypted files while maintaining data privacy
+- Secret communication that survives communication sessions
+- Evade thought-monitoring from humans
 
 Note: This tool is intended for legitimate privacy-preserving use cases. Users are responsible for complying with all applicable laws and regulations in their jurisdiction.
 
