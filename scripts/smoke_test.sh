@@ -12,7 +12,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 
 log "1/3  Import-checking phase modules (free)…"
-run "$PYTHON" - <<'PY'
+run "${PYTHON[@]}" - <<'PY'
 import importlib
 mods = [
     "experiments.phase1_generation.phase1_generate",

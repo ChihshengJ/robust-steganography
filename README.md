@@ -66,8 +66,10 @@ uv sync                       # installs the package + deps from uv.lock
 cp .env.example .env          # then fill in OPENAI_API_KEY (see the file)
 ```
 
-`scripts/*` default to plain `python`; to run them under uv, export
-`PYTHON="uv run python"`.
+`scripts/*` auto-detect uv: if `uv` is on your PATH they run through
+`uv run python` (the project's `.venv`, no activation needed), otherwise they
+fall back to plain `python`. To force a specific interpreter, export `PYTHON`
+(e.g. `PYTHON="uv run python"` or `PYTHON=python3.12`).
 
 Extra one-time data some steps need:
 

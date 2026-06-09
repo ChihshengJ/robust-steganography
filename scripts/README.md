@@ -27,7 +27,7 @@ Run from anywhere; they locate the repo root themselves.
 
 | Var                             | Default            | Meaning                                                                                   |
 | ------------------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
-| `PYTHON`                        | `python`           | Interpreter. Set to `"uv run python"` to run under uv.                                    |
+| `PYTHON`                        | `uv run python`*   | Interpreter. *Auto-detects uv; falls back to `python` if uv is absent. Override to pin.   |
 | `DATA_DIR`                      | `data/experiments` | Base dir for inputs/outputs.                                                              |
 | `SYSTEM`                        | `all`              | `topicqa` \| `story` \| `litreview` \| `baseline` \| `all`.                               |
 | `CAPACITY`                      | —                  | Message bits; selects the `{system}_cap{N}/` robustness subdir. Requires `SYSTEM != all`. |
