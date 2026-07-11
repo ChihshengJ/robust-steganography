@@ -101,6 +101,8 @@ ATTACK_CONFIGS: list[dict] = [
 ]
 
 SYSTEMS = ("topicqa", "story", "litreview", "baseline")
+# In-house token-level baselines: selectable explicitly but excluded from "all".
+BASELINE_LM_SYSTEMS = ("meteor", "discop")
 
 # Cover-attack plan: covers carry no bits, so they only feed Exp 1 attack-severity
 # baselines. local_paraphrase at medium and maximum tampering is enough to anchor
@@ -396,9 +398,9 @@ def main():
     )
     parser.add_argument(
         "--system",
-        choices=[*SYSTEMS, "all"],
+        choices=[*SYSTEMS, *BASELINE_LM_SYSTEMS, "all"],
         default="all",
-        help="Which system(s) to attack",
+        help="Which system(s) to attack ('all' excludes meteor/discop)",
     )
     parser.add_argument(
         "--data-dir",

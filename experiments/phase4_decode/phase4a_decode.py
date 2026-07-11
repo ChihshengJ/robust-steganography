@@ -61,7 +61,9 @@ from experiments.utils.metrics import bit_error_rate
 from experiments.utils.system_factory import (
     make_baseline,
     make_clients,
+    make_discop,
     make_litreview,
+    make_meteor,
     make_story,
     make_topicqa,
     restore_system_state,
@@ -74,6 +76,8 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 SYSTEMS = ("topicqa", "story", "litreview", "baseline")
+# In-house token-level baselines: selectable explicitly but excluded from "all".
+BASELINE_LM_SYSTEMS = ("meteor", "discop")
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +103,10 @@ def build_system(
         return make_litreview(client)
     if system == "baseline":
         return make_baseline(client)
+    if system == "meteor":
+        return make_meteor()
+    if system == "discop":
+        return make_discop()
     raise ValueError(f"Unknown system: {system}")
 
 
@@ -348,9 +356,9 @@ def main():
     )
     parser.add_argument(
         "--system",
-        choices=[*SYSTEMS, "all"],
+        choices=[*SYSTEMS, *BASELINE_LM_SYSTEMS, "all"],
         default="all",
-        help="Which system(s) to decode for.",
+        help="Which system(s) to decode for ('all' excludes meteor/discop).",
     )
     parser.add_argument(
         "--data-dir",

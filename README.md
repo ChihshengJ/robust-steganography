@@ -22,13 +22,28 @@ We propose this dynamic semantic unit encoding pipeline that partially solves th
 For any monitored channel to still be functional, attacks on alleged-steganography content needs to be at least semantics-preserving.
 This means that global paraphrase attack (or other similar attacks) is the attack that poses the greatest threats to steganographic communication.
 The frivolous nature of generated contents opens up the possibility to encode secret bits in the semantic space.
+We designed three steganography systems around three NLG tasks, namely, long-form question answering, story generation, and literature review,
+around the idea of dynamic semantic unit encoding.
+
+Literature review system was the blueprint. Since no semantic preserving attack can alter the citations (author name and year) inside a literature review, they are the natural anchors for embedded bits.
+We extract the references, and then use SHA256 to map each citation of a random paper to a bit, and then use a symmetric key to encode the secret bits in order.
+For decoding, just extract the citations from the stegotext, and then use the symmetric key to decode the ordering.
+
+A correctly deployed LLM can function as a hash function that generates natural language hash.
+Given a public prompt, the determinism of the output can be used as a dynamic codebook for steganography.
+Long-form Q&A and Story generation systems adopted this idea to achieve greater flexibility.
+Given a public prompt, a deployed LLM server would create a determinstic set of pairs of choices for the content to encode the bits.
+The contents, such as the topic a long-form Q&A would want to discuss, or a plot beat in the creative story, are invariant to semantic-preserving attacks.
+Thus, as long as the public prompt and the LLM server endpoint is accessible, the stegotexts can be retrieved even with extreme paraphrase attacks.
 
 ### Legacy Embedding-based systems
 
 The legacy embedding-based systems are extensions of Perry et al.'s embedding steganography scheme.
-We switched the sentence-based system with a story plotline-based system, a event summary-based system, and a unit test system.
-The general idea is that instead using sentences as the base for bit-encoding and rejection sampling, we use more abstract semantic units that can be retrieved by LLMs to encode the payload.
-This design not only solved the bit ordering issue that global paraphrase attacks might introduce, but also ensures the
+We tried to replicate those systems but encountered great difficulty in two paths:
+
+1. **PCA hash + rejection sampling only works on the paper**. Since a perfect PCA hash that divides the semantic space is extremely difficult to achieve, and that each bit's encoding is conditioned on the previous encoded bits, the rejection sampling is extremely prone to fail when the capacity increases.
+   In fact, we developed a back-trakcing module aiming at solving this problem (`src/systems/utils/sample_utils.py`), but it still does not guarantee high success rate for encoding.
+2. **Sentence-based encoding is not robust to structural attacks**. Since the order of the secret bits are preserved by the order of sentences, any semantics-preserving attacks that restructure the stegotext will destroy the encoded message. Combined with the low capacity, the scheme can only robustly carry 1 or 2 bits of actual payload, which is not ideal.
 
 ## Directory Structure
 
@@ -66,10 +81,8 @@ uv sync                       # installs the package + deps from uv.lock
 cp .env.example .env          # then fill in OPENAI_API_KEY (see the file)
 ```
 
-`scripts/*` auto-detect uv: if `uv` is on your PATH they run through
-`uv run python` (the project's `.venv`, no activation needed), otherwise they
-fall back to plain `python`. To force a specific interpreter, export `PYTHON`
-(e.g. `PYTHON="uv run python"` or `PYTHON=python3.12`).
+`scripts/*` auto-detect uv.
+To force a specific interpreter, export `PYTHON` (e.g. `PYTHON="uv run python"` or `PYTHON=python3.12`).
 
 Extra one-time data some steps need:
 
@@ -78,29 +91,27 @@ Extra one-time data some steps need:
 
 ### What each phase needs
 
-| Phase                      | Script               |    OpenAI API     |       llama.cpp server       | GPU (else slow CPU/MPS) |
-| -------------------------- | -------------------- | :---------------: | :--------------------------: | :---------------------: |
-| 1. Generate texts          | `phase1_generate.sh` |     required      |  Long-form QA/StoryGen only  |            —            |
-| 2. Metrics + stegoanalysis | `phase2_metrics.sh`  |     optional¹     |              —               |       recommended       |
-| 3. Apply attacks           | `phase3_attacks.sh`  |     required      |              —               |            —            |
-| 4. Decode + score          | `phase4_decode.sh`   | required (decode) | Long-form QA/StoryGen decode |    recommended (4b)     |
+| Phase                      | Script               |      OpenAI API      |       llama.cpp server       | GPU (else slow CPU/MPS) |
+| -------------------------- | -------------------- | :------------------: | :--------------------------: | :---------------------: |
+| 1. Generate texts          | `phase1_generate.sh` |       required       |  Long-form QA/StoryGen only  |            —            |
+| 2. Metrics + stegoanalysis | `phase2_metrics.sh`  |      optional¹       |              —               |       recommended       |
+| 3. Apply attacks           | `phase3_attacks.sh`  |       required       |              —               |            —            |
+| 4. Decode + score          | `phase4_decode.sh`   | required (expensive) | Long-form QA/StoryGen decode |    recommended (4b)     |
 
 ¹ Only the optional `RUN_LLM_JUDGE` / `RUN_EMBEDDINGS` stegoanalysis signals
 call out (OpenRouter / Google); the default Phase 2 signals are local-only.
 
-### Local model server (Long-form QA & StoryGen)
+### Local model server (Long-form Q&A & StoryGen)
 
-TopicQA and Story decode by **re-generating** their subtopics/slots with a local
-model, so generation and decoding must be byte-for-byte identical. Launch the
-pinned llama.cpp server in a separate terminal and leave it up for Phases 1 & 4:
+Long-form Q&A and StoryGen decode by **re-generating** their subtopics/slots with a local model, so generation and decoding must be byte-for-byte identical.
+Launch the pinned llama.cpp server in a separate terminal and leave it up for Phases 1 & 4:
 
 ```bash
 scripts/serve_local_model.sh /path/to/Qwen3.5-4B-UD-Q8_K_XL.gguf
 ```
 
-Point elsewhere or swap the GGUF via `LOCAL_BASE_URL` / `LOCAL_MODEL` (see
-`.env.example`). LitReview and the baseline don't use it. You can verify a serve
-command reproduces a prior run with
+Point elsewhere or swap the GGUF via `LOCAL_BASE_URL` / `LOCAL_MODEL` (see `.env.example`).
+LitReview and the baseline don't use it. You can verify a serve command reproduces a prior run with
 `python -m experiments.check_subtopic_repro`.
 
 ### Quick check first (free)

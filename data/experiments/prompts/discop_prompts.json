@@ -1,0 +1,1209 @@
+{
+ "prompts": [
+  {
+   "id": 0,
+   "seed": "Noting the uptick in ticket volume, I’ve outlined proposed tweaks to the incident triage workflow for your input."
+  },
+  {
+   "id": 1,
+   "seed": "Please see the attached payroll audit summary; let me know if any discrepancies stand out ahead of submission."
+  },
+  {
+   "id": 2,
+   "seed": "With the new project timeline draft ready, I’d appreciate a quick review of the resourcing assumptions."
+  },
+  {
+   "id": 3,
+   "seed": "Flagging a possible dependency risk with the Q4 infrastructure refresh based on recent vendor feedback."
+  },
+  {
+   "id": 4,
+   "seed": "Per Finance’s request, could you share the updated capex figures for the upcoming board packet?"
+  },
+  {
+   "id": 5,
+   "seed": "Attaching screenshots from the performance test suite; let me know if you spot any regression issues."
+  },
+  {
+   "id": 6,
+   "seed": "Following the compliance training rollout, are there any teams pending completion we should nudge?"
+  },
+  {
+   "id": 7,
+   "seed": "Wanted to loop you in on the cost allocation methodology discussed during the steering committee call."
+  },
+  {
+   "id": 8,
+   "seed": "Noticed some inconsistencies in the access logs; would appreciate a second set of eyes before escalating."
+  },
+  {
+   "id": 9,
+   "seed": "Based on your feedback, I’ve revised the onboarding checklist for the new contractor cohort."
+  },
+  {
+   "id": 10,
+   "seed": "Updating you that Legal has approved the draft terms for the master services agreement."
+  },
+  {
+   "id": 11,
+   "seed": "For tomorrow’s roadmap sync, please come prepared to discuss the open Jira epics."
+  },
+  {
+   "id": 12,
+   "seed": "As part of the audit prep, please verify all KYC records are up-to-date in the shared drive."
+  },
+  {
+   "id": 13,
+   "seed": "Wanted to flag that the BI dashboard refresh introduced some metric discrepancies we need to resolve."
+  },
+  {
+   "id": 14,
+   "seed": "With the Q1 goals finalized, let’s confirm owners for each initiative by EOD Friday."
+  },
+  {
+   "id": 15,
+   "seed": "Noted the revised hardware requirements; Procurement will need lead times for all major SKUs."
+  },
+  {
+   "id": 16,
+   "seed": "Circling back on your request for a customizable reporting template—attached is the latest iteration."
+  },
+  {
+   "id": 17,
+   "seed": "There’s a preliminary draft of the vendor scorecard in the folder for your suggestions."
+  },
+  {
+   "id": 18,
+   "seed": "Finance flagged a mismatch in the billing summaries for last month’s POs—could you take a look?"
+  },
+  {
+   "id": 19,
+   "seed": "Based on the call notes, I’ve summarized the open compliance gaps for discussion at the next check-in."
+  },
+  {
+   "id": 20,
+   "seed": "Wanted to clarify if the revised benefits summary includes the expanded dental coverage."
+  },
+  {
+   "id": 21,
+   "seed": "Quick update: the SFTP endpoint will undergo scheduled maintenance Friday at 22:00 UTC."
+  },
+  {
+   "id": 22,
+   "seed": "Sharing early-stage estimates for the workflow automation pilot—feedback welcome before we lock scope."
+  },
+  {
+   "id": 23,
+   "seed": "After reviewing the latest candidate profiles, HR suggests reprioritizing some role requirements."
+  },
+  {
+   "id": 24,
+   "seed": "In reference to the pending SLA review, are we aligned on the updated escalation procedures?"
+  },
+  {
+   "id": 25,
+   "seed": "Attaching the process map highlighting the new approval checkpoints; let me know if I missed any."
+  },
+  {
+   "id": 26,
+   "seed": "Noting that several compliance attestations remain unsigned in the portal; can we send a reminder blast?"
+  },
+  {
+   "id": 27,
+   "seed": "Given the product launch timeline shift, do we need to recalibrate marketing deliverable deadlines?"
+  },
+  {
+   "id": 28,
+   "seed": "Per our last check-in, here’s a summary of the open technical debt items prioritized for Q2."
+  },
+  {
+   "id": 29,
+   "seed": "Please check if the Q3 accrual entries reconcile with the updated expense projections."
+  },
+  {
+   "id": 30,
+   "seed": "With the latest endpoint patch, IT recommends a spot check of all high-privilege accounts."
+  },
+  {
+   "id": 31,
+   "seed": "Vendor has submitted revised pricing tiers; would appreciate your analysis before the renewal discussion."
+  },
+  {
+   "id": 32,
+   "seed": "I’ve consolidated the recent risk assessment findings for consideration in the upcoming audit."
+  },
+  {
+   "id": 33,
+   "seed": "Catching a few outliers in the customer churn metrics; flagging for deeper review this week."
+  },
+  {
+   "id": 34,
+   "seed": "Could you confirm the final headcount for next week’s department-wide training session?"
+  },
+  {
+   "id": 35,
+   "seed": "Attaching a draft of the process update memo for your review ahead of distribution."
+  },
+  {
+   "id": 36,
+   "seed": "Per Legal’s feedback, we need to revisit the data retention clause in the draft vendor agreement."
+  },
+  {
+   "id": 37,
+   "seed": "Please find attached the reconciliation summary; let me know if any line items need clarification."
+  },
+  {
+   "id": 38,
+   "seed": "Wanted to ensure the new VPN configuration is working as intended across remote endpoints."
+  },
+  {
+   "id": 39,
+   "seed": "Flagging that Ops requested a revision to the incident notification workflow per the last table-top exercise."
+  },
+  {
+   "id": 40,
+   "seed": "I’ve collated the feedback from the previous sprint review for team discussion tomorrow."
+  },
+  {
+   "id": 41,
+   "seed": "Given recent phishing attempts, IT recommends all staff reset passwords by Thursday."
+  },
+  {
+   "id": 42,
+   "seed": "Sharing a preliminary agenda for the vendor risk review session—please suggest any additions."
+  },
+  {
+   "id": 43,
+   "seed": "Noting that the Q2 invoice approvals require an additional compliance sign-off per updated policy."
+  },
+  {
+   "id": 44,
+   "seed": "Here’s a draft project milestone tracker; are there any key dependencies not reflected here?"
+  },
+  {
+   "id": 45,
+   "seed": "HR has asked for updated job descriptions to align with the revised leveling framework."
+  },
+  {
+   "id": 46,
+   "seed": "The customer feedback report flagged a process pain point in onboarding—let’s discuss solutions."
+  },
+  {
+   "id": 47,
+   "seed": "Per recent requests, I’ve pulled together a summary of ongoing process improvement initiatives."
+  },
+  {
+   "id": 48,
+   "seed": "Can you confirm whether the contract renewal addendum includes the new SLA metrics?"
+  },
+  {
+   "id": 49,
+   "seed": "Noting that several recurring payments failed last cycle; please review the attached remittance report."
+  },
+  {
+   "id": 50,
+   "seed": "Wanted to surface a potential gap in system monitoring based on the latest incident review."
+  },
+  {
+   "id": 51,
+   "seed": "Per your guidance, I’ve included an analysis of Q4 revenue drivers in the latest management report."
+  },
+  {
+   "id": 52,
+   "seed": "I’ve highlighted a compliance dependency in the new workflow rollout for quick resolution."
+  },
+  {
+   "id": 53,
+   "seed": "Noting that two action items from the security audit remain open—see comments in the attached tracker."
+  },
+  {
+   "id": 54,
+   "seed": "Please review the draft agenda for the strategic planning offsite and advise on additional topics."
+  },
+  {
+   "id": 55,
+   "seed": "Based on Finance’s input, the cost center realignment will take effect starting next payroll cycle."
+  },
+  {
+   "id": 56,
+   "seed": "There’s a pending request for elevated access—can you confirm business justification before approval?"
+  },
+  {
+   "id": 57,
+   "seed": "Attached are the Q4 supplier performance metrics; let HR know if you have any staffing concerns."
+  },
+  {
+   "id": 58,
+   "seed": "Wanted to check if the revised process documentation covers all exceptions found during testing."
+  },
+  {
+   "id": 59,
+   "seed": "Summarizing key takeaways from the town hall for those who were unable to join live."
+  },
+  {
+   "id": 60,
+   "seed": "Can you advise on the compliance implications of storing PII in the cloud archive?"
+  },
+  {
+   "id": 61,
+   "seed": "Sharing last month’s utilization report for your departmental review ahead of budgeting discussions."
+  },
+  {
+   "id": 62,
+   "seed": "Flagging a required update to the third-party risk register for next week’s audit committee."
+  },
+  {
+   "id": 63,
+   "seed": "With new finance policies in effect, please ensure all claims use the latest expense codes."
+  },
+  {
+   "id": 64,
+   "seed": "Security recommends a quarterly permissions review for all admin-level accounts—see attached schedule."
+  },
+  {
+   "id": 65,
+   "seed": "Per the roadmap sync, I’ve added a new timeline for the mobile app release."
+  },
+  {
+   "id": 66,
+   "seed": "HR is piloting an exit interview tool and would like initial feedback from department leads."
+  },
+  {
+   "id": 67,
+   "seed": "Attaching a summary of spend analysis by vendor for procurement’s review."
+  },
+  {
+   "id": 68,
+   "seed": "Does the revised escalation protocol address all scenarios raised in the tabletop exercise?"
+  },
+  {
+   "id": 69,
+   "seed": "Noting that three contracts are up for renewal this month—can we prioritize the negotiations?"
+  },
+  {
+   "id": 70,
+   "seed": "Sharing a draft of the quarterly goals alignment report for your department’s input."
+  },
+  {
+   "id": 71,
+   "seed": "After reviewing the workflow logs, IT flagged some recurring authentication errors."
+  },
+  {
+   "id": 72,
+   "seed": "Per Audit’s request, please provide evidence of risk acceptance for the deferred controls."
+  },
+  {
+   "id": 73,
+   "seed": "Let’s confirm the final attendee list for Monday’s cross-functional process review."
+  },
+  {
+   "id": 74,
+   "seed": "Finance is requesting backup documents for three recent journal entries—see details attached."
+  },
+  {
+   "id": 75,
+   "seed": "I’ve mapped out the revised customer onboarding steps per last week’s redesign meeting."
+  },
+  {
+   "id": 76,
+   "seed": "Noting several incomplete fields in the compliance attestation form; can we send out a reminder?"
+  },
+  {
+   "id": 77,
+   "seed": "The latest stakeholder feedback suggests increasing automation in the approval process."
+  },
+  {
+   "id": 78,
+   "seed": "Legal raised a question about export controls on the new software module—please advise."
+  },
+  {
+   "id": 79,
+   "seed": "Here’s an early look at the productivity trends dashboard for your review ahead of the QBR."
+  },
+  {
+   "id": 80,
+   "seed": "Per the board’s request, attach a snapshot of the budget utilization versus forecast."
+  },
+  {
+   "id": 81,
+   "seed": "Wanted to clarify the escalation path for issues surfaced during the UAT phase."
+  },
+  {
+   "id": 82,
+   "seed": "Does anyone know if the updated benefits enrollment portal is fully integrated with Payroll?"
+  },
+  {
+   "id": 83,
+   "seed": "Flagging the need for a root-cause analysis on last week’s unplanned system outage."
+  },
+  {
+   "id": 84,
+   "seed": "Can you confirm that the next sprint’s backlog now reflects all regulatory requirements?"
+  },
+  {
+   "id": 85,
+   "seed": "Drafting a communication about process changes related to the new invoice approval flow."
+  },
+  {
+   "id": 86,
+   "seed": "Based on vendor input, some contract deliverables may need revised acceptance criteria."
+  },
+  {
+   "id": 87,
+   "seed": "Noting an increase in failed login attempts; security suggests awareness training refresh."
+  },
+  {
+   "id": 88,
+   "seed": "Sharing aggregate feedback from the pilot group on the new knowledge base interface."
+  },
+  {
+   "id": 89,
+   "seed": "I’ve compiled the Q1 forecast assumptions for finance’s cross-check."
+  },
+  {
+   "id": 90,
+   "seed": "There appears to be a delay in receipt of key deliverables—flagging for early discussion."
+  },
+  {
+   "id": 91,
+   "seed": "Please confirm if the latest SOC 2 report was uploaded to the compliance repository."
+  },
+  {
+   "id": 92,
+   "seed": "Attaching a summary of recurring issues we discussed during the process improvement workshop."
+  },
+  {
+   "id": 93,
+   "seed": "Please verify the cost allocation worksheet aligns with current project codes."
+  },
+  {
+   "id": 94,
+   "seed": "Legal clarified that all NDAs for contractors must be retained for seven years."
+  },
+  {
+   "id": 95,
+   "seed": "Wanted to check if all impacted users were notified prior to the scheduled downtime."
+  },
+  {
+   "id": 96,
+   "seed": "Sharing a high-level summary of supplier risks identified during this quarter’s review."
+  },
+  {
+   "id": 97,
+   "seed": "Per the new procurement guidelines, please use the latest RFP template for upcoming sourcing events."
+  },
+  {
+   "id": 98,
+   "seed": "Noting that HR has finalized the updated remote work policy—see attached for distribution."
+  },
+  {
+   "id": 99,
+   "seed": "Please advise if further documentation is needed for the open compliance items."
+  },
+  {
+   "id": 100,
+   "seed": "Following up on Finance’s query, I’ve extracted details of last month’s accrual adjustments."
+  },
+  {
+   "id": 101,
+   "seed": "Summarizing outcomes from the recent change management session for broader team awareness."
+  },
+  {
+   "id": 102,
+   "seed": "Could you review the revised asset list before we finalize the annual inventory report?"
+  },
+  {
+   "id": 103,
+   "seed": "Flagging an outstanding item from the last process audit—see comments in the shared tracker."
+  },
+  {
+   "id": 104,
+   "seed": "Wanted to check if the latest batch of timesheets included the correct cost center codes."
+  },
+  {
+   "id": 105,
+   "seed": "Please confirm whether all legacy systems are scheduled for decommission by year-end."
+  },
+  {
+   "id": 106,
+   "seed": "The process team suggested a new KPI for measuring handoff efficiency—open to feedback."
+  },
+  {
+   "id": 107,
+   "seed": "There’s an early draft of the vendor onboarding guide in the shared drive for review."
+  },
+  {
+   "id": 108,
+   "seed": "Noting that several business units reported issues with the new SSO integration."
+  },
+  {
+   "id": 109,
+   "seed": "Please see attached summary of insurance renewals and required action items by business unit."
+  },
+  {
+   "id": 110,
+   "seed": "Flagging a misalignment between contracted and delivered service levels last quarter."
+  },
+  {
+   "id": 111,
+   "seed": "Based on risk management input, additional vendor due diligence is recommended for the next phase."
+  },
+  {
+   "id": 112,
+   "seed": "Wanted to share preliminary thoughts on integrating invoice automation into the current workflow."
+  },
+  {
+   "id": 113,
+   "seed": "Noted a few gaps in the process flow diagram; please see highlights for review."
+  },
+  {
+   "id": 114,
+   "seed": "Please advise on timing for the annual compliance acknowledgment campaign launch."
+  },
+  {
+   "id": 115,
+   "seed": "Just finished the requirements review workshop; here’s a recap of all major decisions."
+  },
+  {
+   "id": 116,
+   "seed": "Attaching a comparison of proposed budget scenarios for your decision on funding allocations."
+  },
+  {
+   "id": 117,
+   "seed": "Let me know if any open items remain from last week’s OKR alignment session."
+  },
+  {
+   "id": 118,
+   "seed": "Flagging that the user provisioning process may need streamlining based on audit feedback."
+  },
+  {
+   "id": 119,
+   "seed": "Sharing a preliminary communication strategy for the new talent development program."
+  },
+  {
+   "id": 120,
+   "seed": "Finance asked for the latest headcount forecast as part of the Q2 planning cycle."
+  },
+  {
+   "id": 121,
+   "seed": "Kindly confirm the deadline for finalizing vendor scorecard assessments this quarter."
+  },
+  {
+   "id": 122,
+   "seed": "Based on pipeline projections, sales is requesting accelerated onboarding for two new reps."
+  },
+  {
+   "id": 123,
+   "seed": "Looping in Finance to clarify the timeline for Q4 budget allocations ahead of next week’s planning session."
+  },
+  {
+   "id": 124,
+   "seed": "Flagging that the SAML integration for external partners is now live and ready for user acceptance testing."
+  },
+  {
+   "id": 125,
+   "seed": "Based on audit feedback, we need to update the documentation flow in the onboarding checklist by month-end."
+  },
+  {
+   "id": 126,
+   "seed": "Attaching the revised project roadmap; let me know if the milestone dates align with your resource forecasts."
+  },
+  {
+   "id": 127,
+   "seed": "For tomorrow’s steering committee, please bring up any blockers related to the data retention rollout."
+  },
+  {
+   "id": 128,
+   "seed": "Legal has requested an updated contract annex for our newest SaaS vendor—can you coordinate review?"
+  },
+  {
+   "id": 129,
+   "seed": "Note that HR will circulate the anonymous engagement survey link later today; all responses are due by Friday."
+  },
+  {
+   "id": 130,
+   "seed": "The compliance dashboard flagged a new exception in our third-party risk metrics this morning."
+  },
+  {
+   "id": 131,
+   "seed": "I’ve summarized the suggested process improvements from last week’s Kaizen workshop for the leadership team’s input."
+  },
+  {
+   "id": 132,
+   "seed": "Please review the attached quarterly spend analysis and highlight any discrepancies with your department allocations."
+  },
+  {
+   "id": 133,
+   "seed": "Following up on the action items from Monday’s risk review, especially around PCI-DSS scope clarification."
+  },
+  {
+   "id": 134,
+   "seed": "Could you upload the finalized org chart into Workday before next week’s all-hands?"
+  },
+  {
+   "id": 135,
+   "seed": "Operations flagged a lag in ticket close rates—suggest convening a quick stand-up to triage."
+  },
+  {
+   "id": 136,
+   "seed": "The vendor contract renewal dates seem misaligned with payment schedules; flagging for your awareness."
+  },
+  {
+   "id": 137,
+   "seed": "Cross-referencing the expense claims from last month, I noticed a few outliers that need validation."
+  },
+  {
+   "id": 138,
+   "seed": "Internal audit will be sampling transactions from the last six weeks—please ensure all files are up to date."
+  },
+  {
+   "id": 139,
+   "seed": "Before approving the pilot launch, can we confirm the UAT signoff from both QA and Product?"
+  },
+  {
+   "id": 140,
+   "seed": "Just received the Q2 operational KPIs; metrics indicate a positive trend in service uptimes."
+  },
+  {
+   "id": 141,
+   "seed": "Adding a reminder that the deadline for submitting updated process documentation is this Thursday."
+  },
+  {
+   "id": 142,
+   "seed": "I recommend we revisit our incident escalation protocols ahead of the upcoming ISO audit."
+  },
+  {
+   "id": 143,
+   "seed": "The Salesforce integration is scheduled for deployment tonight; potential downtime is estimated under 30 minutes."
+  },
+  {
+   "id": 144,
+   "seed": "Per the leadership retreat outcomes, the strategy team is requesting input on prioritization criteria."
+  },
+  {
+   "id": 145,
+   "seed": "Could someone on your team clarify the status of the vendor onboarding background checks?"
+  },
+  {
+   "id": 146,
+   "seed": "Our recurring invoice workflow will be updated to match the new cost-center hierarchy as of next cycle."
+  },
+  {
+   "id": 147,
+   "seed": "Please allocate time in tomorrow’s agenda to discuss the revised payment terms from our logistics supplier."
+  },
+  {
+   "id": 148,
+   "seed": "The new HRIS system is ready for phase two configuration—can I get a list of department-specific requirements?"
+  },
+  {
+   "id": 149,
+   "seed": "A reminder: all access recertifications must be completed in SailPoint by close of business Friday."
+  },
+  {
+   "id": 150,
+   "seed": "Just finished reviewing the Q1 variance analysis—overall spend is tracking within budgeted ranges."
+  },
+  {
+   "id": 151,
+   "seed": "The IT security team recommends rolling out multifactor authentication on all remote endpoints by next week."
+  },
+  {
+   "id": 152,
+   "seed": "Can someone confirm if the updated policy controls have been uploaded to the governance portal?"
+  },
+  {
+   "id": 153,
+   "seed": "As discussed, please review the attached draft for our sustainability initiative RFP before distribution."
+  },
+  {
+   "id": 154,
+   "seed": "The ops dashboard is now showing real-time shipment tracking—let me know if you spot any data gaps."
+  },
+  {
+   "id": 155,
+   "seed": "Legal has requested clarification regarding the data residency statement in our cloud provider contract."
+  },
+  {
+   "id": 156,
+   "seed": "With the new compliance framework rollout, a brief training session will be scheduled for all team leads."
+  },
+  {
+   "id": 157,
+   "seed": "Per Finance’s guidance, all capital expenditure requests need prior approval from the BU head starting this quarter."
+  },
+  {
+   "id": 158,
+   "seed": "The project Gantt chart now reflects the latest timeline shifts—please review and advise on any conflicts."
+  },
+  {
+   "id": 159,
+   "seed": "I’ve mapped out the dependencies for the CRM upgrade; let’s align on any resource overlaps."
+  },
+  {
+   "id": 160,
+   "seed": "Tagging you for input on the vendor risk assessment draft due Friday."
+  },
+  {
+   "id": 161,
+   "seed": "Reminding all managers to update their teams' training records before the quarterly audit."
+  },
+  {
+   "id": 162,
+   "seed": "Based on feedback, I’ve attached a revised version of the asset inventory template."
+  },
+  {
+   "id": 163,
+   "seed": "The user provisioning workflow is being streamlined for new hires starting this month."
+  },
+  {
+   "id": 164,
+   "seed": "Noting that the MSA with our logistics partner will expire next quarter—let’s initiate renewal discussions."
+  },
+  {
+   "id": 165,
+   "seed": "Please review the compliance findings summary and advise on remediation priorities."
+  },
+  {
+   "id": 166,
+   "seed": "Quick update: the procurement workflow automation passed its initial test phase."
+  },
+  {
+   "id": 167,
+   "seed": "The business continuity playbook needs final signoff by the end of the week."
+  },
+  {
+   "id": 168,
+   "seed": "Following our earlier discussion, Security has flagged a potential misconfiguration in the firewall rules."
+  },
+  {
+   "id": 169,
+   "seed": "Could you provide an updated forecast for the Q3 sales pipeline before next Thursday?"
+  },
+  {
+   "id": 170,
+   "seed": "Attaching a summary of customer feedback for consideration in the post-launch review."
+  },
+  {
+   "id": 171,
+   "seed": "Suggesting we add a risk review checkpoint to the biweekly project cadence."
+  },
+  {
+   "id": 172,
+   "seed": "Finance will begin monthly close early this cycle; ensure all journal entries are submitted by Wednesday."
+  },
+  {
+   "id": 173,
+   "seed": "Referencing the attached process map, please identify any pain points you see in the current workflow."
+  },
+  {
+   "id": 174,
+   "seed": "HR has updated the remote work guidelines—let me know if you have questions about policy changes."
+  },
+  {
+   "id": 175,
+   "seed": "Just received preliminary feedback from the ethics committee on the whistleblower policy revision."
+  },
+  {
+   "id": 176,
+   "seed": "As we prepare for peak season, please review the resource allocation plan for potential shortfalls."
+  },
+  {
+   "id": 177,
+   "seed": "The cloud migration checklist has been refreshed; confirm completion of all required steps."
+  },
+  {
+   "id": 178,
+   "seed": "Can someone confirm if all NDA countersignatures are recorded in the vendor portal?"
+  },
+  {
+   "id": 179,
+   "seed": "As noted in the last review, the training module completion rate has increased significantly this quarter."
+  },
+  {
+   "id": 180,
+   "seed": "Circulating the final version of the strategic plan for leadership approval by Friday COB."
+  },
+  {
+   "id": 181,
+   "seed": "Could you verify that the business impact analysis includes all recently acquired units?"
+  },
+  {
+   "id": 182,
+   "seed": "Noting a spike in system access requests—recommending we audit privileges this month."
+  },
+  {
+   "id": 183,
+   "seed": "Please see attached for the latest pipeline status update; let me know if you spot any issues."
+  },
+  {
+   "id": 184,
+   "seed": "Just received notice that the APAC data center is scheduled for a maintenance outage Saturday."
+  },
+  {
+   "id": 185,
+   "seed": "As a reminder, travel expense submissions from Q2 must be reconciled by the finance team by August 10."
+  },
+  {
+   "id": 186,
+   "seed": "The updated vendor scorecard methodology is now live—please review and share feedback."
+  },
+  {
+   "id": 187,
+   "seed": "Following up on the workflow automation project; are there any blockers we should escalate?"
+  },
+  {
+   "id": 188,
+   "seed": "Attaching the proposed agenda for the upcoming cross-functional alignment meeting."
+  },
+  {
+   "id": 189,
+   "seed": "Please confirm the availability of subject matter experts for the upcoming RFP evaluation panel."
+  },
+  {
+   "id": 190,
+   "seed": "Technical teams will start the DR playbook simulation Thursday; all systems should be backed up by EOD tomorrow."
+  },
+  {
+   "id": 191,
+   "seed": "Just wanted to flag that the quarterly policy attestations are due by next Wednesday."
+  },
+  {
+   "id": 192,
+   "seed": "For next week’s leadership roundtable, please circulate any strategic initiative updates by Tuesday."
+  },
+  {
+   "id": 193,
+   "seed": "The regulatory change tracker highlights a few pending actions that need addressing before the next audit."
+  },
+  {
+   "id": 194,
+   "seed": "Could you clarify the support coverage hours during the upcoming public holiday?"
+  },
+  {
+   "id": 195,
+   "seed": "All vendor invoices from March have cleared except for two outstanding payments flagged in the ledger."
+  },
+  {
+   "id": 196,
+   "seed": "Attaching a summary of the process bottlenecks identified in the most recent workflow review."
+  },
+  {
+   "id": 197,
+   "seed": "The data privacy office requests updated records for all user consent forms by month-end."
+  },
+  {
+   "id": 198,
+   "seed": "As per Compliance’s recommendation, please initiate periodic access reviews for all critical applications."
+  },
+  {
+   "id": 199,
+   "seed": "Please review the attached headcount projections and let HR know of any anticipated changes."
+  },
+  {
+   "id": 200,
+   "seed": "The API endpoint documentation requires review before we can proceed with external integration."
+  },
+  {
+   "id": 201,
+   "seed": "Finance has asked for an updated forecast on capital project expenditures by next week."
+  },
+  {
+   "id": 202,
+   "seed": "Noting that the policy repository will be unavailable Saturday for scheduled maintenance."
+  },
+  {
+   "id": 203,
+   "seed": "Following the recent phishing simulation, Security recommends additional staff training this quarter."
+  },
+  {
+   "id": 204,
+   "seed": "The new supplier scorecard template is attached for your review before the next vendor meeting."
+  },
+  {
+   "id": 205,
+   "seed": "Please confirm receipt of the Q3 OKR draft and advise on any targets needing adjustment."
+  },
+  {
+   "id": 206,
+   "seed": "HR will be conducting random spot checks on mandatory training compliance next week."
+  },
+  {
+   "id": 207,
+   "seed": "Referencing the attached cash flow report, please highlight any variances that might impact July projections."
+  },
+  {
+   "id": 208,
+   "seed": "The risk assessment matrix is ready for your review ahead of the compliance workshop."
+  },
+  {
+   "id": 209,
+   "seed": "Noting that several process workflows are overdue for annual review—can someone own updating these?"
+  },
+  {
+   "id": 210,
+   "seed": "The contract management team will circulate new T&Cs for all active vendors by EOD today."
+  },
+  {
+   "id": 211,
+   "seed": "To prepare for the ERP upgrade, please ensure all data dependencies are mapped by month-end."
+  },
+  {
+   "id": 212,
+   "seed": "Just finished compiling the incident summary for Q1; notable trends are outlined in the attached report."
+  },
+  {
+   "id": 213,
+   "seed": "Before tomorrow’s vendor review, please familiarize yourself with the updated performance metrics."
+  },
+  {
+   "id": 214,
+   "seed": "The mobile app deployment is scheduled for next Monday; functional testing reports are due this week."
+  },
+  {
+   "id": 215,
+   "seed": "All cost allocation updates must be loaded into SAP before Finance begins the monthly close process."
+  },
+  {
+   "id": 216,
+   "seed": "Suggest incorporating a retrospective session into our project delivery cadence."
+  },
+  {
+   "id": 217,
+   "seed": "Attaching the draft communications plan for the upcoming office relocation."
+  },
+  {
+   "id": 218,
+   "seed": "Please update the risk register with the potential impact from recent supply chain disruptions."
+  },
+  {
+   "id": 219,
+   "seed": "The expense policy has been revised to reflect new reimbursement caps for travel and meals."
+  },
+  {
+   "id": 220,
+   "seed": "Tagging you for input on the business continuity scenario drafts attached."
+  },
+  {
+   "id": 221,
+   "seed": "Finance would appreciate early submission of all Q3 budget amendments by next Tuesday."
+  },
+  {
+   "id": 222,
+   "seed": "Can someone clarify the escalation path for unresolved service desk tickets?"
+  },
+  {
+   "id": 223,
+   "seed": "The latest master data reconciliation flagged a few duplicate entries needing cleanup."
+  },
+  {
+   "id": 224,
+   "seed": "Noting that our contract auto-renewals are now managed via the new vendor portal."
+  },
+  {
+   "id": 225,
+   "seed": "Before submitting the final project closeout report, let’s verify asset disposal compliance."
+  },
+  {
+   "id": 226,
+   "seed": "Forecast accuracy improved this cycle—details are broken down in the attached variance analysis."
+  },
+  {
+   "id": 227,
+   "seed": "The new process for customer escalations will go live at the start of next quarter."
+  },
+  {
+   "id": 228,
+   "seed": "Please confirm the timeline for rolling out the new HR self-service tools."
+  },
+  {
+   "id": 229,
+   "seed": "Can we align on the proposed payment milestones for the upcoming implementation project?"
+  },
+  {
+   "id": 230,
+   "seed": "The security exception request for non-standard endpoints is pending review."
+  },
+  {
+   "id": 231,
+   "seed": "As a heads-up, the external audit kick-off is scheduled for next Monday morning."
+  },
+  {
+   "id": 232,
+   "seed": "The attached slide deck summarizes planned deliverables for our operational excellence initiative."
+  },
+  {
+   "id": 233,
+   "seed": "Suggesting we add an agenda item to review the feedback from last quarter’s pulse survey."
+  },
+  {
+   "id": 234,
+   "seed": "Per the latest compliance guidance, all staff must complete the annual policy acknowledgment by June 30."
+  },
+  {
+   "id": 235,
+   "seed": "Data integrity checks on the finance system flagged a few records for manual review."
+  },
+  {
+   "id": 236,
+   "seed": "Attaching final draft of the revised process map for your input ahead of Friday’s meeting."
+  },
+  {
+   "id": 237,
+   "seed": "Following a recent incident, Security has introduced new requirements for USB device usage."
+  },
+  {
+   "id": 238,
+   "seed": "The master service agreement template is under revision—expect an updated version next week."
+  },
+  {
+   "id": 239,
+   "seed": "Noting a few outstanding items from the system go-live checklist that need urgent attention."
+  },
+  {
+   "id": 240,
+   "seed": "Recommending we revisit vendor SLAs to ensure alignment with our updated service expectations."
+  },
+  {
+   "id": 241,
+   "seed": "Please review the attached runbook for the upcoming infrastructure failover test."
+  },
+  {
+   "id": 242,
+   "seed": "Flagging that the Q2 employee engagement data is now available for department leads."
+  },
+  {
+   "id": 243,
+   "seed": "The monthly vendor spend report is attached; let me know if any variances require investigation."
+  },
+  {
+   "id": 244,
+   "seed": "Just received confirmation from Facilities that the office floorplan changes are on track."
+  },
+  {
+   "id": 245,
+   "seed": "For next week’s compliance review, please provide evidence of recent system patches."
+  },
+  {
+   "id": 246,
+   "seed": "Can someone clarify the backup retention policies in light of the new regulatory requirements?"
+  },
+  {
+   "id": 247,
+   "seed": "Finance needs your team’s Q3 accruals by end of the week to finalize reporting."
+  },
+  {
+   "id": 248,
+   "seed": "Please review the draft procurement policy attached and share any feedback by Thursday."
+  },
+  {
+   "id": 249,
+   "seed": "The IT team has scheduled disaster recovery testing next Friday—verify critical systems are included."
+  },
+  {
+   "id": 250,
+   "seed": "Suggesting we add a standing agenda item to track open audit issues at each risk committee meeting."
+  },
+  {
+   "id": 251,
+   "seed": "Circling back on the quarterly audit prep, I’ve outlined a few dependencies that still need owner assignments."
+  },
+  {
+   "id": 252,
+   "seed": "For tomorrow’s roadmap alignment, could you upload the finalized sprint timelines to the shared folder?"
+  },
+  {
+   "id": 253,
+   "seed": "Please review the attached draft policy and note any regulatory concerns ahead of the compliance check-in."
+  },
+  {
+   "id": 254,
+   "seed": "Just a quick update: the beta environment is back online after the patch rollout this morning."
+  },
+  {
+   "id": 255,
+   "seed": "In light of the recent attrition numbers, I’ve drafted a set of retention strategies for leadership input."
+  },
+  {
+   "id": 256,
+   "seed": "Letting you know the vendor security questionnaire is overdue; do you need any support completing it?"
+  },
+  {
+   "id": 257,
+   "seed": "The strategic planning session has been rescheduled to next Wednesday at 1 pm; can you confirm your availability?"
+  },
+  {
+   "id": 258,
+   "seed": "We're seeing an uptick in support tickets related to the portal update — is there bandwidth to triage these today?"
+  },
+  {
+   "id": 259,
+   "seed": "I’ve uploaded the revised budget forecast; please verify your department’s allocations by noon tomorrow."
+  },
+  {
+   "id": 260,
+   "seed": "Based on the latest feedback, a slight tweak to the onboarding workflow could streamline approvals significantly."
+  },
+  {
+   "id": 261,
+   "seed": "Noticed the escalation SLAs in the incident log are trending upward — can you dig into root causes?"
+  },
+  {
+   "id": 262,
+   "seed": "Adding a reminder that expense submissions must now use the updated cost codes effective immediately."
+  },
+  {
+   "id": 263,
+   "seed": "I’m proposing a quick huddle to clarify next steps for the process digitization project."
+  },
+  {
+   "id": 264,
+   "seed": "Legal flagged a question with our master services agreement template; flagging in case you have input."
+  },
+  {
+   "id": 265,
+   "seed": "To prep for next week’s client audit, could you confirm completion of all outstanding training modules?"
+  },
+  {
+   "id": 266,
+   "seed": "The quarterly metrics dashboard will be refreshed by 10 am, pending your sign-off on the sales figures."
+  },
+  {
+   "id": 267,
+   "seed": "Following the last PI planning session, we need a decision on the backlog grooming cadence."
+  },
+  {
+   "id": 268,
+   "seed": "I’ve outlined the hardware requirements for the new analytics cluster in the attached sheet."
+  },
+  {
+   "id": 269,
+   "seed": "Let’s finalize our vendor evaluation criteria to keep the RFP process on track."
+  },
+  {
+   "id": 270,
+   "seed": "HR has requested updated job descriptions for all open roles by end of week."
+  },
+  {
+   "id": 271,
+   "seed": "Flagging a potential duplication in last month’s vendor payment batch—can you double-check the ledger entries?"
+  },
+  {
+   "id": 272,
+   "seed": "As per last Friday’s risk review, mitigation plans for high-priority items are still outstanding."
+  },
+  {
+   "id": 273,
+   "seed": "The recurring sync with procurement is moving to biweekly cadence starting next month."
+  },
+  {
+   "id": 274,
+   "seed": "Please confirm that all user access requests have received manager approvals per the revised protocol."
+  },
+  {
+   "id": 275,
+   "seed": "Just received notice of a critical patch for the SSO service; are there any known integration concerns?"
+  },
+  {
+   "id": 276,
+   "seed": "Attaching the preliminary analysis from the margin improvement initiative for your feedback."
+  },
+  {
+   "id": 277,
+   "seed": "I’d like to revisit the project charter to address some recent scope changes."
+  },
+  {
+   "id": 278,
+   "seed": "In preparation for the annual budget cycle, please submit departmental forecasts by July 12th."
+  },
+  {
+   "id": 279,
+   "seed": "Operations has asked for an updated process flow diagram reflecting the new automation steps."
+  },
+  {
+   "id": 280,
+   "seed": "The compliance team is conducting random checks on system access logs this month."
+  },
+  {
+   "id": 281,
+   "seed": "We're aiming for a decision on the supplier shortlist in tomorrow’s steering committee call."
+  },
+  {
+   "id": 282,
+   "seed": "Finance flagged a mismatch between the PO and invoice values; see attached for details."
+  },
+  {
+   "id": 283,
+   "seed": "The latest diversity and inclusion metrics are live on the intranet if you’d like to review."
+  },
+  {
+   "id": 284,
+   "seed": "Could you provide an ETA for resolving the outstanding user provisioning tickets?"
+  },
+  {
+   "id": 285,
+   "seed": "The next phase of the digital transformation initiative kicks off next Monday—materials attached."
+  },
+  {
+   "id": 286,
+   "seed": "Pointing out that several project dependencies remain unassigned in the latest tracker update."
+  },
+  {
+   "id": 287,
+   "seed": "Let me know if you need clarification on the new travel and expense policy effective July 1."
+  },
+  {
+   "id": 288,
+   "seed": "I’ve added the revised risk matrix to our shared drive for your review."
+  },
+  {
+   "id": 289,
+   "seed": "The systems upgrade is scheduled for Friday evening; downtime is expected from 7 to 10 pm."
+  },
+  {
+   "id": 290,
+   "seed": "I suggest we schedule a cross-functional workshop to map out the proposed process changes."
+  },
+  {
+   "id": 291,
+   "seed": "During last week’s vendor performance review, several SLAs were identified as at risk."
+  },
+  {
+   "id": 292,
+   "seed": "Just sharing a heads-up that the payroll calendar will be adjusted for the upcoming public holiday."
+  },
+  {
+   "id": 293,
+   "seed": "Could you review the draft communications plan for the upcoming product launch?"
+  },
+  {
+   "id": 294,
+   "seed": "Please ensure all required compliance attestations are completed by the end of the quarter."
+  },
+  {
+   "id": 295,
+   "seed": "The dashboard refresh was delayed due to a data source issue — resolving with IT now."
+  },
+  {
+   "id": 296,
+   "seed": "I've added a few notes on the shared slide deck for tomorrow’s quarterly business review."
+  },
+  {
+   "id": 297,
+   "seed": "Wanted to highlight that the recent phishing simulation had a 22% click rate — details attached."
+  },
+  {
+   "id": 298,
+   "seed": "The HRIS upgrade requires all employees to reset their passwords by Monday morning."
+  },
+  {
+   "id": 299,
+   "seed": "Procurement needs confirmation on the final list of approved suppliers by COB Thursday."
+  }
+ ],
+ "provenance": {
+  "source": "baseline_prompts.json",
+  "note": "Reused generic English contexts as GPT-2 LM generation contexts for the discop token-level baseline (in-house).",
+  "copied_at": "2026-07-11T11:40:20.578964+00:00"
+ }
+}

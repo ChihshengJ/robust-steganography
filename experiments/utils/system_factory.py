@@ -8,7 +8,11 @@ import openai
 
 from systems import (
     CORPORATE_MONOLOGUE,
+    DiscopLM,
+    DiscopSystem,
     LitReviewSystem,
+    MeteorLM,
+    MeteorSystem,
     RandomProjectionHash,
     RepetitionCode,
     SentenceStegSystem,
@@ -109,6 +113,54 @@ def make_litreview(client: openai.OpenAI) -> LitReviewSystem:
     )
 
 
+# Local causal LM backing the token-level baselines (Meteor, Discop). GPT-2 is
+# the paper-faithful Meteor/Discop channel; override with $BASELINE_MODEL.
+BASELINE_MODEL = os.environ.get("BASELINE_MODEL", "gpt2")
+
+# Loading a HF model is expensive; cache the LM holders by (backend, model) so
+# repeated factory calls within a run reuse one in-memory model.
+_METEOR_LM_CACHE: dict[str, MeteorLM] = {}
+_DISCOP_LM_CACHE: dict[str, DiscopLM] = {}
+
+
+def make_meteor(model_name: str | None = None, key: str = "default") -> MeteorSystem:
+    """Meteor (Kaptchuk et al., CCS 2021) token-level baseline over local GPT-2.
+
+    In-house baseline only. `key` is the shared symmetric passphrase; the seed
+    context is supplied per-message via `hide_message(seed=...)`.
+    """
+    model_name = model_name or BASELINE_MODEL
+    lm = _METEOR_LM_CACHE.get(model_name)
+    if lm is None:
+        lm = MeteorLM(model_name)
+        _METEOR_LM_CACHE[model_name] = lm
+    return MeteorSystem(
+        lm,
+        error_correction=RepetitionCode(1),
+        encoder=BypassEncoder(),
+        key=key,
+    )
+
+
+def make_discop(model_name: str | None = None, key: str = "default") -> DiscopSystem:
+    """Discop (Ding et al., S&P 2023) token-level baseline over local GPT-2.
+
+    In-house baseline only. `key` is the shared symmetric passphrase (Discop's
+    sampling seed); the context is supplied per-message via `hide_message`.
+    """
+    model_name = model_name or BASELINE_MODEL
+    lm = _DISCOP_LM_CACHE.get(model_name)
+    if lm is None:
+        lm = DiscopLM(model_name)
+        _DISCOP_LM_CACHE[model_name] = lm
+    return DiscopSystem(
+        lm,
+        error_correction=RepetitionCode(1),
+        encoder=BypassEncoder(),
+        key=key,
+    )
+
+
 def make_baseline(client: openai.OpenAI) -> SentenceStegSystem:
     """Baseline sentence-level steg (Bauer et al.): random-projection hash,
     1 bit/sentence, RepetitionCode(5), corporate-email generation prompt."""
@@ -134,5 +186,9 @@ def restore_system_state(system, state_dict: dict) -> None:
         system._question = state_dict["question"]
     if "premise" in state_dict:
         system._premise = state_dict["premise"]
+    if "context" in state_dict:
+        # Meteor/Discop baselines: the generation context (seed string) that
+        # decoding must re-run the local LM from.
+        system._context = state_dict["context"]
     if "error_encoded_length" in state_dict:
         system._error_encoded_length = state_dict["error_encoded_length"]

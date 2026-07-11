@@ -52,7 +52,9 @@ from experiments.utils.io import (
 from experiments.utils.system_factory import (
     make_baseline,
     make_clients,
+    make_discop,
     make_litreview,
+    make_meteor,
     make_story,
     make_topicqa,
 )
@@ -794,17 +796,155 @@ def generate_baseline(
 
 
 # ---------------------------------------------------------------------------
+# Token-level baselines (Meteor, Discop) — in-house comparison systems
+# ---------------------------------------------------------------------------
+
+
+def generate_baseline_lm(
+    client,
+    system_name: str,
+    prompts: list[dict],
+    messages: dict,
+    output_dir: Path,
+    stego_only: bool = False,
+):
+    """Generate Meteor/Discop texts: 1 S + 1 C1 + 1 C2 per prompt.
+
+    These token-level baselines encode over a local GPT-2 (no API call for
+    S/C1); the prompt ``seed`` doubles as the LM generation context and is saved
+    in ``system_state['context']`` so Phase 4 can re-run decoding. C2 is a
+    length-matched GPT-4.1 continuation of the same context (the prompted-cover
+    analog for a raw continuation channel).
+    """
+    if system_name == "meteor":
+        system = make_meteor()
+    elif system_name == "discop":
+        system = make_discop()
+    else:
+        raise ValueError(f"generate_baseline_lm: unknown system {system_name!r}")
+
+    paths = _out_paths(output_dir, system_name)
+    completed, records_map = _load_checkpoint(paths)
+
+    stego_msgs = messages["stego_messages"]
+    c1_msgs = messages["c1_messages"]
+    n_prompts = len(prompts)
+
+    log.info(f"{system_name}: {n_prompts} prompts, {len(completed)} records already done")
+
+    for p_idx, prompt_data in enumerate(prompts):
+        seed = prompt_data["seed"]
+        log.info(f"{system_name} prompt {p_idx + 1}/{n_prompts}: {seed[:60]}...")
+
+        # --- Stego text (S) ---
+        s_rid = make_record_id(system_name, "stego", p_idx)
+        if s_rid in completed:
+            stego_record = records_map[s_rid]
+            log.info(f"  Skip {s_rid} (exists)")
+        else:
+            msg_bits = stego_msgs[p_idx]
+            text = system.hide_message(msg_bits, seed)
+            stego_record = _make_record(
+                record_id=s_rid,
+                system=system_name,
+                text_type="stego",
+                prompt_idx=p_idx,
+                prompt=seed,
+                text=text,
+                message_bits=msg_bits,
+                system_state={
+                    "context": system._context,
+                    "error_encoded_length": system._error_encoded_length,
+                },
+                metadata=system._last_metadata,
+            )
+            append_jsonl(paths["stego"], stego_record)
+            records_map[s_rid] = stego_record
+            completed.add(s_rid)
+            log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
+
+        if stego_only:
+            continue
+
+        # --- Same-pipeline cover (C1) ---
+        c1_rid = make_record_id(system_name, "cover_c1", p_idx)
+        if c1_rid not in completed:
+            c1_bits = c1_msgs[p_idx]
+            c1_text = system.hide_message(c1_bits, seed)
+            c1_record = _make_record(
+                record_id=c1_rid,
+                system=system_name,
+                text_type="cover_c1",
+                prompt_idx=p_idx,
+                prompt=seed,
+                text=c1_text,
+                message_bits=c1_bits,
+                system_state={
+                    "context": system._context,
+                    "error_encoded_length": system._error_encoded_length,
+                },
+                metadata=system._last_metadata,
+                paired_stego_id=s_rid,
+            )
+            append_jsonl(paths["cover_c1"], c1_record)
+            completed.add(c1_rid)
+            log.info(f"  Generated {c1_rid} ({c1_record['word_count']} words)")
+        else:
+            log.info(f"  Skip {c1_rid} (exists)")
+
+        # --- Prompted cover (C2); length target from stego ---
+        c2_rid = make_record_id(system_name, "cover_c2", p_idx)
+        if c2_rid not in completed:
+            target_words = round_words(stego_record["word_count"])
+            c2_prompt = (
+                f"Continue the following text naturally as cohesive flowing prose "
+                f"for approximately {target_words} words. Do not use bullet points, "
+                f"numbered lists, or section headers.\n\n{seed}"
+            )
+            c2_text = _direct_gpt_call(client, c2_prompt)
+            c2_record = _make_record(
+                record_id=c2_rid,
+                system=system_name,
+                text_type="cover_c2",
+                prompt_idx=p_idx,
+                prompt=seed,
+                text=c2_text,
+                message_bits=None,
+                system_state=None,
+                metadata=None,
+                length_target=target_words,
+                paired_stego_id=s_rid,
+            )
+            append_jsonl(paths["cover_c2"], c2_record)
+            completed.add(c2_rid)
+            log.info(
+                f"  Generated {c2_rid} ({c2_record['word_count']} words, target={target_words})"
+            )
+        else:
+            log.info(f"  Skip {c2_rid} (exists)")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
+
+# Token-level baselines run outside the default "all" set; invoke them
+# explicitly (they use a local GPT-2 and their own capacity/messages).
+BASELINE_LM_SYSTEMS = ("meteor", "discop")
+BASELINE_LM_DEFAULT_CAPACITY = 16
 
 
 def main():
     parser = argparse.ArgumentParser(description="Phase 1: Text Generation")
     parser.add_argument(
         "--system",
-        choices=["topicqa", "story", "litreview", "baseline", "all"],
+        choices=["topicqa", "story", "litreview", "baseline", "meteor", "discop", "all"],
         default="all",
-        help="Which system(s) to generate texts for",
+        help=(
+            "Which system(s) to generate texts for. 'meteor'/'discop' are the "
+            "in-house token-level baselines and are not included in 'all'."
+        ),
     )
     parser.add_argument(
         "--data-dir",
@@ -869,6 +1009,16 @@ def main():
         help="TopicQA only: group size (power of 2). Bits per group = log2(group_size).",
     )
     args = parser.parse_args()
+
+    # Token-level baselines default to a native payload if none is given, so
+    # their messages come from the inline-capacity path (they have no entry in
+    # the shared messages.json).
+    if args.system in BASELINE_LM_SYSTEMS and args.capacity is None:
+        args.capacity = BASELINE_LM_DEFAULT_CAPACITY
+        log.info(
+            f"{args.system}: no --capacity given, defaulting to "
+            f"{BASELINE_LM_DEFAULT_CAPACITY}-bit payload"
+        )
 
     # --- Capacity handling: requires a specific system; auto-subdir; inline messages ---
     if args.capacity is not None:
@@ -1009,6 +1159,20 @@ def main():
             client,
             prompts,
             all_messages["baseline"],
+            output_dir,
+            stego_only=args.stego_only,
+        )
+
+    if args.system in BASELINE_LM_SYSTEMS:
+        with open(prompts_dir / f"{args.system}_prompts.json") as f:
+            prompts = json.load(f)["prompts"]
+        if args.limit is not None:
+            prompts = prompts[: args.limit]
+        generate_baseline_lm(
+            client,
+            args.system,
+            prompts,
+            all_messages[args.system],
             output_dir,
             stego_only=args.stego_only,
         )

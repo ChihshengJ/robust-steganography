@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Chihsheng Jin
+Copyright (c) 2026 Zhisheng Jin, William Walden, William Jurayj
 Portions Copyright (c) 2024-2025 Neil Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
