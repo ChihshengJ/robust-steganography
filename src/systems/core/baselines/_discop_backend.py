@@ -144,8 +144,20 @@ def decode_step(indices, probs, stego_t):
 
 
 def _limit_past(past):
+    """Crop the KV cache so GPT-2's cache-derived position ids stay under 1024.
+
+    See _meteor_backend.limit_past — the cache layout differs across transformers
+    versions, and handling only one makes this a no-op that fails at IndexError
+    once a generation exceeds the positional limit.
+    """
     if past is None:
         return None
+    if hasattr(past, "layers"):
+        if past.get_seq_length() > MAX_CONTEXT_LENGTH:
+            for layer in past.layers:
+                layer.keys = layer.keys[:, :, -MAX_CONTEXT_LENGTH:, :]
+                layer.values = layer.values[:, :, -MAX_CONTEXT_LENGTH:, :]
+        return past
     if hasattr(past, "get_seq_length"):
         if past.get_seq_length() > MAX_CONTEXT_LENGTH and hasattr(past, "key_cache"):
             for i in range(len(past.key_cache)):

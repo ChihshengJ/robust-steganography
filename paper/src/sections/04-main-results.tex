@@ -1,0 +1,24 @@
+In our first set of experiments, we assess how effectively hidden messages (\msg) can be recovered (decoded) by the recipient for each scheme under the attack types discussed above (\S\ref{subsec:attacks}).
+% We used NumPy's default RNG to generated 600 random bit-strings for each system, 300 for the stegotexts and 300 for the Type-1 covertexts, which results to a dataset fully balanced for inter-system comparisons and inter-text comparisons. For the Topic Q\&A system and the Creative Story system, we prompted GPT 4.1 (temperature set at 0.9) to generate 300 distinct general questions and 300 story premises with the prompts shown in the Appendix. Then, we randomly generate the bit strings for each prompt per text type per system. Since Type-2 covertexts do not need the bit strings, we first draw the bit string for the stegotexts, then for Type-1 covertexts. This configuration ensures that the secret message for Type-1 covertexts are independently drawn from the same distribution as the ones for the stegotexts, and that the 300 distinct setups for each system ensures that the effect of the seed is minimized.
+\paragraph{Data} We randomly generate 30 hidden messages per task/scheme, per message length ($\lvert\mathbf{h}\rvert$), and use these to generate 30 corresponding stegotexts. For \qa, we vary $\lvert\mathbf{h}\rvert \in {6,8,10}$; for \lr and \sg, we vary $\lvert\mathbf{h}\rvert \in {14,16,18}$.\footnote{The largest message lengths for each task is chosen from a capacity sweep on an initial dry-run (3 secret message per scheme, 2 stegotexts per secret message, and 5 attack-decode trials per stegotext). \qa has ${\sim}$100\% perfect recovery rate at 10 bits, \sg at 18 bits, and \lr at 18 bits.}.
+We report bitwise and perfect message recovery accuracy over each group of 30 stegotexts.
+
+\paragraph{Models} We use Qwen3.5 4B to generate $\mathbf{u}$ and GPT-4.1 to generate $\mathbf{s}$ and to carry out all attacks.\footnote{\autoref{app:implementation-details} has further model details.}
+
+\paragraph{Results} \autoref{fig:recovery-results} reports message recovery rates under the three attack types (\S\ref{subsec:attacks}). For \llmp, we present both the local ($p=0.5$) and global variants; for \syn, we present local only ($p=0.5$); and for \rtt we present global only.
+
+We find that all three schemes are relatively robust to our attacks. Notably, bitwise accuracy on \sg and \qa is nearly perfect up through the maximum message length for each task. Bitwise results for \lr are comparably impressive under \rtt and \llmp local, with somewhat reduced but still strong results under the other two attacks (${\sim}80\%$).
+
+For \qa, perfect recovery rates remain close to 1.0 under all attacks for 6- and 8-bit messages, though with somewhat diminished performance at 10-bit messages (${\sim}60\%$--$80\%$, depending on the attack).
+
+For both global attacks, \lr shows very strong perfect recovery performance at 14-bit messages (${\sim}60\%$--$80\%$), with modest monotonic drops as we increment to 18 bits. \syn
+proves to be surprisingly effective, with perfect recovery dropping to ${\sim}20\%$--$35\%$ at 18-bit messages. Upon investigation, though, \syn makes many \emph{non-}meaning preserving changes on \lr, e.g., randomly swapping tokens like "\textit{a}" with "\textit{angstrom}" and "\textit{al}" (in \emph{et al.}) with "\textit{aluminum}", which severely impacts downstream LLM citation parsing.
+
+\sg shows relatively consistent perfect recovery performance, with recovery rates declining only slightly from 14-bit to 18-bit messages.
+
+Lastly, we note that none of these results rely on error-correcting codes (ECCs), which would likely improve perfect recovery rates across the board.
+
+% \subsection{Main Results}
+% \label{subsec:main-results}
+% This is where we'll present bitwise and perfect recovery rates for messages of different lengths across all three tasks. We can fix the ECC settings independently for each experiment and justify these settings in the appendix. Results for all tasks should be presented together in a single table or figure. Optional sample efficiency results can either go in the appendix or can be included as a third subsection in this section.
+% We present the perfect recovery rate per stegotext, per run, and bit-wise recovery rate for each system encoding different lengths of ciphertexts under different attacks. The goal of showing the robustness of each scheme with different capacity (ciphertext length) is not to compare them, but to showcase the tendency where their robustness decreases when the capacity increases.

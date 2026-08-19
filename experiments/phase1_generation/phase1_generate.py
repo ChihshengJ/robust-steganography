@@ -799,6 +799,97 @@ def generate_baseline(
 # Token-level baselines (Meteor, Discop) — in-house comparison systems
 # ---------------------------------------------------------------------------
 
+# Mean stego length of the semantic systems at the capacities they are compared
+# at (story 559-579w, litreview 576-622w across cap14-18). Length-matched
+# Meteor/Discop runs target this so both sides hand the attacker a comparable
+# cover, instead of the 3-4 word fragment the baselines emit at their native rate.
+BASELINE_LM_TARGET_WORDS = 575
+
+# GPT-2's positional limit. Stego texts past this are truncated by the backends
+# (_meteor_backend.MAX_CONTEXT_LENGTH; discop's tokenizer truncation), which
+# would drop payload without erroring.
+GPT2_CONTEXT_LIMIT = 1024
+
+
+def _make_baseline_lm(system_name: str, repetitions: int, target_words: int):
+    """Build a Meteor/Discop system at a given repetition rate.
+
+    Discop's token cap is sized from the word target (GPT-2 runs ~1.4 tokens per
+    word) and clamped to the model's 1024-token positional limit.
+    """
+    if system_name == "meteor":
+        return make_meteor(repetitions=repetitions)
+    if system_name == "discop":
+        max_length = min(GPT2_CONTEXT_LIMIT, int(target_words * 1.7) + 64)
+        return make_discop(repetitions=repetitions, max_length=max_length)
+    raise ValueError(f"unknown token-level baseline {system_name!r}")
+
+
+def _warn_if_truncated(record_id: str, record: dict) -> None:
+    """Flag stego texts that hit GPT-2's positional limit.
+
+    A text at the limit has been cut off mid-payload, so its trailing bits were
+    never emitted and no attack is needed to lose them — that record would report
+    a recovery failure that has nothing to do with robustness.
+    """
+    n_tokens = (record.get("metadata") or {}).get("n_tokens")
+    if n_tokens is not None and n_tokens >= GPT2_CONTEXT_LIMIT - 8:
+        log.warning(
+            f"  {record_id}: {n_tokens} tokens, at GPT-2's {GPT2_CONTEXT_LIMIT}-token limit — "
+            f"payload likely truncated. Lower --target-words."
+        )
+
+
+def calibrate_repetitions(
+    system_name: str,
+    capacity: int,
+    target_words: int,
+    prompts: list[dict],
+    n_pilot: int = 5,
+    max_rounds: int = 3,
+) -> int:
+    """Pick the repetition rate whose mean stego length hits `target_words`.
+
+    Meteor/Discop emit ~5 bits/word natively, so a 16-bit payload lands in a
+    3-4 word fragment — far too short for a paraphrase attack to be a meaningful
+    operation on it. Inflating the payload with a repetition code is what buys a
+    cover of comparable length to the semantic systems while holding the *message*
+    fixed, so the baseline is handed both the same payload and the same cover
+    budget rather than a degenerate one.
+
+    Bits/word is not perfectly flat in length, so this re-measures at the
+    estimated rate and refines, rather than extrapolating once from r=1.
+    """
+    rng = np.random.default_rng(1234 + capacity)
+    pilot = prompts[:n_pilot]
+    r = 1
+    for round_idx in range(max_rounds):
+        system = _make_baseline_lm(system_name, r, target_words)
+        words = []
+        for p in pilot:
+            bits = rng.integers(0, 2, size=capacity).tolist()
+            words.append(len(system.hide_message(bits, p["seed"]).split()))
+        mean_words = sum(words) / len(words)
+        bits_per_word = (capacity * r) / mean_words
+        next_r = max(1, round(target_words * bits_per_word / capacity))
+        log.info(
+            f"  calibration round {round_idx + 1}: r={r} -> {mean_words:.0f} words "
+            f"({bits_per_word:.2f} bits/word), target={target_words} => r={next_r}"
+        )
+        if next_r == r:
+            break
+        r = next_r
+
+    est_tokens = target_words * 1.4
+    if est_tokens > GPT2_CONTEXT_LIMIT * 0.9:
+        log.warning(
+            f"  target_words={target_words} implies ~{est_tokens:.0f} GPT-2 tokens, close to the "
+            f"{GPT2_CONTEXT_LIMIT}-token positional limit; stego texts that overrun it get "
+            f"truncated and will silently lose payload. Lower --target-words."
+        )
+    log.info(f"{system_name}: calibrated repetitions r={r} for ~{target_words} words")
+    return r
+
 
 def generate_baseline_lm(
     client,
@@ -807,6 +898,8 @@ def generate_baseline_lm(
     messages: dict,
     output_dir: Path,
     stego_only: bool = False,
+    repetitions: int = 1,
+    target_words: int = BASELINE_LM_TARGET_WORDS,
 ):
     """Generate Meteor/Discop texts: 1 S + 1 C1 + 1 C2 per prompt.
 
@@ -815,13 +908,12 @@ def generate_baseline_lm(
     in ``system_state['context']`` so Phase 4 can re-run decoding. C2 is a
     length-matched GPT-4.1 continuation of the same context (the prompted-cover
     analog for a raw continuation channel).
+
+    ``repetitions`` is the repetition-code rate (see `calibrate_repetitions`). It
+    is written to ``system_state`` because the decode-side system is built at the
+    factory default and has to be restored to the rate the record was encoded at.
     """
-    if system_name == "meteor":
-        system = make_meteor()
-    elif system_name == "discop":
-        system = make_discop()
-    else:
-        raise ValueError(f"generate_baseline_lm: unknown system {system_name!r}")
+    system = _make_baseline_lm(system_name, repetitions, target_words)
 
     paths = _out_paths(output_dir, system_name)
     completed, records_map = _load_checkpoint(paths)
@@ -855,12 +947,14 @@ def generate_baseline_lm(
                 system_state={
                     "context": system._context,
                     "error_encoded_length": system._error_encoded_length,
+                    "repetitions": repetitions,
                 },
                 metadata=system._last_metadata,
             )
             append_jsonl(paths["stego"], stego_record)
             records_map[s_rid] = stego_record
             completed.add(s_rid)
+            _warn_if_truncated(s_rid, stego_record)
             log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
 
         if stego_only:
@@ -882,6 +976,7 @@ def generate_baseline_lm(
                 system_state={
                     "context": system._context,
                     "error_encoded_length": system._error_encoded_length,
+                    "repetitions": repetitions,
                 },
                 metadata=system._last_metadata,
                 paired_stego_id=s_rid,
@@ -1008,6 +1103,37 @@ def main():
         default=2,
         help="TopicQA only: group size (power of 2). Bits per group = log2(group_size).",
     )
+    parser.add_argument(
+        "--length-matched",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Meteor/Discop only (default: on). Inflate the payload with a repetition code "
+            "so the stego text reaches --target-words, matching the semantic systems' cover "
+            "length at the same payload. At the native rate these systems emit 3-4 word "
+            "fragments, which no paraphrase attack can meaningfully act on. "
+            "--no-length-matched reproduces the native-rate reference condition."
+        ),
+    )
+    parser.add_argument(
+        "--target-words",
+        type=int,
+        default=BASELINE_LM_TARGET_WORDS,
+        help=(
+            f"Length-matched target stego length (default: {BASELINE_LM_TARGET_WORDS}, the "
+            "mean of the semantic systems at cap14-18). Auto-sets --subdir to "
+            "'{system}_cap{N}_len{T}'."
+        ),
+    )
+    parser.add_argument(
+        "--repetitions",
+        type=int,
+        default=None,
+        help=(
+            "Length-matched repetition rate. Skips calibration when set; otherwise the rate "
+            "is measured from a 5-prompt pilot against --target-words."
+        ),
+    )
     args = parser.parse_args()
 
     # Token-level baselines default to a native payload if none is given, so
@@ -1028,6 +1154,11 @@ def main():
             )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"
+            # Length-matched baseline runs get their own dir so they sit alongside
+            # the native-rate ones rather than overwriting them — the two are
+            # different experimental conditions and the paper reports both.
+            if args.system in BASELINE_LM_SYSTEMS and args.length_matched:
+                args.subdir += f"_len{args.target_words}"
             log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")
 
     prompts_dir = args.data_dir / "prompts"
@@ -1168,6 +1299,24 @@ def main():
             prompts = json.load(f)["prompts"]
         if args.limit is not None:
             prompts = prompts[: args.limit]
+
+        repetitions = 1
+        if args.length_matched:
+            repetitions = args.repetitions or calibrate_repetitions(
+                args.system, args.capacity, args.target_words, prompts
+            )
+            log.info(
+                f"{args.system}: length-matched at r={repetitions} "
+                f"(~{args.target_words} words, {args.capacity}-bit payload)"
+            )
+        else:
+            log.warning(
+                f"{args.system}: --no-length-matched — running at the native rate, which "
+                f"yields 3-4 word stego texts at {args.capacity} bits. Paraphrase attacks on "
+                f"texts that short are not a meaningful operation; this is a reference "
+                f"condition, not the headline comparison."
+            )
+
         generate_baseline_lm(
             client,
             args.system,
@@ -1175,6 +1324,8 @@ def main():
             all_messages[args.system],
             output_dir,
             stego_only=args.stego_only,
+            repetitions=repetitions,
+            target_words=args.target_words,
         )
 
     log.info("Phase 1 generation complete.")

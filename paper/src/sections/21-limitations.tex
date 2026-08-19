@@ -1,0 +1,13 @@
+Our work has several limitations.
+
+First, we note the lack of baselines in our work. This is because prior methods are \emph{a priori} vulnerable to global paraphrases, and thus it would be largely pointless to compare against them on the global attacks presented here.
+
+Second, although our steganalysis covers two semantically informed classifiers---including one based on a cutting-edge embedding model---it is conceivable that better classification accuracy could be achieved through other means.
+
+Finally, some implementation details (e.g., prompts) required careful tuning to produce the expected behavior, suggesting that iteration may be required when adapting our approach to new domains and datasets.
+
+%As our work chiefly represents an extension of \citet{perry2025robust}, it inherits some of the limitations of the method proposed in that work.
+
+%Most notably, in order to achieve reasonable sample efficiency with LSH, one generally must sample from a semantically high-entropy channel. While the tasks studied in this work permit such high-entropy sampling (e.g.\ the range of possible next events in the story generation task is consistently broad), this is hardly the case for all settings in which one might want to pursue steganographic communication. For instance, the semantic constraints imposed by machine translation---the need for the text in the target language to preserve the meaning of the text in the source language---means that the range of possible statements one may generate at any given point in the output will generally be very limited. In such settings, steganographic encoding may be rendered practically infeasible.
+
+% Our work showcases that by utilizing LLMs, text steganography robustness against extreme attacks can be achieved by finding channels where the entropy remains relative high even when human language exhibits low entropy as an encoding system. However, 

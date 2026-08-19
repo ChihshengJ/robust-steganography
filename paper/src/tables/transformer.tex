@@ -1,0 +1,33 @@
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{llcc}
+\toprule
+System & Comparison & Accuracy & AUC \\
+\midrule
+\multicolumn{4}{l}{\textit{S vs C1 (same-pipeline cover)}} \\
+TopicQA   & S vs C1 & $0.490 \pm 0.024$ & $0.355 \pm 0.059$ \\
+StorySlot & S vs C1 & $0.480 \pm 0.015$ & $0.401 \pm 0.052$ \\
+LitReview & S vs C1 & $0.493 \pm 0.010$ & $0.365 \pm 0.037$ \\
+\midrule
+\multicolumn{4}{l}{\textit{S vs C2 (prompted cover, length-matched)}} \\
+TopicQA   & S vs C2 & $0.882 \pm 0.101$ & $0.945 \pm 0.060$ \\
+StorySlot & S vs C2 & $0.972 \pm 0.012$ & $0.996 \pm 0.002$ \\
+LitReview & S vs C2 & $0.825 \pm 0.041$ & $0.902 \pm 0.037$ \\
+\midrule
+\multicolumn{4}{l}{\textit{S vs C3 (harder cover, StorySlot only)}} \\
+StorySlot & S vs C3 & $0.698 \pm 0.050$ & $0.748 \pm 0.056$ \\
+\bottomrule
+\end{tabular}
+\caption{Fine-tuned DistilBERT-base binary classifier, 5-fold stratified CV.
+S vs C1 is a clean null across systems (accuracy at 50\%, AUC below chance
+indicating folds with inverted predictions on a non-existent signal). S vs
+C2 is highly detectable for all three systems --- the classifier picks up
+on length-matched prompted-cover artifacts (formatting, register), not on
+the steganographic channel itself. S vs C3 (a harder, distribution-matched
+cover available only for StorySlot) reduces detectability substantially
+($0.97 \to 0.70$), supporting the C2 artifact interpretation. C3 was not
+constructed for TopicQA or LitReview in this batch.}
+\label{tab:steg-transformer}
+\end{table}

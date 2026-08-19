@@ -1,0 +1,53 @@
+\begin{table}
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{llccc}
+\toprule
+Attack & $p$ & BERTScore F1 & BLEU & TER \\
+\midrule
+\multicolumn{5}{l}{\textbf{Long-From Q\&A}} \\
+Synonym                 & 0.2 & 0.951 & 71.2 & 13.2 \\
+Synonym                 & 0.5 & 0.893 & 36.5 & 34.2 \\
+Synonym                 & 1.0 & 0.802 &  4.2 & 68.0 \\
+Local paraphrase        & 0.2 & 0.983 & 82.8 & 16.2 \\
+Local paraphrase        & 0.5 & 0.958 & 55.4 & 42.8 \\
+Local paraphrase        & 1.0 & 0.922 &  7.0 & 86.6 \\
+Local translation  & 0.2 & 0.992 & 91.8 &  5.4 \\
+Local translation  & 0.5 & 0.982 & 79.5 & 13.9 \\
+Local translation  & 1.0 & 0.967 & 60.5 & 27.2 \\
+Global paraphrase       & 1.0 & 0.905 & 11.5 & 88.3 \\
+Global translation & 1.0 & 0.977 & 66.4 & 22.9 \\
+\midrule
+\multicolumn{5}{l}{\textbf{Story Generation}} \\
+Synonym                 & 0.2 & 0.948 & 73.0 & 12.8 \\
+Synonym                 & 0.5 & 0.894 & 40.1 & 32.9 \\
+Synonym                 & 1.0 & 0.810 &  6.4 & 64.8 \\
+Local paraphrase        & 0.2 & 0.979 & 82.2 & 16.4 \\
+Local paraphrase        & 0.5 & 0.949 & 55.2 & 43.6 \\
+Local paraphrase        & 1.0 & 0.910 &  9.9 & 87.1 \\
+Local translation       & 0.2 & 0.986 & 89.5 & 7.32 \\
+Local translation       & 0.5 & 0.971 & 74.4 & 18.4 \\
+Local translation       & 1.0 & 0.950 & 51.5 & 35.7\\
+Global paraphrase       & 1.0 & 0.888 & 18.7 & 88.9 \\
+Global translation      & 1.0 & 0.967 & 63.0 & 26.4 \\
+\midrule
+\multicolumn{5}{l}{\textbf{Literature Review}} \\
+Synonym                 & 0.2 & 0.960 & 75.8 & 11.7 \\
+Synonym                 & 0.5 & 0.918 & 47.4 & 28.9 \\
+Synonym                 & 1.0 & 0.840 & 16.9 & 57.9 \\
+Local paraphrase        & 0.2 & 0.980 & 82.3 & 17.1 \\
+Local paraphrase        & 0.5 & 0.960 & 61.8 & 37.7 \\
+Local paraphrase        & 1.0 & 0.923 & 19.3 & 81.2 \\
+Local translation       & 0.2 & 0.991 & 92.6 &  5.5 \\
+Local translation       & 0.5 & 0.979 & 81.1 & 14.4 \\
+Local translation       & 1.0 & 0.962 & 63.9 & 28.1 \\
+Global paraphrase       & 1.0 & 0.912 & 33.8 & 83.7 \\
+Global translation      & 1.0 & 0.982 & 77.6 & 15.9 \\
+\bottomrule
+\end{tabular}
+\caption{Attack severity metrics on a subset of the steganalysis dataset
+(\qa 6\,bits, \sg 18\,bits, \lr 20\,bits). Each row aggregates 30 stegotexts with 3 runs per stochastic attack ($n{=}90$); only one run ($n{=}30$) is used for \syn attack as it is deterministic within runs.}
+\label{tab:attack-metrics}
+\end{table}

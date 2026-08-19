@@ -1,0 +1,17 @@
+% It's fairly common for short papers to fold the discussion of related work into the intro. We can maybe do that to some extent, but there's a lot of context at least on \citet{perry2025robust} that we'll need to have in a dedicated background section.
+% \paragraph{Text Steganography with LLMs} 
+% From the theory side: \citet{kaptchuk2021meteor,wu2024generative,zamir2024undetectable,perry2025robust}
+
+% From the AI/NLP side: \citet{bai2024semantic, hou-etal-2024-semstamp, hou-etal-2024-k, mathew2024hidden,motwani2024secret,li2025black}
+
+% Some AI safety researchers have expressed concern that LLMs could spontaneously \emph{learn} to reason or communicate steganographically under certain conditions. 
+
+% In CoT specifically: \citet{lanham2023measuring, roger2023preventing,skaf2025large}
+
+% There are various other studies beyond these, but the above works represent a good starting point.
+
+% \paragraph{Paraphrase-Robust Text Steganography} Several works have proposed methods for text steganography that are robust to \emph{local} (sentence-level) paraphrasing. A core feature of most of these methods is the use of \emph{locality sensitive hashing} (LSH) to pa
+
+Large language models (LLMs) have recently been shown to be useful for text steganography, as the speed and fidelity with which they can generate natural language text makes them attractive steganographic tools \citep{kaptchuk2021meteor,zamir2024undetectable,wu2024generative,perry2025robust}. However, many na\"ive schemes that rely on surface forms are vulnerable to paraphrase attacks. To address this, \citet{perry2025robust} develop LLM-based steganographic schemes that use semantic embeddings and locality-sensitive hashing to improve robustness to \emph{local} paraphrastic edits, while \citet{bai2024semantic} encode information through semantic entities selected from a structured semantic space. Related work on semantic watermarking likewise uses sentence-level semantic structure to preserve detectable signals under paraphrasing \cite{hou-etal-2024-semstamp, hou-etal-2024-k}.
+
+In contrast to prior schemes based on form-related features or embedding-defined semantic regions, we construct symmetric-key schemes where bits are encoded via task-specific semantic units, and demonstrate their robustness to both local \emph{and} global paraphrasing of the resulting stegotexts.

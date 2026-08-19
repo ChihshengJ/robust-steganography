@@ -95,9 +95,24 @@ class TokenizerWrapper:
 
 
 def limit_past(past):
-    """Crop the KV cache to MAX_CONTEXT_LENGTH (handles DynamicCache + tuples)."""
+    """Crop the KV cache to MAX_CONTEXT_LENGTH (handles DynamicCache + tuples).
+
+    GPT-2 derives position ids from the cache length, so an uncropped cache walks
+    the positions past the 1024-entry embedding table and raises IndexError. The
+    cache layout has moved twice across transformers versions; all three are
+    handled here because missing the right one makes this a silent no-op that only
+    fails once a generation actually gets long (>1024 tokens).
+    """
     if past is None:
         return None
+    # transformers >= ~4.54: DynamicCache holds per-layer objects with .keys/.values
+    if hasattr(past, "layers"):
+        if past.get_seq_length() > MAX_CONTEXT_LENGTH:
+            for layer in past.layers:
+                layer.keys = layer.keys[:, :, -MAX_CONTEXT_LENGTH:, :]
+                layer.values = layer.values[:, :, -MAX_CONTEXT_LENGTH:, :]
+        return past
+    # older DynamicCache: parallel key_cache/value_cache lists
     if hasattr(past, "get_seq_length"):
         if past.get_seq_length() > MAX_CONTEXT_LENGTH and hasattr(past, "key_cache"):
             for i in range(len(past.key_cache)):

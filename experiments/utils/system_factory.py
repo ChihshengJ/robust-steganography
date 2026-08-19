@@ -123,11 +123,22 @@ _METEOR_LM_CACHE: dict[str, MeteorLM] = {}
 _DISCOP_LM_CACHE: dict[str, DiscopLM] = {}
 
 
-def make_meteor(model_name: str | None = None, key: str = "default") -> MeteorSystem:
+def make_meteor(
+    model_name: str | None = None,
+    key: str = "default",
+    repetitions: int = 1,
+) -> MeteorSystem:
     """Meteor (Kaptchuk et al., CCS 2021) token-level baseline over local GPT-2.
 
     In-house baseline only. `key` is the shared symmetric passphrase; the seed
     context is supplied per-message via `hide_message(seed=...)`.
+
+    `repetitions` sets the repetition-code rate. At r=1 the system runs at its
+    native ~5 bits/word, which yields 3-4 word stego texts at the payloads the
+    semantic systems use — too short for a paraphrase attack to be meaningful.
+    Length-matched runs raise r so the same payload fills a cover comparable in
+    length to the semantic systems' (~575 words); see phase1_generate's
+    --length-matched.
     """
     model_name = model_name or BASELINE_MODEL
     lm = _METEOR_LM_CACHE.get(model_name)
@@ -136,17 +147,26 @@ def make_meteor(model_name: str | None = None, key: str = "default") -> MeteorSy
         _METEOR_LM_CACHE[model_name] = lm
     return MeteorSystem(
         lm,
-        error_correction=RepetitionCode(1),
+        error_correction=RepetitionCode(repetitions),
         encoder=BypassEncoder(),
         key=key,
     )
 
 
-def make_discop(model_name: str | None = None, key: str = "default") -> DiscopSystem:
+def make_discop(
+    model_name: str | None = None,
+    key: str = "default",
+    repetitions: int = 1,
+    max_length: int = 512,
+) -> DiscopSystem:
     """Discop (Ding et al., S&P 2023) token-level baseline over local GPT-2.
 
     In-house baseline only. `key` is the shared symmetric passphrase (Discop's
     sampling seed); the context is supplied per-message via `hide_message`.
+
+    `repetitions` behaves as in `make_meteor`. `max_length` caps generated
+    tokens and must be raised alongside it — the 512 default truncates well
+    below a 575-word length-matched cover, which would silently drop payload.
     """
     model_name = model_name or BASELINE_MODEL
     lm = _DISCOP_LM_CACHE.get(model_name)
@@ -155,9 +175,10 @@ def make_discop(model_name: str | None = None, key: str = "default") -> DiscopSy
         _DISCOP_LM_CACHE[model_name] = lm
     return DiscopSystem(
         lm,
-        error_correction=RepetitionCode(1),
+        error_correction=RepetitionCode(repetitions),
         encoder=BypassEncoder(),
         key=key,
+        max_length=max_length,
     )
 
 
@@ -192,3 +213,8 @@ def restore_system_state(system, state_dict: dict) -> None:
         system._context = state_dict["context"]
     if "error_encoded_length" in state_dict:
         system._error_encoded_length = state_dict["error_encoded_length"]
+    if "repetitions" in state_dict:
+        # Length-matched Meteor/Discop encode at r > 1. The factory builds the
+        # decode-side system at its default rate, so the record's rate has to
+        # win here or RepetitionCode.decode would fold the wrong block size.
+        system.ecc = RepetitionCode(int(state_dict["repetitions"]))

@@ -1,0 +1,18 @@
+\emph{Text steganography} is the practice of embedding hidden messages (\emph{ciphertexts}) within innocuous text passages (\emph{covertexts}) to yield encoded passages (\emph{stegotexts}), such that the stegotext distribution is indistinguishable from the covertext distribution. Text steganography has a long and storied history \citep{kahn1996history}, into which large language models (LLMs) have lately introduced an exciting new chapter, as the speed and fidelity with which they can generate natural language text makes them ideal steganographic tools \citep{kaptchuk2021meteor,zamir2024undetectable,wu2024generative,perry2025robust}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{figures/steg-paper-fig1.pdf}
+    \caption{We present robust \emph{semantic} steganographic schemes that encode hidden message bits as semantic \emph{units} (e.g., plot events) such that the message is recoverable even if the entire encoded text is paraphrased.}
+    \label{fig:fig1}
+\end{figure}
+
+Effective steganographic communication requires that stegotexts be robust to certain forms of corruption. At a minimum, this should include meaning-preserving transformations. Yet, prior methods are not resilient in this way: simple modifications like synonym substitution or sentence-level (\emph{local}) paraphrasing generally suffice to scramble the embedded message. While several works show robustness to some of these edits \citep{hou-etal-2024-semstamp, hou-etal-2024-k, perry2025robust}, \emph{none} is robust to basic (\emph{global}) paraphrasing of the full stegotext. Our work aims to remedy this. Concretely, we:
+\begin{enumerate}[itemsep=0pt, parsep=0pt]
+    \item Present a general symmetric key method for \emph{semantic} steganography that is robust to global paraphrasing.
+    \item Instantiate this method for three NLP tasks, empirically demonstrating its robustness under several meaning-preserving attacks.
+    \item Conduct steganalysis on these schemes to demonstrate the practical indistinguishability of the covertexts and generated stegotexts.
+\end{enumerate}
+
+% A couple of works have gestured toward steganography techniques that are robust to paraphrasing. \citet{hou-etal-2024-semstamp}...\citet{hou-etal-2024-k}...
+

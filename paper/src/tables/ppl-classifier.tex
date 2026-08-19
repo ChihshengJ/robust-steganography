@@ -1,0 +1,24 @@
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lcc}
+\toprule
+System & Accuracy & AUC \\
+\midrule
+\multicolumn{3}{l}{\textit{S vs Type 1}} \\
+\qa  & $0.500 \pm 0.035$ & $0.510 \pm 0.056$ \\
+\sg  & $0.487 \pm 0.018$ & $0.472 \pm 0.019$ \\
+\lr & $0.475 \pm 0.041$ & $0.479 \pm 0.065$ \\
+\midrule
+\multicolumn{3}{l}{\textit{S vs Type 2 (length matched)}} \\
+\qa    & $0.652 \pm 0.029$ & $0.716 \pm 0.041$ \\
+\sg & $0.665 \pm 0.024$ & $0.728 \pm 0.017$ \\
+\lr & $0.570 \pm 0.049$ & $0.589 \pm 0.048$ \\
+\bottomrule
+\end{tabular}
+\caption{Single-feature logistic regression on GPT-2 large perplexity.
+$N{=}300$ stego + $300$ cover per row; mean $\pm$ std across 5 stratified CV
+folds.}
+\label{tab:perplexity-classifier}
+\end{table}

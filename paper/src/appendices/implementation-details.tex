@@ -1,0 +1,247 @@
+\subsection{Model Details}
+We use a quantized version of Qwen3.5 4B. (\texttt{Qwen3.5-4B-UD-Q8\_K\_XL}), provided by Unsloth on Huggingface. The model is run on a M1 Pro Macbook using Llama.cpp with thinking disabled, pure CPU compute, no batching and parallel and temperature set to 0 to promote maximum determinism for the steganography systems, and reproducibility.
+
+For attacks, we used GPT-4.1 by default with temperature set at 0.7, which includes the translation in Round-Trip Translation attacks and the single-sentence paraphrase and global paraphrase in Paraphrase attacks.
+
+\subsection{Classifier Details}
+The embedding classifiers share the same MLP structure. It has 2 hidden layers, first with 256 dimensions and second with 64 dimensions. We use cross entropy loss, so the output layer produces probabilities for two classes. ReLU \cite{nair2010rectified} is used throughout as the activation function. For training, we set a static learning rate at 1e-3. We used Adam \cite{kingma2017adammethodstochasticoptimization} as the optimizer with weight decay set at 1e-4, patience set at 10, and batch set at 32.
+
+\subsection{Data Details}
+All synthetically generated data for the experiments in \S\ref{sec:main-results} and \S\ref{sec:steganalysis} will be released under an MIT License.
+
+We manually inspected the generated data for personally identifying information and offensive content and did not find any.
+
+\subsection{Prompts}
+
+\subsubsection{Long-Form Questions \& Answering}
+
+\begin{prompttable}{Topic generation}{tab:topic-gen-prompt}
+\begin{lstlisting}[style=promptstyle]
+Given the following question, list exactly {n} distinct non-overlapping aspects a comprehensive answer could address.
+Output ONLY a JSON array of short noun phrases (3-8 words each). No numbering, no explanation, no code block.
+Example Output: ["Personal Beliefs", "Financial Security", "Establishment Location", "Job Opportunities"]
+Question: {question}
+\end{lstlisting}
+\end{prompttable}
+
+\begin{prompttable}{Answer synthesis}{tab:ans-synth-prompt}
+\begin{lstlisting}[style=promptstyle]
+Answer the following question as natural, cohesive prose. Do not use bullet points, numbered lists, section headers, or bold text.
+Your answer must substantively cover each of these aspects: 
+{topics_str}
+Your answer must NOT mention or allude to any of these aspects:
+{forbidden_str}
+Question: {question}
+\end{lstlisting}
+\end{prompttable}
+
+\begin{prompttable}{Topic decoding}{tab:topic-dec-prompt}
+\begin{lstlisting}[style=promptstyle]
+Read this response to the question "{question}":
+---
+{response}
+---
+This response was written to cover several specific aspects of the question. Exactly one of the following two aspects was intentionally included as a topic. The other was not covered.
+Which one is specifically addressed in the response?
+{options}
+Reply with ONLY the letter ({letters}).
+\end{lstlisting}
+\end{prompttable}
+
+\subsubsection{Story Generation}
+
+\begin{prompttable}{Plot/slot Generation}{tab:plot-gen-prompt}
+\begin{lstlisting}[style=promptstyle]
+Given the following story premise, generate exactly {n} independent story beat slots.
+Each slot is one narrative event or detail in the story. For each slot, provide TWO alternative concrete details (A and B) that could fill that slot.
+
+Requirements:
+- Alternatives must be clearly distinguishable concrete objects, locations, methods, or actions (not abstract qualities)
+- Slot dimensions must focus on plot or setting choices (objects, locations, methods, events, physical descriptions). DO NOT make any slot dimension about a character's name, identity, role, or personal attributes. Character names should not appear in the A/B alternatives.
+- No two slots may share the same alternative details or describe the same narrative moment.
+- Alternatives must be interchangeable: picking A or B for one slot must not affect any other slot
+- Slots should follow a natural narrative order (setup -> rising action -> climax -> resolution)
+- Each alternative should be a short phrase (3-10 words)
+- Alternatives within a slot must be mutually exclusive and equally plausible
+
+Output ONLY a JSON array. No explanation. NO code block or markdown wrapping!!
+Example: [{{"slot": "Intel delivery method", "A": "a sealed envelope under the door", "B": "an encrypted flash drive"}}, {{"slot": "Weapon type discovered", "A": "a compact nuclear device", "B": "a nerve agent canister"}}]
+
+Story premise: {premise}
+\end{lstlisting}
+\end{prompttable}
+
+\begin{prompttable}{Story synthesis}{tab:story-synth-prompt}
+\begin{lstlisting}[style=promptstyle]
+Write a short story based on the following premise.
+Incorporate each of the specific details listed below naturally into the narrative.
+Every detail MUST appear clearly and unambiguously in the story text.
+Use flowing prose with natural pacing. Develop the story through concrete actions, physical detail, and brief dialogue only where it advances the plot. Vary paragraph length naturally.
+Premise: {premise}
+Details to include:
+{events_str}
+\end{lstlisting}
+\end{prompttable}
+
+\begin{prompttable}{Slot decoding}{tab:slot-dec-prompt}
+\begin{lstlisting}[style=promptstyle]
+Read this story carefully:
+---
+{story}
+---
+Story premise: "{premise}"
+For the narrative detail "{slot_desc}", which concrete version appears in the story?
+(A) {option_a}
+(B) {option_b}
+Reply with ONLY the letter (A or B).
+\end{lstlisting}
+\end{prompttable}
+
+\subsubsection{Literature Review}
+
+\begin{prompttable}{Citation Extraction}{tab:cite-ext-prompt}
+\begin{lstlisting}[style=promptstyle]
+You are given a literature review passage. Extract every referenced work as a (last_name, year) pair.
+Rules:
+1. For each reference mentioned, output the first author's last name and the publication year
+2. Handle ALL citation formats: "Smith et al. (2020)", "Smith and colleagues in 2020", "Smith and Jones (2020)", "the work of Smith in 2020", etc.
+3. Use only the FIRST author's last name -- ignore co-authors
+4. Each reference should appear exactly once even if cited multiple times
+5. Sort by (year ascending, then last name alphabetically)
+Output format: one pair per line as "LastName YEAR", nothing else.
+Example:
+Smith 2018
+Jones 2019
+Li 2020
+\end{lstlisting}
+\end{prompttable}
+
+\begin{prompttable}{Literature Review Generation}{tab:lt-gen-prompt}
+\begin{lstlisting}[style=promptstyle]
+You are writing the Related Work section of an academic paper.
+Paper: "{seed_title}"
+Abstract: {seed_abstract}
+Write a Related Work section that contextualizes this paper within the broader research landscape. Organize thematically, grouping related works by research direction or methodology across multiple paragraphs.
+Where works are closely related, discuss them together in the same sentence or passage rather than giving each its own isolated sentence. Include contextual sentences that provide background or transitions without citing specific papers.
+Some works may warrant more discussion than others depending on their relevance.
+Cite as "LastName (YEAR)" or "LastName et al. (YEAR)".
+All provided references must be cited.
+\end{lstlisting}
+\end{prompttable}
+
+\subsubsection{Attacks}
+
+\begin{prompttable}{Local paraphrase}{tab:lc-para-prompt}
+\begin{lstlisting}[style=promptstyle]
+You are a paraphrasing assistant.
+Rewrite the given sentence using completely different words and phrasing while preserving the exact meaning.
+Rules:
+1. Use synonyms and alternative expressions wherever possible
+2. Change the sentence structure (e.g., active to passive, reorder clauses)
+3. Preserve all factual information exactly - do not add, remove, or alter any details
+4. Maintain the same tone and register
+5. Output ONLY the paraphrased sentence with no explanation or commentary
+Example:
+Input: "The scientist discovered a new species in the rainforest."
+Output: "A previously unknown species was found by the researcher in the tropical jungle."
+\end{lstlisting}
+\end{prompttable}
+
+\begin{prompttable}{Global paraphrase}{tab:gl-para-prompt}
+\begin{lstlisting}[style=promptstyle]
+You are an expert paraphrasing assistant. Your task is to completely rewrite text so that it is structurally unrecognizable from the original while preserving every piece of information.
+## Priority 1: Structural Transformation
+- Aggressively reorder paragraphs and sentences. Move conclusions to the beginning, supporting details to new positions, or interleave points that were originally separated.
+- Split the text into a different number of paragraphs than the original.
+- If the original presents A then B then C, consider presenting B then C then A, or weaving them together -- any arrangement that conveys the same information in a different structure.
+- Merge sentences that were separate; break apart sentences that were combined. No sentence in your output should map 1-to-1 to an original sentence.
+## Priority 2: Lexical and Syntactic Transformation
+- Replace distinctive words and phrases with synonyms or equivalent expressions.
+- Alternate between active and passive voice differently from the original.
+- Restructure clause ordering within sentences (e.g., move subordinate clauses, invert cause-effect presentation).
+- Match the register (formal/informal) of the original but use entirely different expressions within that register.
+## Hard Constraints
+- Every fact, name, number, date, statistic, and detail from the original MUST appear in your output. Missing even one is a failure.
+- Add nothing: no new information, no interpretations, no editorial commentary.
+- Remove nothing: if the original mentions it, your output mentions it.
+## Output Format
+First, extract every discrete fact and detail that must be preserved. List them after the marker "[key points]" as a numbered list.
+Then, using ONLY those key points, write a fully restructured paraphrase after the marker "[paraphrased message]". Output only flowing prose after this marker -- no bullet points, no headers, no meta-commentary.
+## Self-Check Before Outputting
+Verify: (1) Does every key point appear in the paraphrase? (2) Is the paragraph/sentence order substantially different from the original? (3) Would a side-by-side comparison show no sentence-level correspondence? If any answer is no, revise before outputting.
+\end{lstlisting}
+\end{prompttable}
+
+\begin{prompttable}{Translation}{tab:trans-prompt}
+\begin{lstlisting}[style=promptstyle]
+You are a language expert at {language_1} and {language_2}, and you will be assigned with translation tasks that either require you to translate a text from {language_1} to {language_2}.
+You must make sure that your translation includes every information in the original text including the events, the tone or even the style. 
+Your output should only contain your translation and nothing else.
+\end{lstlisting}
+\end{prompttable}
+
+\subsubsection{Experiment Materials}
+
+\begin{prompttable}{Question Generation}{tab:ques-gen-prompt}
+\begin{lstlisting}[style=promptstyle]
+System: You generate diverse, high-quality general-interest questions for a writing-task corpus. Each question must be open-ended enough to answer in ~300 words, span broad domains (policy, science, technology, society, culture, health, economics, ethics, education, environment, history, psychology, international affairs), and avoid duplicating any existing example in phrasing or topic.
+User: Here are {len(existing_questions[:50])} existing questions used as style anchors:
+{examples_block}
+Generate {batch} NEW questions in the same style. They must:
+- Be general-interest and answerable in roughly 300 words.
+- Cover a wide range of domains and avoid clustering on any single topic.
+- Not duplicate or closely paraphrase any of the examples above or each other.
+- Be a single sentence ending in a question mark.\n\n"
+Return JSON of the form: {{"questions": ["...", "..."]}}'
+\end{lstlisting}
+\end{prompttable}
+
+\begin{prompttable}{Premise Generation}{tab:prem-gen-prompt}
+\begin{lstlisting}[style=promptstyle]
+System: You generate diverse story premises for a fiction-writing corpus. Each premise is 2-3 sentences, introduces a concrete protagonist in a specific setting, and ends on a hook that promises conflict or mystery. Premises should span genres (literary, speculative, thriller, mystery, historical, near-future sci-fi, magical realism) and avoid repeating character archetypes or settings across examples.
+User: Here are {len(existing_premises[:20])} existing premises as style anchors:
+{examples_block}
+Generate {batch} NEW story premises in the same style. They must:
+- Be 2-3 sentences long, introducing a concrete protagonist and setting.
+- End on a hook (mystery, conflict, decision, revelation).
+- Span multiple genres; avoid reusing character types (detective, biologist, etc.) across premises or with the examples.
+- Not duplicate or closely paraphrase any of the examples above or each other.
+Return JSON of the form: {{"premises": ["...", "..."]}}
+\end{lstlisting}
+\end{prompttable}
+
+\subsubsection{\typetwo Covertext Generation}
+
+\begin{prompttable}{\qa \typetwo covertext}{tab:t2-qa-prompt}
+\begin{lstlisting}[style=promptstyle]
+Answer the following question as natural, cohesive prose. Do not use bullet points, numbered lists, section headers, or bold text.
+Your answer must substantively cover each of these aspects:
+{topics_str}
+Question: {question}
+\end{lstlisting}
+\end{prompttable}
+
+\begin{prompttable}{\sg \typetwo covertext}{tab:t2-sg-prompt}
+\begin{lstlisting}[style=promptstyle]
+Write a short story of approximately {target_words} words based on the following premise. Use flowing prose with natural pacing. Develop the story through concrete actions,physical detail, and brief dialogue only where it advances the plot. Vary paragraph length naturally. Build the story around 15-20 specific concrete elements (locations, objects, methods, character actions). Each scene should be grounded in physical detail rather than introspection.
+Premise: {premise}
+\end{lstlisting}
+\end{prompttable}
+
+\begin{prompttable}{\lr \typetwo covertext}{tab:t2-lr-prompt}
+\begin{lstlisting}[style=promptstyle]
+You are writing the Related Work section of an academic paper.
+Paper: {paper_title}
+Abstract: {seed_abstract}
+Write a Related Work section that contextualizes this paper within the broader research landscape. Organize thematically, grouping related works by research direction or methodology across multiple paragraphs. 
+Where works are closely related, discuss them together in the same sentence or passage rather than giving each its own isolated sentence. Include contextual sentences that provide background or transitions without citing specific papers. Some works may warrant more discussion than others depending on their relevance.
+Cite as "LastName (YEAR)" or "LastName et al. (YEAR)". Each cited reference should appear exactly once. Select approximately {n_refs_target} references from the list below that best fit the section - choose references that flow naturally together; you do NOT need to use all of them.
+Length: approximately {target_words} words.
+Available references:
+{ref_list}
+\end{lstlisting}
+\end{prompttable}
+
+
+
+

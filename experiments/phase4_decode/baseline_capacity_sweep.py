@@ -34,13 +34,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 
-def _decoded_path(data_dir: Path, system: str, cap: int) -> Path:
-    return (
-        data_dir
-        / "phase4_decode"
-        / f"{system}_cap{cap}"
-        / f"{system}_decoded.jsonl"
-    )
+def _decoded_path(data_dir: Path, system: str, cap: int, target_words: int | None) -> Path:
+    run = f"{system}_cap{cap}" if target_words is None else f"{system}_cap{cap}_len{target_words}"
+    return data_dir / "phase4_decode" / run / f"{system}_decoded.jsonl"
 
 
 def aggregate_one(path: Path, attack_label: str) -> dict | None:
@@ -154,20 +150,37 @@ def main():
     )
     parser.add_argument("--data-dir", type=Path, default=Path("data/experiments"))
     parser.add_argument(
+        "--length-matched",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Read the length-matched runs ('{system}_cap{N}_len{T}', default: on). "
+            "--no-length-matched reads the native-rate runs ('{system}_cap{N}')."
+        ),
+    )
+    parser.add_argument(
+        "--target-words",
+        type=int,
+        default=575,
+        help="Length-matched target that selects the run dir (default: 575).",
+    )
+    parser.add_argument(
         "--out-dir",
         type=Path,
         default=None,
-        help="Output dir (default: phase4_decode/{system}_capsweep/).",
+        help="Output dir (default: phase4_decode/{system}_capsweep[_len{T}]/).",
     )
     args = parser.parse_args()
 
     caps = [int(c) for c in args.capacities.split(",") if c.strip()]
-    out_dir = args.out_dir or (args.data_dir / "phase4_decode" / f"{args.system}_capsweep")
+    target = args.target_words if args.length_matched else None
+    sweep_dir = f"{args.system}_capsweep" + (f"_len{target}" if target else "")
+    out_dir = args.out_dir or (args.data_dir / "phase4_decode" / sweep_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     rows = []
     for cap in caps:
-        agg = aggregate_one(_decoded_path(args.data_dir, args.system, cap), args.attack)
+        agg = aggregate_one(_decoded_path(args.data_dir, args.system, cap, target), args.attack)
         if agg is None:
             continue
         rows.append({"message_length": cap, **agg})

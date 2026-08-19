@@ -1,0 +1,53 @@
+In this second set of experiments, we aim to show that the generated stegotexts for each task are difficult to distinguish from covertexts for the same task, employing steganalysis methods to do so. Here, no attacks are applied to the stegotexts.
+
+\paragraph{Stegotexts} We construct 300 stegotexts (\stegotext) per task. For \qa and \sg, we prompt GPT-4.1 to generate 300 distinct questions and premises (respectively).\footnote{\autoref{app:implementation-details} has prompts.} For \lr, we retrieve 300 papers (with metadata) from diverse fields using the Semantic Scholar API \citep{kinney2023semantic}. Each \stegotext is constructed from a randomly generated, fixed-length message \msg (6 bits for \qa, 18 for \sg, 20 for \lr).
+
+\paragraph{Covertexts} We use two types of covertext (\covertext):
+\begin{enumerate}[itemsep=0pt,parsep=1pt]
+    \item \typeone: \covertext is generated using the same encoding scheme as \stegotext, but with a random message. This type is used only as a control.
+    \item \typetwo: The same LLM used to generate \stegotext is prompted with \inp to produce the \covertext directly, without running the encoding scheme.
+    % \item \typethree: ...
+\end{enumerate}
+We generate 300 covertexts of each type to match the stegotext count.
+
+% \subsection{Steganalysis}
+% \label{subsec:steganalysis}
+% Since our steganography pipeline is intrinsically different from traditional token-level text steganography, token-based stegananlysis methods does not apply to them directly. We use three more general but also more realistic steganalysis models to evaluate the security and privacy of our systems.
+
+\paragraph{Techniques}
+Since our schemes do not operate at the token level, token-level steganalysis techniques are ineffective here. We instead consider two more semantically informed methods:\footnote{\autoref{app:additional-results} has results with an LLM-as-a-judge method.}
+\begin{enumerate}[itemsep=0pt,parsep=1pt]
+    \item \textbf{Perplexity Classifier}. We train a logistic regression classifier on \covertext and \stegotext perplexity scores using GPT-2 Large \citep{radford2019language}. Perplexity is widely used for steganalysis \citep[][\emph{i.a.}]{meng2008linguistic,kaptchuk2021meteor}.
+    \item \textbf{Embedding Classifier}. We fit an MLP classifier on top of \covertext and \stegotext embeddings from \texttt{text-embedding-005} \citep{lee2024gecko}.\footnote{We chose this model due to its high rankings on the English MTEB leaderboard for zero-shot classification and clustering tasks \citep{muennighoff2023mteb}.}
+\end{enumerate}
+
+\paragraph{Results} \autoref{fig:steg-classifier-acc} reports the results of a five-fold cross-validation for each classifier, task, and covertext type (\typeone vs.\ \typetwo). 
+
+Broadly, we find that both classifiers struggle to distinguish covertexts from stegotexts. Both classifiers perform better on \typetwo covertexts than on \typeone---an unsurprising result given that \typeone texts are derived from the same procedure as the stegotexts. Interestingly, the perplexity classifer performs better than the embedding-based classifer across the board, though both generally perform worse than chance on \typeone and only moderately above chance on \typetwo, broadly validating the effectiveness of our encoding method. Across schemes, we observe only minor variation in accuracy on \typeone, though \qa and \sg showing higher accuracy than \lr on \typetwo. 
+
+% \paragraph{Perplexity Classifier}
+% All three systems includes a synthesis process where the "choices" are transformed into a task-specific output. This step ensures that the stegotexts are generally of high text quality. We used GPT-2-Large for perplexity calculation. Results in \autoref{tab:perplexity-stego-c2} shows that the generated texts indeed are fluent English, even having lower perplexity than Type 2 covertexts in some cases.
+
+% We then fitted a simple logistic regression model with 5-fold cross validation on the perplexity scores. As shown in \autoref{tab:perplexity-classifier}, Type 1 covertexts are genuinely indistinguishable from stegotexts, which matches the construction. Type 2 covertexts have noticeable difference from the stegotexts based on perplexity alone, yet the classifiers still struggle to differentiate them across all tasks.
+
+% \input{tables/ppl-classifier} 
+
+% \paragraph{Embedding Classifier}
+% We used Google's text-embedding-005 for the embedding generation as an example of popular embedding models that yield high scores on classification and clustering tasks of the English MTEB leaderboard (zero-shot) \cite{muennighoff2023mteb}. Since the dataset is relatively small, 5-fold cross validation test was used for the evaluation. For each experiment between the stegotexts and two different covertext types, we fit a MLP over the labels and the embeddings from the embedding model. The model structure and training parameters can be found in \autoref{app:implementation-details}.
+
+% \input{tables/embedding}
+
+% While the Long-form Q\&A scheme and Literature Review scheme remain invisible to the classifier, the Story Generation scheme can be easily detected by it. Upon detailed investigation, we noticed that Qwen3.5 4B, the local model we used throughout the dataset generation, has distinctive fingerprints for creative story idealization. 
+
+% Concretely, we measured three content axes on the the story generation dataset: a curated dark-genre lexicon density (approximately 230 thriller/violence tokens), per-document VADER sentiment \cite{hutto2014vader}, and character-name distributions extracted from title and dialogue-attribution patterns. On all three, stegotexts are statistically indistinguishable from Type 3 covertexts and both sit far from Type 2 covertexts. Their dark-word density is 45\% higher than Type 2 covertexts (Cohen's $d \approx 0.67$, $p < 10^{-15}$), and the proportion of negative-affect tokens is 60\% higher ($d \approx 1.26$, $p < 10^{-40}$), and top-20 character-name sets overlap Type 2 by only 0.05--0.08 Jaccard while overlapping each other by 0.14. 
+
+% A TF-IDF logistic classifier on (stego $\cup$ Type 3) vs Type 2 reaches 70\% accuracy, with thriller markers like "heart pounding", "suddenly", "hidden" on the stego $\cup$ Type 3. Because Type 3 inherits Qwen's content without using slot injection yet matches stego on every axis, the detectable signal is mostly a Qwen-3.5 stylistic fingerprint, not the embedding mechanism itself, which is precisely the artifact Type 3 is designed to neutralize. And thus, in \autoref{tab:steg-embedding}, the Type 3 covertexts are indeed indistinguishable from stegotexts.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{figures/steg_main_results.png}
+    \caption{Perplexity (PPL) and Embedding (Embed) classifier accuracy ($\pm1$ s.d.) in discriminating stegotexts from \typeone (left) and \typetwo covertexts (right).}
+    \label{fig:steg-classifier-acc}
+\end{figure}
+
+%This is where we'll present results on applying LLM classifiers to try to distinguish stegotexts from covertexts. We should again have results on all three tasks, likely using both a prompted LLM classifier and 1-2 smaller fine-tuned ones.

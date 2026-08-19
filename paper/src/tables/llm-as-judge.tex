@@ -1,0 +1,29 @@
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lcccc}
+\toprule
+System & Acc. & \%High & Acc@High & Acc@Med \\
+\midrule
+\multicolumn{5}{l}{\textit{S vs \typeone}} \\
+\qa   & 0.507 & 68.7\% & 0.505 & 0.511 \\
+\sg & 0.517 & 39.7\% & 0.571 & 0.480 \\
+\lr & 0.493 & 73.7\% & 0.502 & 0.474 \\
+\midrule
+\multicolumn{5}{l}{\textit{S vs \typetwo}} \\
+\qa   & 0.560 & 84.7\% & 0.602 & 0.302 \\
+% \sg & 0.777 & 47.7\% & 0.916 & 0.653 \\
+\sg & 0.657 & 41.0\% & 0.780 & 0.586 \\
+\lr & 0.527 & 86.0\% & 0.570 & 0.262 \\
+% \midrule
+% \multicolumn{5}{l}{\textit{S vs \typethree}} \\
+% \sg & 0.657 & 41.0\% & 0.780 & 0.586 \\
+\bottomrule
+\end{tabular}
+\caption{LLM-as-judge (Claude Sonnet 4.5) on the same 150-stego/150-cover
+splits used by the trained classifiers. Each judgment includes a self-reported
+confidence label; we report the share flagged \emph{high} (\%High) and
+accuracy stratified by confidence (Acc@High / Acc@Med).}
+\label{tab:steg-llm-judge}
+\end{table}
