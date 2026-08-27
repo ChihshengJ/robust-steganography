@@ -10,8 +10,49 @@
 
 % There are various other studies beyond these, but the above works represent a good starting point.
 
-% \paragraph{Paraphrase-Robust Text Steganography} Several works have proposed methods for text steganography that are robust to \emph{local} (sentence-level) paraphrasing. A core feature of most of these methods is the use of \emph{locality sensitive hashing} (LSH) to pa
+% Large language models (LLMs) have recently been shown to be useful for text steganography, as the speed and fidelity with which they can generate natural language text makes them attractive steganographic tools \citep{kaptchuk2021meteor,zamir2024undetectable,wu2024generative,perry2025robust}. However, many na\"ive schemes that rely on surface forms are vulnerable to paraphrase attacks. To address this, \citet{perry2025robust} develop LLM-based steganographic schemes that use semantic embeddings and locality-sensitive hashing to improve robustness to \emph{local} paraphrastic edits, while \citet{bai2024semantic} encode information through semantic entities selected from a structured semantic space. Related work on semantic watermarking likewise uses sentence-level semantic structure to preserve detectable signals under paraphrasing \cite{hou-etal-2024-semstamp, hou-etal-2024-k}.
+%
+% In contrast to prior schemes based on form-related features or embedding-defined semantic regions, we construct symmetric-key schemes where bits are encoded via task-specific semantic units, and demonstrate their robustness to both local \emph{and} global paraphrasing of the resulting stegotexts.
+%
 
-Large language models (LLMs) have recently been shown to be useful for text steganography, as the speed and fidelity with which they can generate natural language text makes them attractive steganographic tools \citep{kaptchuk2021meteor,zamir2024undetectable,wu2024generative,perry2025robust}. However, many na\"ive schemes that rely on surface forms are vulnerable to paraphrase attacks. To address this, \citet{perry2025robust} develop LLM-based steganographic schemes that use semantic embeddings and locality-sensitive hashing to improve robustness to \emph{local} paraphrastic edits, while \citet{bai2024semantic} encode information through semantic entities selected from a structured semantic space. Related work on semantic watermarking likewise uses sentence-level semantic structure to preserve detectable signals under paraphrasing \cite{hou-etal-2024-semstamp, hou-etal-2024-k}.
+\subsection{Robust Linguistic Steganography}
+A steganography scheme has to be covert by definition, which means the cover text should be indistinguishable from the stegotexts \citep{cachin2004information}.
+However, not all of them are robust to an active adversary.
+Previous work on linguistic steganography answers to covertness, mostly by token-level perturbation that are provably secure \citep{ziegler2019neural, kaptchuk2021meteor, de2022perfectly, ding2023discop}.
+However, any surface form transformation would easily destroy the payload by construction.
+Robust linguistic steganography answers the question that whether a steganography scheme is still functional even within a lossy channel.
 
-In contrast to prior schemes based on form-related features or embedding-defined semantic regions, we construct symmetric-key schemes where bits are encoded via task-specific semantic units, and demonstrate their robustness to both local \emph{and} global paraphrasing of the resulting stegotexts.
+The question arose from natural language watermarking due to their demand for robustness to meaning-preserving transformation to preserve the embedded watermarks under attacks like synonym substitution or paraphrasing.
+Pre-neural natural language watermarking schemes already embed watermarks through keyed syntactic transformation in order to survive the aforementioned tampering \citep{Atallah2001NaturalLW, atallah2002natural, Topkara2006words}.
+The emergence of LLMs drastically lower the cost for meaning-preserving attacks, making faithful paraphrase of monitored content both cheap and automatic, which makes robustness not a bonus, but a practical requirement for information hidden schemes.
+The flood of LLM generated contents birthed the corresponding demand for content watermarking, which led to three popular schemes,\citet{kuditipudi2023robust}, \citet{pmlr-v202-kirchenbauer23a} and \citet{dathathri2024scalable} all manipulates token sampling to inject statistical patterns that mark generated contents.
+Watermarking, however, only asks whether the watermark exists, so capacity or the order of the bits are usually not their concerns.
+
+Thus, there is a gap for a scheme that is robust to meaning-preserving attacks, multi-bit, and order-preserving for linguistic steganography.
+A handful of studies directly aims to address this gap \citep{zamir2024undetectable,wu2024generative,bai2024semantic,perry2025robust}.
+\citet{perry2025robust} in particular gives the first formal definitions of weak and strong robustness, corresponding to locally consistent tampering and meaning-preserving paraphrase.
+These studies, notably, all convergence on moving the alteration into the semantic space from the surface form.
+
+\subsection{Linguistic Steganography in Semantic Space}
+Using semantics as a channel to encode is far from a new idea.
+Earlier work \citep{atallah2002natural, Topkara2006words, chang2010linguistic} uses paraphrases, word order, and sentence semantics granularity to carry bits.
+These schemes are limited more by the state of NLP than by the ideas behind, since generating contextualized alternatives was hard for the pre-neural era \citep{chang2010linguistic}.
+
+LLMs, while introducing the adversary, also lift the bottleneck, as controlled semantic generation has never been easier to implement.
+\citet{zhang2020linguistic} encode bits in the selection of implicit semantic attributes, using controlled generation to produce the stegotexts and decode through a trained classifier.
+\citet{bai2024semantic} uses an ontology-entity-tree codebook to embed the message over an empirical entity distribution and extract the payload with an agentic pipeline.
+\citet{perry2025robust} uses rejection sampling to force the embedding of a generated chunk to map to the desired bits with a locality-sensitive hash.
+They each uses a sharable state (i.e., the trained classifier, the ontology with the frequency table, or the domain-specific PCA model).
+We take the same route but question whether the receiver could hold less ingredients, and show that a symmetric key and a public task input is enough for hiding information in the semantic space.
+
+\subsection{Covert reasoning}
+Steganography as a communication tool does not only serve people.
+Studies have shown that the chain-of-thoughts of LLMs do not faithfully reflect the reasoning process \citep{lanham2023measuring, radhakrishnan2023question}, and even can be used as a covert communication channel \citep{roger2023preventing}.
+Thus, content-preserving paraphraser between agent communication is a reasonable defense against agents using traditional steganography that designed around covertness only.
+A steganography scheme that survives attacks like global paraphrase would be an evidence that the defense still has a blind spot for the semantic space.
+
+More importantly, for deviant agents to share a seed or a flag for misaligned purposes \citep{motwani2024secret}, and since steganoigraphic behavior has been shown to emerge under process supervision \citep{skaf2025large} and to be present in frontier models today \citep{zolkowski2026early}, the payload might be just small enough for a couple of bits to escape the monitoring.
+
+\citet{zhou2026conceptual}'s concurrent work shows that chain-of-thought can be a channel for robust steganography by embedding the payload into the strategy of each step of the reasoning. It can be cleanly setup, but fails against a scheme aware monitoring both in detection and removal.
+Our framework provides greater robustness as the semantic content of a stegotext encodes the payload directly, so the payload cannot be removed without altering the meaning of the content.
+

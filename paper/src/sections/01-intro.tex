@@ -1,4 +1,5 @@
-\emph{Text steganography} is the practice of embedding hidden messages (\emph{ciphertexts}) within innocuous text passages (\emph{covertexts}) to yield encoded passages (\emph{stegotexts}), such that the stegotext distribution is indistinguishable from the covertext distribution. Text steganography has a long and storied history \citep{kahn1996history}, into which large language models (LLMs) have lately introduced an exciting new chapter, as the speed and fidelity with which they can generate natural language text makes them ideal steganographic tools \citep{kaptchuk2021meteor,zamir2024undetectable,wu2024generative,perry2025robust}.
+\emph{Linguistic steganography} is the practice of embedding hidden messages (\emph{ciphertexts}) within innocuous text passages written in natural language (\emph{covertexts}) to yield encoded passages (\emph{stegotexts}), such that the stegotext distribution is indistinguishable from the covertext distribution.
+Linguistic steganography has a long and storied history \citep{kahn1996history}, into which large language models (LLMs) have lately introduced an exciting new chapter, as the speed and fidelity with which they can generate natural language text makes them ideal steganographic tools \citep{kaptchuk2021meteor, ding2023discop, zamir2024undetectable, wu2024generative, perry2025robust}.
 
 \begin{figure}
     \centering
@@ -7,9 +8,15 @@
     \label{fig:fig1}
 \end{figure}
 
-Effective steganographic communication requires that stegotexts be robust to certain forms of corruption. At a minimum, this should include meaning-preserving transformations. Yet, prior methods are not resilient in this way: simple modifications like synonym substitution or sentence-level (\emph{local}) paraphrasing generally suffice to scramble the embedded message. While several works show robustness to some of these edits \citep{hou-etal-2024-semstamp, hou-etal-2024-k, perry2025robust}, \emph{none} is robust to basic (\emph{global}) paraphrasing of the full stegotext. Our work aims to remedy this. Concretely, we:
+% Effective steganographic communication requires that stegotexts be robust to certain forms of corruption. At a minimum, this should include meaning-preserving transformations. Yet, prior methods are not resilient in this way: simple modifications like synonym substitution or sentence-level (\emph{local}) paraphrasing generally suffice to scramble the embedded message. While several works show robustness to some of these edits \citep{hou-etal-2024-semstamp, hou-etal-2024-k, perry2025robust}, \emph{none} is robust to basic (\emph{global}) paraphrasing of the full stegotext. Our work aims to remedy this. Concretely, we:
+
+Effective steganographic communication also requires that stegotexts be robust to certain forms of corruption.
+For example, the channel they communicate might in itself be corrupted, or the channel between Alice and Bob might be monitored by Eve, who might deploy services that can alter the stegotexts to eliminate the possibility of successful communication, which we refer to as attacks.
+Meaning-preserving attacks are text transforms that alters the stegotexts from a linguistic steganography scheme such that the literal meaning of the covertext is maintained while the literal, surface form might be severely altered, which includes, synonym substitution, sentence-level (\emph{local}) paraphrasing, and even global paraphrasing.
+These attacks are extremely effective for most linguistic steganography schemes, destroying the embedded messages completely. While several works show robustness to some of these edits \citep{hou-etal-2024-semstamp, hou-etal-2024-k, perry2025robust}, \emph{none} is robust to basic (\emph{global}) paraphrasing of the full stegotext. Our work aims to remedy this. Concretely, we:
+
 \begin{enumerate}[itemsep=0pt, parsep=0pt]
-    \item Present a general symmetric key method for \emph{semantic} steganography that is robust to global paraphrasing.
+    \item Present a general symmetric key method for low-capacity \emph{semantic} steganography that is robust to global paraphrasing.
     \item Instantiate this method for three NLP tasks, empirically demonstrating its robustness under several meaning-preserving attacks.
     \item Conduct steganalysis on these schemes to demonstrate the practical indistinguishability of the covertexts and generated stegotexts.
 \end{enumerate}
