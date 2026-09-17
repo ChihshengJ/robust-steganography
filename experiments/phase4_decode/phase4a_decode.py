@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -63,7 +64,6 @@ from experiments.utils.system_factory import (
     make_clients,
     make_discop,
     make_litreview,
-    make_meteor,
     make_story,
     make_topicqa,
     restore_system_state,
@@ -77,7 +77,7 @@ log = logging.getLogger(__name__)
 
 SYSTEMS = ("topicqa", "story", "litreview", "baseline")
 # In-house token-level baselines: selectable explicitly but excluded from "all".
-BASELINE_LM_SYSTEMS = ("meteor", "discop")
+BASELINE_LM_SYSTEMS = ("discop",)
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +92,16 @@ def build_system(
     n_subtopics: int = 12,
     group_size: int = 2,
     n_slots: int = 20,
+    baseline_model: str | None = None,
 ):
+    """Build the decode-side system.
+
+    ``baseline_model`` names the local LM for Discop. It must be the one
+    that *encoded* the records, not whatever ``$BASELINE_MODEL`` currently says:
+    a different model gives different per-step distributions, so every recovered
+    bit would be chance. Callers pass the model recorded in Phase 1 metadata;
+    None falls back to the factory default.
+    """
     if system == "topicqa":
         return make_topicqa(
             client, local_client, n_subtopics=n_subtopics, group_size=group_size
@@ -103,10 +112,8 @@ def build_system(
         return make_litreview(client)
     if system == "baseline":
         return make_baseline(client)
-    if system == "meteor":
-        return make_meteor()
     if system == "discop":
-        return make_discop()
+        return make_discop(model_name=baseline_model)
     raise ValueError(f"Unknown system: {system}")
 
 
@@ -117,6 +124,32 @@ def build_system(
 
 def baseline_id(source_id: str) -> str:
     return f"{source_id}_no_attack_0_run0"
+
+
+def token_channel_id(source_id: str) -> str:
+    return f"{source_id}_no_attack_tokenchannel_run0"
+
+
+def make_token_channel_record(stego_rec: dict) -> dict | None:
+    """Clean-channel decode of the ids the encoder emitted, not of the text.
+
+    Only the token-level baselines have this: their Phase 1 metadata carries
+    ``token_ids``. It is the scheme's own ceiling — no transport in between, so
+    a correct implementation recovers the payload exactly. The ordinary
+    ``no_attack`` row decodes the *text*, which for these schemes is already a
+    lossy channel (greedy BPE re-merges tokens the sampler emitted separately),
+    so the two rows differ and the gap is a real property worth reporting rather
+    than a bug to hide.
+    """
+    token_ids = (stego_rec.get("metadata") or {}).get("token_ids")
+    if not token_ids:
+        return None
+    rec = make_baseline_record(stego_rec)
+    rec["id"] = token_channel_id(stego_rec["id"])
+    rec["attack_label"] = "no_attack_token_channel"
+    rec["attack_type"] = "no_attack_token_channel"
+    rec["token_ids"] = list(token_ids)
+    return rec
 
 
 def make_baseline_record(stego_rec: dict) -> dict:
@@ -142,13 +175,28 @@ def decode_one(
     attacked_text: str,
     state: dict,
     expected_len: int,
+    token_ids: list[int] | None = None,
+    stats: dict | None = None,
 ) -> tuple[list[int] | None, str | None]:
-    """Restore state and run recover_message. Returns (bits, error_str_or_None)."""
-    if not attacked_text:
+    """Restore state and run recover_message. Returns (bits, error_str_or_None).
+
+    ``token_ids``, for the Discop baseline only, decodes the ids the
+    encoder emitted instead of re-tokenizing the text — the *token channel*.
+    Only meaningful unattacked, where it is the scheme's true ceiling; an
+    attacked text has no emitted ids to appeal to.
+    """
+    if token_ids is None and not attacked_text:
         return None, "empty attacked_text"
     try:
         restore_system_state(system_obj, state or {})
-        recovered = system_obj.recover_message(attacked_text)
+        if token_ids is not None:
+            recovered = system_obj.recover_message(
+                attacked_text, token_ids=token_ids, stats=stats
+            )
+        elif stats is not None:
+            recovered = system_obj.recover_message(attacked_text, stats=stats)
+        else:
+            recovered = system_obj.recover_message(attacked_text)
     except Exception as e:
         return None, repr(e)
 
@@ -161,6 +209,90 @@ def decode_one(
     elif len(bits) > expected_len:
         bits = bits[:expected_len]
     return bits, None
+
+
+# ---------------------------------------------------------------------------
+# Worker pool
+# ---------------------------------------------------------------------------
+#
+# Decoding is one LM forward per token, and for the token-level baselines it is
+# pure CPU. Threads do not help that: at batch size 1 these models are
+# memory-bound, so a single forward measures 24.5 ms on one thread and 29.7 ms
+# on eight — *slower* with more threads. Running one document per process with
+# one thread each is therefore close to linear in cores, where the previous
+# serial-with-N-threads loop was the worst of both.
+#
+# Each worker builds its own system once (an LM per process, so mind the RAM:
+# ~1.4 GB per gpt2-medium copy) and the parent does every write, so there is no
+# append race. Decodes are independent — both backends re-seed their RNG from
+# the shared key at the top of each call — so this changes no result, only the
+# order records land in the JSONL.
+
+_WORKER: dict = {}
+
+
+def _worker_init(system, baseline_model, n_subtopics, group_size, n_slots):
+    import torch
+
+    torch.set_num_threads(1)
+    client, local_client = make_clients()
+    _WORKER["system"] = system
+    _WORKER["obj"] = build_system(
+        system,
+        client,
+        local_client,
+        n_subtopics=n_subtopics,
+        group_size=group_size,
+        n_slots=n_slots,
+        baseline_model=baseline_model,
+    )
+
+
+def _decode_task(task: dict) -> dict:
+    """Decode one attacked record. Runs in a worker process."""
+    system_obj = _WORKER["obj"]
+    original_bits = task["original_bits"]
+    decode_stats: dict = {}
+    recovered, err = decode_one(
+        system_obj=system_obj,
+        attacked_text=task["attacked_text"],
+        state=task["state"],
+        expected_len=len(original_bits),
+        token_ids=task["token_ids"],
+        stats=decode_stats,
+    )
+    if err is not None or recovered is None:
+        ber_block = {
+            "ber": 1.0,
+            "bitwise_accuracy": 0.0,
+            "num_errors": len(original_bits),
+            "perfect": False,
+        }
+        recovered_for_log = None
+    else:
+        ber_block = bit_error_rate(original_bits, recovered)
+        recovered_for_log = recovered
+
+    return {
+        "id": task["id"],
+        "source_id": task["source_id"],
+        "system": task["system"],
+        "attack_label": task["attack_label"],
+        "attack_type": task["attack_type"],
+        "local": task["local"],
+        "tampering_level": task["tampering_level"],
+        "run_idx": task["run_idx"],
+        "original_bits": list(original_bits),
+        "recovered_bits": recovered_for_log,
+        "bitwise_accuracy": ber_block["bitwise_accuracy"],
+        "bit_error_rate": ber_block["ber"],
+        "perfect_recovery": ber_block["perfect"],
+        "num_bit_errors": ber_block["num_errors"],
+        "error": err,
+        "decode_channel": "token" if task["token_ids"] else "text",
+        "decode_stats": decode_stats or None,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +314,7 @@ def run_system(
     n_subtopics: int = 12,
     group_size: int = 2,
     n_slots: int = 20,
+    max_workers: int = 1,
 ):
     attack_path = phase3_dir / f"{system}_attacked.jsonl"
     stego_path = phase1_dir / f"{system}_stego.jsonl"
@@ -221,6 +354,11 @@ def run_system(
             stego_rec = stego_by_id.get(sid)
             if stego_rec is not None:
                 plan.append(make_baseline_record(stego_rec))
+                # Discop only: the true clean ceiling, decoded from the
+                # emitted ids rather than through the lossy text round trip.
+                tc = make_token_channel_record(stego_rec)
+                if tc is not None:
+                    plan.append(tc)
     plan.extend(attack_records)
 
     if limit is not None:
@@ -249,7 +387,26 @@ def run_system(
         log.info("[%s] nothing to do", system)
         return
 
-    # Build the system once per system run
+    # Build the system once per system run. For the token-level baselines the
+    # local LM has to be the one Phase 1 encoded with — see build_system — so
+    # take it from the records rather than from $BASELINE_MODEL, which silently
+    # decodes an old gpt2 dataset under whatever model is configured today.
+    baseline_model = None
+    if system in BASELINE_LM_SYSTEMS:
+        models = {
+            (r.get("metadata") or {}).get("model")
+            for r in stego_by_id.values()
+            if (r.get("metadata") or {}).get("model")
+        }
+        if len(models) > 1:
+            raise ValueError(
+                f"{system}: Phase 1 records disagree about the local LM "
+                f"({sorted(models)}). They cannot be decoded in one pass."
+            )
+        baseline_model = next(iter(models), None)
+        if baseline_model:
+            log.info("[%s] decoding with local LM %r (from Phase 1 records)",
+                     system, baseline_model)
     system_obj = build_system(
         system,
         client,
@@ -257,19 +414,18 @@ def run_system(
         n_subtopics=n_subtopics,
         group_size=group_size,
         n_slots=n_slots,
+        baseline_model=baseline_model,
     )
 
     n_decoded = 0
     n_errors = 0
     n_perfect = 0
 
-    bar = tqdm(
-        pending,
-        desc=f"decode/{system}",
-        unit="rec",
-        dynamic_ncols=True,
-    )
-    for rec in bar:
+    # Build every task up front so the work can be handed to a pool. Pairing a
+    # Phase 3 record with its Phase 1 stego is pure bookkeeping; only the decode
+    # itself is expensive.
+    tasks = []
+    for rec in pending:
         source_id = rec["source_id"]
         stego_rec = stego_by_id.get(source_id)
         if stego_rec is None:
@@ -281,18 +437,81 @@ def run_system(
             log.warning("[%s] %s has no message_bits — skipping", system, source_id)
             continue
 
-        state = rec.get("system_state") or stego_rec.get("system_state") or {}
-        attacked_text = rec.get("attacked_text")
+        tasks.append(
+            {
+                "id": rec["id"],
+                "source_id": source_id,
+                "system": system,
+                "attack_label": rec["attack_label"],
+                "attack_type": rec.get("attack_type", rec["attack_label"]),
+                "local": rec.get("local", False),
+                "tampering_level": rec["tampering_level"],
+                "run_idx": rec["run_idx"],
+                "original_bits": list(original_bits),
+                "state": rec.get("system_state")
+                or stego_rec.get("system_state")
+                or {},
+                "attacked_text": rec.get("attacked_text"),
+                "token_ids": rec.get("token_ids"),
+            }
+        )
 
+    bar = tqdm(total=len(tasks), desc=f"decode/{system}", unit="rec", dynamic_ncols=True)
+
+    def _record(out_rec: dict) -> None:
+        nonlocal n_decoded, n_errors, n_perfect
+        if out_rec["error"] is not None or out_rec["recovered_bits"] is None:
+            n_errors += 1
+        elif out_rec["perfect_recovery"]:
+            n_perfect += 1
+        append_jsonl(out_path, out_rec)
+        completed.add(out_rec["id"])
+        n_decoded += 1
+        bar.update(1)
+        bar.set_postfix(done=n_decoded, err=n_errors, perfect=n_perfect, refresh=False)
+
+    if max_workers > 1 and tasks:
+        # Workers build their own system; the one built above is unused on this
+        # path but harmless (and still the thing that validated the model).
+        with ProcessPoolExecutor(
+            max_workers=max_workers,
+            initializer=_worker_init,
+            initargs=(system, baseline_model, n_subtopics, group_size, n_slots),
+        ) as pool:
+            futures = [pool.submit(_decode_task, t) for t in tasks]
+            for fut in as_completed(futures):
+                _record(fut.result())
+        bar.close()
+        log.info(
+            "[%s] done. decoded=%d errors=%d perfect=%d",
+            system,
+            n_decoded,
+            n_errors,
+            n_perfect,
+        )
+        return
+
+    for task in tasks:
+        source_id = task["source_id"]
+        original_bits = task["original_bits"]
+        state = task["state"]
+        attacked_text = task["attacked_text"]
+        rec = task
+
+        # Counters for the decoder's silent realignment/fallback paths. In a
+        # clean decode these must be zero; under attack they fire constantly,
+        # which is itself the diagnostic.
+        decode_stats: dict = {}
         recovered, err = decode_one(
             system_obj=system_obj,
             attacked_text=attacked_text,
             state=state,
             expected_len=len(original_bits),
+            token_ids=rec.get("token_ids"),
+            stats=decode_stats,
         )
 
         if err is not None or recovered is None:
-            n_errors += 1
             ber_block = {
                 "ber": 1.0,
                 "bitwise_accuracy": 0.0,
@@ -303,36 +522,28 @@ def run_system(
         else:
             ber_block = bit_error_rate(original_bits, recovered)
             recovered_for_log = recovered
-            if ber_block["perfect"]:
-                n_perfect += 1
 
-        out_rec = {
-            "id": rec["id"],
-            "source_id": source_id,
-            "system": system,
-            "attack_label": rec["attack_label"],
-            "attack_type": rec.get("attack_type", rec["attack_label"]),
-            "local": rec.get("local", False),
-            "tampering_level": rec["tampering_level"],
-            "run_idx": rec["run_idx"],
-            "original_bits": list(original_bits),
-            "recovered_bits": recovered_for_log,
-            "bitwise_accuracy": ber_block["bitwise_accuracy"],
-            "bit_error_rate": ber_block["ber"],
-            "perfect_recovery": ber_block["perfect"],
-            "num_bit_errors": ber_block["num_errors"],
-            "error": err,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-        append_jsonl(out_path, out_rec)
-        completed.add(rec["id"])
-        n_decoded += 1
-
-        bar.set_postfix(
-            done=n_decoded,
-            err=n_errors,
-            perfect=n_perfect,
-            refresh=False,
+        _record(
+            {
+                "id": rec["id"],
+                "source_id": source_id,
+                "system": system,
+                "attack_label": rec["attack_label"],
+                "attack_type": rec.get("attack_type", rec["attack_label"]),
+                "local": rec.get("local", False),
+                "tampering_level": rec["tampering_level"],
+                "run_idx": rec["run_idx"],
+                "original_bits": list(original_bits),
+                "recovered_bits": recovered_for_log,
+                "bitwise_accuracy": ber_block["bitwise_accuracy"],
+                "bit_error_rate": ber_block["ber"],
+                "perfect_recovery": ber_block["perfect"],
+                "num_bit_errors": ber_block["num_errors"],
+                "error": err,
+                "decode_channel": "token" if rec.get("token_ids") else "text",
+                "decode_stats": decode_stats or None,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
         )
 
     bar.close()
@@ -358,7 +569,7 @@ def main():
         "--system",
         choices=[*SYSTEMS, *BASELINE_LM_SYSTEMS, "all"],
         default="all",
-        help="Which system(s) to decode for ('all' excludes meteor/discop).",
+        help="Which system(s) to decode for ('all' excludes discop).",
     )
     parser.add_argument(
         "--data-dir",
@@ -427,6 +638,21 @@ def main():
         help="Do not decode the original (unattacked) stego texts.",
     )
     parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=1,
+        help=(
+            "Decode this many records in parallel, one process each (default 1 "
+            "= serial). Worth setting for the Discop baseline, where "
+            "decoding is pure local-LM CPU work: threads do not speed up a "
+            "batch-size-1 forward, so N single-threaded processes scale far "
+            "better than one N-threaded one. Each worker loads its own LM "
+            "(~1.4 GB for gpt2-medium), so keep N x model size under RAM. The "
+            "semantic systems call APIs inside recover_message, so raising this "
+            "for them multiplies concurrent API calls — hence the default of 1."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print planned counts without making API calls.",
@@ -491,6 +717,7 @@ def main():
             n_subtopics=topicqa_n_subtopics,
             group_size=args.group_size,
             n_slots=story_n_slots,
+            max_workers=args.max_workers,
         )
 
     log.info("Phase 4a decode complete.")

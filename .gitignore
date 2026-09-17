@@ -25,7 +25,7 @@ papers/
 data/experiments/phase*
 
 # ACL Anthology full bib dump (downloaded from aclanthology.org, not authored content)
-paper/src/anthology-1.bib
+paper/**/anthology-1.bib
 
 .claude/
 .cache/

@@ -1,0 +1,84 @@
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{figures/recovery_plot_updated.png}
+    \caption{Bitwise (top row) and perfect (bottom row) message recovery accuracy under different paraphrase-based attacks on the stegotexts (\S\ref{subsec:attacks}) for our three tasks plus the baseline (columns; \S\ref{subsec:tasks}). Most schemes are fairly robust even to \emph{global} attacks.}
+    \label{fig:recovery-results}
+\end{figure*}
+\subsection{Objective} We aim to communicate a hidden message (ciphertext) \msg consisting of a bitstring of length $m$ (i.e., $\mathbf{h} \in \{0,1\}^m$) by embedding it within some covertext $\mathbf{c} \in \Sigma^*$, yielding a stegotext $\mathbf{s} \in \Sigma^*$. For encoding, \covertext is latent, as we generate \stegotext directly given \msg and some task-specific input \inp (e.g., a question).\footnote{Optionally, an error-correcting code (ECC) may be applied to \stegotext to improve the recoverability of \msg (cf.\ \citet{perry2025robust}), although we do not use ECCs in our experiments.} The goal is to successfully transmit \msg to a recipient \emph{even} under an adversarial, meaning-preserving attack on \stegotext, \attack (\S\ref{subsec:attacks}), which yields a new text \attackedtext.\footnote{Our method is \emph{not} designed to be robust to attacks that alter the semantics of \stegotext.} Since our method is a \emph{symmetric key} scheme, we assume both sender and recipient share a secret key $\mathbf{k} \in \{0,1\}^\lambda$. Thus, the recipient must be able to recover \msg from \attackedtext given only $\mathbf{k}$ and access to relevant public resources, such as an open-source LLM checkpoint or inference API, and a public input \inp. 
+
+\subsection{Encoding and Decoding}
+\label{subsec:encoding-decoding}
+We rely on two core components to facilitate encoding and decoding of \msg:
+\begin{enumerate}[itemsep=0pt, parsep=1pt]
+    \item \units: a set of interchangebale \emph{semantic units} (e.g., topics, plot points, or references) given a context.
+    \item \f: a function (keyed on $\mathbf{k}$) that generates an $m$-tuple of $n$-tuples of semantic units given \inp and a generator $G$: $\mathbf{u} = ((u_1^{1}, \ldots, u_n^{1}),\ldots(u_1^{m}, \ldots, u_n^{m}))$.
+\end{enumerate}
+
+\paragraph{Semantic units}
+A public, deterministic generator $G$ maps the task input \inp to an $n$-tuple of contextually appropriate and interchangeable semantic units.
+$G(\mathbf{x}) = (u_1,\ldots,u_n)$, $u_i \in \mathbf{U}$.
+For instance, in some of our experiments, $G$ is a deterministic LLM inference endpoint (see \autoref{app:implementation-details} for the settings that make the generation deterministic).
+
+\paragraph{Grouping and Ordering} \f generates a sequence of $m$ $n$-tuples of mutually exclusive semantic units, each generated using $G$: $\mathbf{u} = ((u_1^{1}, \ldots, u_n^{1}),\ldots(u_1^{m}, \ldots, u_n^{m}))$. The symmetric \key is used to (pseudo)randomly permute the order of all the $n$-tuples. Here, each $n$-tuple corresponds to a chunk of the hidden message bitstring, and each element of that $n$-tuple corresponds to a possible bit sequence for that chunk. $n = 2$ for two of our NLP tasks (\qa, \sg), and $n = 1$ for \lr, and chunks are single bits.\footnote{Chunks of size $g = 2^\beta > 2$ carry $\beta$ bits each and are supported in our implementation}
+
+
+% More specifically, \key seeds the random shuffling of the indices of $u_i$, with a selected group size (pairs in our case), the indices are cut into consecutive blocks of pairs, which creates both pairing and ordering.
+% On the other hand, the pairing can be also conducted within $G(\mathbf{x})$, so \f functions solely for solidifying the mapping between the payload and the slot to ensure the cryptographic security.
+% Additionally, a group can contain exactly 1 member in a slot, in which case the embedding is just selecting semantic units in a ordered list to construct the payload.
+
+\paragraph{Encoding}
+The $i^\text{th}$ bit of the hidden message picks out one semantic unit from the tuple $(u_1^i, \ldots, u_n^i)$, yielding a sequence of $m$ selected semantic units (for a hidden message of length $m$): $\mathbf{u_h} = (u_1^{h_1}, \ldots, u_m^{h_m})$. This sequence is then passed to an LLM to synthesize into \stegotext.
+% Bit $h_i$ selects the alternative semantic unit $u_i = u_i^{h_i}$.
+% The selected array of units $\mathbf{u_h} = (u_1, \dots, u_m)$ (or additionally the array of units that are rejected) is sent to a LLM to synthesize the \stegotext where every $u_i$ is fulfilled and every rejected candidate is absent.
+% Since the $u_i$ are the semantic content of the stegotext, we expect them to persist through meaning-preserving attacks.
+
+\paragraph{Decoding}
+The recipient reconstructs $\mathbf{u}$ via \key, $G$, and \inp, and recovers each bit of the hidden message, $h_i$, by evaluating the chunk represented by the element of the tuple $(u_1^i, \dots, u_n^i)$  that is present in the received text.
+We delegate this last task to an LLM and transform the question into a forced choice between two alternatives to increase decoding accuracy.
+
+
+% Semantic units in \units are used to encode bits of \msg and $\mathbf{F}_\mathbf{k}$ provides $m$ pairs of contextually appropriate semantic alternatives $(u,u') \in \mathbf{U} \times \mathbf{U}$ (where $u \neq u'$) with which to do this. The resulting ordered list of semantic units $\mathbf{u_h} = (u_1, \ldots, u_m)$ is then used to construct \stegotext by conditioning the generation of \stegotext on $\mathbf{u}_\mathbf{h}$.\footnote{It is because \stegotext is constructed directly from $\mathbf{u_h}$ that we say \covertext is \emph{latent} in our experiments.} Intuitively, because $\mathbf{u_h}$ consists of \emph{semantic} units, we can expect them to persist through \attack and thus to be recoverable from \attackedtext. Critically, both the pairing of semantic units and the ordering of pairs in $\mathbf{u}$ may be keyed on \key.\footnote{The ordering may also be established by the semantics of the units themselves (e.g., the chronology of a set of events).}
+
+\subsection{Attacks}
+\label{subsec:attacks}
+We consider several paraphrase-based attacks for \attack. All have a \texttt{local} mode, which operates on \stegotext sentence-by-sentence, and a \texttt{global} mode, which operates on all of \stegotext at once. For \texttt{local} mode, a tampering parameter $p$ controls the expected fraction of sentences in \stegotext that are attacked.
+% To simulate a covert channel in which Eve is an active adversary aware of potential steganographic communication, we evaluate robustness against three attack families: synonym substitution, back-translation, and LLM paraphrase. Each attack preserves the semantic content of the stegotext while altering its surface form, including the wording and the structure, thereby nullifying steganography schemes that encode bits in linguistic form. All three attacks operate in \texttt{local} and \texttt{global} modes, which perturb the stegotext at the sentence level or document level respectively, producing qualitatively different degradation patterns. A \texttt{tampering} parameter controls the expected fraction of content altered per attack.
+\begin{enumerate}[itemsep=0pt, parsep=1pt]
+\item \textbf{Synonym Substitution (\syn).} We use \texttt{TextAttack}'s~\cite{morris2020textattack} WordNet word-swap module to replace randomly chosen words in \stegotext with their synonyms.
+% \cj{Is it worth noting that this is not a semantic preserving transformation since the tokenizer would subsitute "al" in "et al." into "aluminum", which also affects the recovery rate of the system?}\ww{I think that's a minor detail that would only merit mentioning in the appendix, if anywhere.}
+\item \textbf{Round-Trip Translation (\rtt).} Here, we translate \stegotext into some target language and then back into \stegotext's original language, introducing lexical and syntactic variation. We use English as the source language and French as target language.
+\item \textbf{LLM Paraphrase (\llmp).} An LLM rephrases \stegotext.\footnote{\autoref{app:implementation-details} has paraphrasing prompts. We validate that our paraphrases are semantics-preserving in \autoref{app:additional-results}.}
+\end{enumerate}
+
+% The \texttt{global} variant is the most challenging attack we consider as it unpredictably restructures wording, ordering, and sentence boundaries, breaking the assumptions of most linguistic steganography systems. To validate that the attack is meaning-preserving, we applied it to the cover texts generated by each scheme proposed in this paper; results in [SOME TABLE] confirm that global paraphrase retains informational content while thoroughly transforming surface form, making it a realistic and stringent robustness benchmark.
+
+% The \emph{semantic} steganography that we pursue in this work relies on two core components: (1) a \emph{deterministic text transformation} that transforms a text into a list of binary choices that can be used for text generation and (2) a list of \emph{semantic invariant units} that are trivial but cannot be altered by attacks from the semantic front, such as named entities and numbers. These two components ensure that we can establish a deterministic substrate that the encoding and decoding could share, and thus restore the payload intact. We will call the output of the first component the \textbf{seed} in the rest of the paper.
+
+\subsection{Tasks}
+\label{subsec:tasks}
+We instantiate the approach described in \S\ref{subsec:encoding-decoding} for three NLP tasks:
+
+\paragraph{Long-Form Question Answering (\qa)} For this task, inputs (\inp) are complex, open-ended questions that demand long-form responses (e.g., \emph{How can the U.S.\ government improve public education?}). \units is defined as the set of subtopics these responses may cover (e.g., \emph{funding}, \emph{legislation}). Given \inp, \f produces pairs of alternate subtopics appropriate for inclusion in an answer to \inp.
+
+% The task aims to simulate a session where a user asks a general question that could be answered with various topics. For example, for the question "How can the U.S. government improve public education", many topics with equal importance could be included in the answer, such as staffing, funding, and regulations. Thus, by generating a set of pairs of topics, the choice of the topics encodes the secret bits $h$.
+
+\paragraph{Story Generation (\sg)} Here, \inp is a story premise and \units is the set of possible plot points. The pairs in $\mathbf{u}$ are small variations on the same basic plot point, differing only in their details.
+For example, a plot point could concern the beverage a character drinks, with candidates such as \{"a coke", "a beer"\}.
+
+% This task aims to simulate a session where a user ask a language model to generate a creative story given a short premise. Given the story premise, a model is tasked to generate a creative story focusing on the plot line, based on a list of given plot points and trivial details. Each detail is tied to a plot point and comes from a binary choice between two trivial choices that could not be altered through paraphrase attacks.
+
+% \paragraph{Literature Review} This task takes the title and abstract of an academic paper and a list of references as \inp and produces a related works section for that paper. \units is the set of all possible references. \f produces pairs of references by: (1) sorting the reference list chronologically; (2) generating a SHA-256 hash of each reference; and (3) pairing the $n$\textsuperscript{th} reference whose first hash bit is 0 with the $n$\textsuperscript{th} reference whose first hash bit is 1. \cj{Please verify that this is correct.}
+
+\paragraph{Literature Review (\lr)}
+In this task, \inp is the metadata of an academic paper: the title, abstract, and a candidate list of references, which serves as \units. 
+For each $u \in$ \units, \f computes a keyed HMAC of $u$'s first-author surname and year, $\mathbf{HMAC_k}(u)$, and takes from its output a one-bit \emph{label} $b_\mathbf{k}(u) \in \{0,1\}$ and a 64-bit \emph{keyrank} $\rho_\mathbf{k}(u)$, which induces a pseudo-random total order over \units.
+Sorting \units by keyrank, \f runs a single loop over the array and emits one candidate $u$ per message bit, essentially picking the first $u_i$ that matches $h_i$, and then continue the loop from that point onward.
+This setup not only introduces the symmetric key into the scheme, but also ensures balanced encoding and eliminates visible selection bias as $\rho_\mathbf{k}$ is uncorrelated with any observable attribute of a reference, so the prefix of the order that \f consumes looks like a random subset of \units.
+
+\subsection{Baseline}
+\label{subsec:baselines}
+We compare our schemes against a widely cited linguistic steganographic scheme, Discop \citep{ding2023discop}.
+We instantiate Discop's scheme with GPT-2 medium \citep{radford2019language} medium. 
+SyncPool \citep{qi2024provably} is used to ensure that serialized stegotext results from Discop can be cleanly attacked.
+Discop results go through the exact same experimental pipeline as the outputs of our method. \autoref{app:implementation-details} has further implementation details.
+

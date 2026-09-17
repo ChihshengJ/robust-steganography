@@ -1,10 +1,10 @@
 Our work has several limitations.
 
-First, we note the lack of baselines in our work. This is because prior methods are \emph{a priori} vulnerable to global paraphrases, and thus it would be largely pointless to compare against them on the global attacks presented here.
+First, although our steganalysis covers two semantically informed classifiers---including one based on a cutting-edge embedding model---it is conceivable that better classification accuracy could be achieved through other means.
 
-Second, although our steganalysis covers two semantically informed classifiers---including one based on a cutting-edge embedding model---it is conceivable that better classification accuracy could be achieved through other means.
+Second, some implementation details (e.g., prompts) required careful tuning to produce the expected behavior, suggesting that iteration may be required when adapting our approach to new domains and datasets.
 
-Finally, some implementation details (e.g., prompts) required careful tuning to produce the expected behavior, suggesting that iteration may be required when adapting our approach to new domains and datasets.
+Finally, we did not implement the streaming mode where each package size is contained so that ASCII encoded messages can be transmitted through a stream of encoded packaging to emulate a real world use case.
 
 %As our work chiefly represents an extension of \citet{perry2025robust}, it inherits some of the limitations of the method proposed in that work.
 

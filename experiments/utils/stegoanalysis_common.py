@@ -17,10 +17,15 @@ from sklearn.preprocessing import StandardScaler
 from experiments.utils.io import read_jsonl
 
 SYSTEMS = ["topicqa", "story", "litreview"]
-SUB_EXP_COVER = {"2a": "cover_c1", "2b": "cover_c2"}
+# 2c is story-only: C2's construction is too strict for story generation, so
+# cover_c3 is what that system uses as its cover text. It was run ad hoc before
+# being registered here, which is why transformer/embedding/judge outputs for it
+# predate this entry.
+SUB_EXP_COVER = {"2a": "cover_c1", "2b": "cover_c2", "2c": "cover_c3"}
 SUB_EXP_SYSTEMS = {
     "2a": ["topicqa", "story", "litreview"],
     "2b": ["topicqa", "story", "litreview"],
+    "2c": ["story"],
 }
 RANDOM_SEED = 42
 
@@ -118,9 +123,9 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--data-dir", type=Path, default=Path("data/experiments"))
     parser.add_argument(
         "--sub-experiment",
-        choices=["2a", "2b", "both", "all"],
+        choices=["2a", "2b", "2c", "both", "all"],
         default="both",
-        help="'both'/'all' = 2a+2b.",
+        help="'both' = 2a+2b; 'all' adds 2c (story only).",
     )
     parser.add_argument(
         "--systems",
@@ -131,8 +136,10 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
 
 def iter_tasks(args) -> Iterator[tuple[str, str]]:
     """Yield valid (sub_exp, system) pairs from parsed args."""
-    if args.sub_experiment in ("both", "all"):
+    if args.sub_experiment == "both":
         sub_exps = ["2a", "2b"]
+    elif args.sub_experiment == "all":
+        sub_exps = ["2a", "2b", "2c"]
     else:
         sub_exps = [args.sub_experiment]
     for sub_exp in sub_exps:

@@ -75,6 +75,16 @@ def main() -> None:
         type=lambda s: [x.strip() for x in s.split(",") if x.strip()],
         default=SYSTEMS,
     )
+    parser.add_argument(
+        "--text-types",
+        type=lambda s: [x.strip() for x in s.split(",") if x.strip()],
+        default=TEXT_TYPES,
+        help=(
+            "Text types to score (default: "
+            f"{','.join(TEXT_TYPES)}). 'cover_c3' exists for story only, and is "
+            "what that system uses as its cover text."
+        ),
+    )
     parser.add_argument("--model", default="gpt2-large")
     parser.add_argument("--device", default=None, help="cuda|mps|cpu (default: auto)")
     parser.add_argument(
@@ -100,7 +110,7 @@ def main() -> None:
     n_scored = 0
     n_skipped = 0
     for system in args.systems:
-        for text_type in TEXT_TYPES:
+        for text_type in args.text_types:
             src = _phase1_path(args.data_dir, system, text_type)
             phase1_records = read_jsonl(src)
             if not phase1_records:

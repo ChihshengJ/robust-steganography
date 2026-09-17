@@ -54,7 +54,6 @@ from experiments.utils.system_factory import (
     make_clients,
     make_discop,
     make_litreview,
-    make_meteor,
     make_story,
     make_topicqa,
 )
@@ -796,48 +795,114 @@ def generate_baseline(
 
 
 # ---------------------------------------------------------------------------
-# Token-level baselines (Meteor, Discop) — in-house comparison systems
+# Token-level baseline (Discop) — in-house comparison system
 # ---------------------------------------------------------------------------
 
 # Mean stego length of the semantic systems at the capacities they are compared
 # at (story 559-579w, litreview 576-622w across cap14-18). Length-matched
-# Meteor/Discop runs target this so both sides hand the attacker a comparable
-# cover, instead of the 3-4 word fragment the baselines emit at their native rate.
+# Length-matched Discop runs target this so both sides hand the attacker a
+# comparable cover, instead of the 3-4 word fragment it emits at its native rate.
 BASELINE_LM_TARGET_WORDS = 575
 
-# GPT-2's positional limit. Stego texts past this are truncated by the backends
-# (_meteor_backend.MAX_CONTEXT_LENGTH; discop's tokenizer truncation), which
-# would drop payload without erroring.
+# GPT-2's positional limit. Not a generation limit: both backends crop the KV
+# cache to MAX_CONTEXT_LENGTH and keep going, so stego texts run well past it.
+# Kept as documentation of where the attention window ends.
 GPT2_CONTEXT_LIMIT = 1024
 
-
-def _make_baseline_lm(system_name: str, repetitions: int, target_words: int):
-    """Build a Meteor/Discop system at a given repetition rate.
+def _make_baseline_lm(
+    system_name: str,
+    repetitions: int,
+    target_words: int,
+    syncpool: bool = True,
+):
+    """Build the Discop baseline system at a given repetition rate.
 
     Discop's token cap is sized from the word target (GPT-2 runs ~1.4 tokens per
-    word) and clamped to the model's 1024-token positional limit.
+    word), with generous headroom. It is deliberately *not* clamped to 1024:
+    that is GPT-2's positional limit, not a generation limit — the backend crops
+    the KV cache (``_limit_past``) and generates past it. Clamping here truncated
+    Discop mid-payload instead, producing records whose trailing bits were never
+    embedded. ``DiscopSystem.hide_message`` now raises rather than emit one.
     """
-    if system_name == "meteor":
-        return make_meteor(repetitions=repetitions)
     if system_name == "discop":
-        max_length = min(GPT2_CONTEXT_LIMIT, int(target_words * 1.7) + 64)
-        return make_discop(repetitions=repetitions, max_length=max_length)
+        # Generous headroom, not a tight estimate. Bits-per-token swings hard
+        # across prompts — under the old 1024 clamp one cap14 record embedded
+        # only 1792 of 3682 bits, i.e. it needed ~2x the budgeted length. Since
+        # encoding stops the moment the payload is in, a loose cap costs nothing
+        # on a typical document and only bounds a runaway.
+        max_length = int(target_words * 1.7) * 4 + 512
+        return make_discop(
+            repetitions=repetitions, max_length=max_length, syncpool=syncpool
+        )
     raise ValueError(f"unknown token-level baseline {system_name!r}")
 
 
 def _warn_if_truncated(record_id: str, record: dict) -> None:
-    """Flag stego texts that hit GPT-2's positional limit.
+    """Flag stego records whose text channel cannot decode cleanly.
 
-    A text at the limit has been cut off mid-payload, so its trailing bits were
-    never emitted and no attack is needed to lose them — that record would report
-    a recovery failure that has nothing to do with robustness.
+    Payload truncation is now an error at generation time (DiscopSystem raises),
+    so what is left to warn about here is the BPE round trip.
+
+    ``token_ids -> text -> token_ids`` is not the identity: GPT-2's tokenizer is
+    greedy, so a pair the sampler emitted separately (``[" but", "tons"]``)
+    comes back merged (``[" buttons"]``). From that token on, a text-channel
+    decode reads a different sequence than the encoder wrote and every later bit
+    is chance. The token channel (``metadata['token_ids']``) is unaffected, so
+    this is a property of the transport, not of the record — but it is the
+    reason a clean text-channel decode is below 1.0, and it should be visible at
+    generation time rather than inferred from a bad recovery number later.
     """
-    n_tokens = (record.get("metadata") or {}).get("n_tokens")
-    if n_tokens is not None and n_tokens >= GPT2_CONTEXT_LIMIT - 8:
+    meta = record.get("metadata") or {}
+    if meta.get("syncpool"):
+        # SyncPool decodes by walking the stegotext's bytes, never by
+        # re-tokenizing, so an inexact BPE round trip costs it nothing. That is
+        # the entire point of turning it on, and warning here would flag most
+        # records for a condition that no longer has consequences.
+        return
+    if meta.get("bpe_roundtrip_exact") is False:
         log.warning(
-            f"  {record_id}: {n_tokens} tokens, at GPT-2's {GPT2_CONTEXT_LIMIT}-token limit — "
-            f"payload likely truncated. Lower --target-words."
+            f"  {record_id}: BPE round trip is not exact ({meta.get('n_tokens')} tokens emitted) — "
+            f"the text channel will desync mid-stream. The token channel is unaffected."
         )
+
+
+def _warn_if_off_target(record_id: str, record: dict, target_words: int) -> None:
+    """Flag a length-matched record that missed the length it was matched to.
+
+    The quiet form of the degeneration that makes `hide_message` raise. GPT-2
+    slides into a repetition loop, the embedding rate collapses, and the encoder
+    needs far more tokens to place the same payload — so the document survives
+    but comes out much longer than `target_words`. That silently breaks the one
+    property the length-matched configuration exists to provide (baseline and
+    semantic systems handing the attacker comparable covers), and nothing
+    downstream would notice.
+    """
+    words = record.get("word_count") or 0
+    if not target_words:
+        return
+    ratio = words / target_words
+    if ratio > 1.5 or ratio < 0.5:
+        meta = record.get("metadata") or {}
+        log.warning(
+            f"  {record_id}: {words} words vs target {target_words} "
+            f"({ratio:.1f}x) — length matching is broken for this record"
+            + (
+                f"; {meta['n_singleton_steps']} zero-entropy steps of "
+                f"{meta.get('n_tokens')}"
+                if meta.get("n_singleton_steps")
+                else ""
+            )
+        )
+
+
+def _odd(r: int) -> int:
+    """Round a repetition rate up to the nearest odd value.
+
+    An even rate leaves ties in the majority vote, which the decoder must break
+    toward 0 — a half-vote bias against every message bit whose true value is 1.
+    Rounding up costs at most one extra copy and removes the bias entirely.
+    """
+    return r if r % 2 else r + 1
 
 
 def calibrate_repetitions(
@@ -847,10 +912,11 @@ def calibrate_repetitions(
     prompts: list[dict],
     n_pilot: int = 5,
     max_rounds: int = 3,
+    syncpool: bool = True,
 ) -> int:
     """Pick the repetition rate whose mean stego length hits `target_words`.
 
-    Meteor/Discop emit ~5 bits/word natively, so a 16-bit payload lands in a
+    Discop emits ~5 bits/word natively, so a 16-bit payload lands in a
     3-4 word fragment — far too short for a paraphrase attack to be a meaningful
     operation on it. Inflating the payload with a repetition code is what buys a
     cover of comparable length to the semantic systems while holding the *message*
@@ -859,34 +925,61 @@ def calibrate_repetitions(
 
     Bits/word is not perfectly flat in length, so this re-measures at the
     estimated rate and refines, rather than extrapolating once from r=1.
+
+    It must be re-run whenever `syncpool` or the local LM changes: both move
+    bits/word by a large factor (SyncPool spends no payload on choices within an
+    ambiguity pool), so an `r` calibrated under one setting length-matches
+    nothing under another.
     """
     rng = np.random.default_rng(1234 + capacity)
     pilot = prompts[:n_pilot]
     r = 1
     for round_idx in range(max_rounds):
-        system = _make_baseline_lm(system_name, r, target_words)
+        system = _make_baseline_lm(
+            system_name, r, target_words, syncpool=syncpool
+        )
         words = []
+        degenerate = 0
         for p in pilot:
             bits = rng.integers(0, 2, size=capacity).tolist()
-            words.append(len(system.hide_message(bits, p["seed"]).split()))
+            try:
+                words.append(len(system.hide_message(bits, p["seed"]).split()))
+            except ValueError as exc:
+                # A pilot whose generation degenerated (see the exhaustion hint
+                # in DiscopSystem) carries no usable rate estimate,
+                # and it must not abort the run: this is a calibration probe, and
+                # one bad trajectory out of five used to kill a multi-hour job.
+                #
+                # Drop it rather than folding it in. Its stego is enormous for
+                # the bits it holds, so including it would *lower* measured
+                # bits/word, which *raises* the next r, which makes the next
+                # round's documents longer and more likely to degenerate still —
+                # the estimator would chase its own tail.
+                degenerate += 1
+                log.warning(
+                    f"  calibration round {round_idx + 1}: pilot "
+                    f"{p['seed'][:50]!r} degenerated at r={r}; excluded from the "
+                    f"rate estimate. {exc}"
+                )
+        if not words:
+            raise RuntimeError(
+                f"{system_name}: every calibration pilot degenerated at r={r}. "
+                f"The length target ({target_words} words) is beyond what this "
+                f"model sustains without falling into a repetition loop — lower "
+                f"--target-words, or pin a rate with --repetitions."
+            )
         mean_words = sum(words) / len(words)
         bits_per_word = (capacity * r) / mean_words
-        next_r = max(1, round(target_words * bits_per_word / capacity))
+        next_r = _odd(max(1, round(target_words * bits_per_word / capacity)))
         log.info(
             f"  calibration round {round_idx + 1}: r={r} -> {mean_words:.0f} words "
             f"({bits_per_word:.2f} bits/word), target={target_words} => r={next_r}"
+            + (f" [{degenerate}/{len(pilot)} pilots excluded]" if degenerate else "")
         )
         if next_r == r:
             break
         r = next_r
 
-    est_tokens = target_words * 1.4
-    if est_tokens > GPT2_CONTEXT_LIMIT * 0.9:
-        log.warning(
-            f"  target_words={target_words} implies ~{est_tokens:.0f} GPT-2 tokens, close to the "
-            f"{GPT2_CONTEXT_LIMIT}-token positional limit; stego texts that overrun it get "
-            f"truncated and will silently lose payload. Lower --target-words."
-        )
     log.info(f"{system_name}: calibrated repetitions r={r} for ~{target_words} words")
     return r
 
@@ -900,8 +993,9 @@ def generate_baseline_lm(
     stego_only: bool = False,
     repetitions: int = 1,
     target_words: int = BASELINE_LM_TARGET_WORDS,
+    syncpool: bool = True,
 ):
-    """Generate Meteor/Discop texts: 1 S + 1 C1 + 1 C2 per prompt.
+    """Generate Discop texts: 1 S + 1 C1 + 1 C2 per prompt.
 
     These token-level baselines encode over a local GPT-2 (no API call for
     S/C1); the prompt ``seed`` doubles as the LM generation context and is saved
@@ -913,7 +1007,12 @@ def generate_baseline_lm(
     is written to ``system_state`` because the decode-side system is built at the
     factory default and has to be restored to the rate the record was encoded at.
     """
-    system = _make_baseline_lm(system_name, repetitions, target_words)
+    system = _make_baseline_lm(
+        system_name,
+        repetitions,
+        target_words,
+        syncpool=syncpool,
+    )
 
     paths = _out_paths(output_dir, system_name)
     completed, records_map = _load_checkpoint(paths)
@@ -921,8 +1020,11 @@ def generate_baseline_lm(
     stego_msgs = messages["stego_messages"]
     c1_msgs = messages["c1_messages"]
     n_prompts = len(prompts)
+    degenerate_prompts: list[int] = []
 
-    log.info(f"{system_name}: {n_prompts} prompts, {len(completed)} records already done")
+    log.info(
+        f"{system_name}: {n_prompts} prompts, {len(completed)} records already done"
+    )
 
     for p_idx, prompt_data in enumerate(prompts):
         seed = prompt_data["seed"]
@@ -935,7 +1037,17 @@ def generate_baseline_lm(
             log.info(f"  Skip {s_rid} (exists)")
         else:
             msg_bits = stego_msgs[p_idx]
-            text = system.hide_message(msg_bits, seed)
+            try:
+                text = system.hide_message(msg_bits, seed)
+            except ValueError as exc:
+                # A degenerate trajectory (GPT-2 in a repetition loop, zero
+                # embedding rate) is a property of this prompt/payload draw, not
+                # of the run. Skipping costs one document; aborting costs the
+                # hours already spent. Counted and reported at the end so the
+                # shortfall is never silent.
+                degenerate_prompts.append(p_idx)
+                log.warning(f"  SKIP {s_rid}: {exc}")
+                continue
             stego_record = _make_record(
                 record_id=s_rid,
                 system=system_name,
@@ -948,6 +1060,11 @@ def generate_baseline_lm(
                     "context": system._context,
                     "error_encoded_length": system._error_encoded_length,
                     "repetitions": repetitions,
+                    "interleave": getattr(system.ecc, "interleave", False),
+                    # Decoding a SyncPool stream without SyncPool (or the
+                    # reverse) yields chance, so the setting has to travel with
+                    # the record just as the ECC layout does.
+                    "syncpool": getattr(system, "syncpool", False),
                 },
                 metadata=system._last_metadata,
             )
@@ -955,6 +1072,7 @@ def generate_baseline_lm(
             records_map[s_rid] = stego_record
             completed.add(s_rid)
             _warn_if_truncated(s_rid, stego_record)
+            _warn_if_off_target(s_rid, stego_record, target_words)
             log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
 
         if stego_only:
@@ -977,6 +1095,11 @@ def generate_baseline_lm(
                     "context": system._context,
                     "error_encoded_length": system._error_encoded_length,
                     "repetitions": repetitions,
+                    "interleave": getattr(system.ecc, "interleave", False),
+                    # Decoding a SyncPool stream without SyncPool (or the
+                    # reverse) yields chance, so the setting has to travel with
+                    # the record just as the ECC layout does.
+                    "syncpool": getattr(system, "syncpool", False),
                 },
                 metadata=system._last_metadata,
                 paired_stego_id=s_rid,
@@ -1018,15 +1141,23 @@ def generate_baseline_lm(
         else:
             log.info(f"  Skip {c2_rid} (exists)")
 
+    if degenerate_prompts:
+        log.warning(
+            f"{system_name}: {len(degenerate_prompts)} of {n_prompts} prompt(s) "
+            f"produced no stego record because generation degenerated: "
+            f"{degenerate_prompts}. Phase 3 takes the first 30 stegos by "
+            f"prompt_idx, so raise --limit if this leaves you short."
+        )
+
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 
-# Token-level baselines run outside the default "all" set; invoke them
-# explicitly (they use a local GPT-2 and their own capacity/messages).
-BASELINE_LM_SYSTEMS = ("meteor", "discop")
+# The token-level baseline runs outside the default "all" set; invoke it
+# explicitly (it uses a local GPT-2 and its own capacity/messages).
+BASELINE_LM_SYSTEMS = ("discop",)
 BASELINE_LM_DEFAULT_CAPACITY = 16
 
 
@@ -1034,11 +1165,18 @@ def main():
     parser = argparse.ArgumentParser(description="Phase 1: Text Generation")
     parser.add_argument(
         "--system",
-        choices=["topicqa", "story", "litreview", "baseline", "meteor", "discop", "all"],
+        choices=[
+            "topicqa",
+            "story",
+            "litreview",
+            "baseline",
+            "discop",
+            "all",
+        ],
         default="all",
         help=(
-            "Which system(s) to generate texts for. 'meteor'/'discop' are the "
-            "in-house token-level baselines and are not included in 'all'."
+            "Which system(s) to generate texts for. 'discop' is the "
+            "in-house token-level baseline and is not included in 'all'."
         ),
     )
     parser.add_argument(
@@ -1108,7 +1246,7 @@ def main():
         action=argparse.BooleanOptionalAction,
         default=True,
         help=(
-            "Meteor/Discop only (default: on). Inflate the payload with a repetition code "
+            "Discop only (default: on). Inflate the payload with a repetition code "
             "so the stego text reaches --target-words, matching the semantic systems' cover "
             "length at the same payload. At the native rate these systems emit 3-4 word "
             "fragments, which no paraphrase attack can meaningfully act on. "
@@ -1126,11 +1264,27 @@ def main():
         ),
     )
     parser.add_argument(
+        "--syncpool",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Discop only (default: on). Eliminate segmentation ambiguity "
+            "(Qi et al., arXiv:2403.17524) so a clean text-channel decode is exact. "
+            "Without it the decoder re-tokenizes the stegotext into a different "
+            "sequence than the encoder wrote and desyncs with no attacker present, "
+            "which at length-matched repetition rates is fatal rather than merely "
+            "costly. Auto-appends '_sp' to the subdir, since SyncPool and plain "
+            "records are not interchangeable and must not share a checkpoint."
+        ),
+    )
+    parser.add_argument(
         "--repetitions",
         type=int,
         default=None,
         help=(
-            "Length-matched repetition rate. Skips calibration when set; otherwise the rate "
+            "Length-matched repetition rate. Prefer an odd value: an even rate leaves "
+            "ties that the majority vote breaks toward 0. "
+            "Skips calibration when set; otherwise the rate "
             "is measured from a 5-prompt pilot against --target-words."
         ),
     )
@@ -1159,6 +1313,8 @@ def main():
             # different experimental conditions and the paper reports both.
             if args.system in BASELINE_LM_SYSTEMS and args.length_matched:
                 args.subdir += f"_len{args.target_words}"
+            if args.system in BASELINE_LM_SYSTEMS and args.syncpool:
+                args.subdir += "_sp"
             log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")
 
     prompts_dir = args.data_dir / "prompts"
@@ -1300,10 +1456,22 @@ def main():
         if args.limit is not None:
             prompts = prompts[: args.limit]
 
+        if args.syncpool:
+            log.info(f"{args.system}: SyncPool on")
+        else:
+            log.warning(
+                f"{args.system}: --no-syncpool — the clean text channel will desync "
+                f"mid-stream with no attacker present. Reference condition only."
+            )
+
         repetitions = 1
         if args.length_matched:
             repetitions = args.repetitions or calibrate_repetitions(
-                args.system, args.capacity, args.target_words, prompts
+                args.system,
+                args.capacity,
+                args.target_words,
+                prompts,
+                syncpool=args.syncpool,
             )
             log.info(
                 f"{args.system}: length-matched at r={repetitions} "
@@ -1326,6 +1494,7 @@ def main():
             stego_only=args.stego_only,
             repetitions=repetitions,
             target_words=args.target_words,
+            syncpool=args.syncpool,
         )
 
     log.info("Phase 1 generation complete.")

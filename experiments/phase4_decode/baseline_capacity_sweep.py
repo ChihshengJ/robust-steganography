@@ -1,4 +1,4 @@
-"""Aggregate Meteor/Discop recovery across message lengths into a table + figure.
+"""Aggregate Discop recovery across message lengths into a table + figure.
 
 The paper's recovery figure has *message length* on the x-axis and *accuracy* on
 the y-axis, with two lines: bitwise accuracy and perfect-recovery rate. This
@@ -14,7 +14,7 @@ rate). One row per (message length) for the chosen attack.
 
 Usage:
     python -m experiments.phase4_decode.baseline_capacity_sweep \\
-        --system meteor --capacities 14,16,18 --attack global_paraphrase
+        --system discop --capacities 14,16,18 --attack global_paraphrase
 
     # No-attack ceiling (should be ~100% / 100%):
     python -m experiments.phase4_decode.baseline_capacity_sweep \\
@@ -34,8 +34,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 
-def _decoded_path(data_dir: Path, system: str, cap: int, target_words: int | None) -> Path:
+def _decoded_path(
+    data_dir: Path, system: str, cap: int, target_words: int | None, syncpool: bool
+) -> Path:
     run = f"{system}_cap{cap}" if target_words is None else f"{system}_cap{cap}_len{target_words}"
+    if syncpool:
+        run += "_sp"
     return data_dir / "phase4_decode" / run / f"{system}_decoded.jsonl"
 
 
@@ -134,9 +138,9 @@ def write_figure(rows: list[dict], out_png: Path, system: str, attack: str) -> N
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Message-length recovery sweep for Meteor/Discop baselines."
+        description="Message-length recovery sweep for the Discop baseline."
     )
-    parser.add_argument("--system", choices=["meteor", "discop"], required=True)
+    parser.add_argument("--system", choices=["discop"], required=True)
     parser.add_argument(
         "--capacities",
         default="14,16,18",
@@ -145,8 +149,10 @@ def main():
     parser.add_argument(
         "--attack",
         default="global_paraphrase",
-        help="attack_label to aggregate (default: global_paraphrase; "
-        "use 'no_attack' for the ceiling).",
+        help="attack_label to aggregate (default: global_paraphrase). "
+        "'no_attack' is the clean *text* channel (lossy: BPE re-merges tokens "
+        "on the round trip); 'no_attack_token_channel' is the scheme's own "
+        "ceiling, decoded from the emitted ids.",
     )
     parser.add_argument("--data-dir", type=Path, default=Path("data/experiments"))
     parser.add_argument(
@@ -165,6 +171,16 @@ def main():
         help="Length-matched target that selects the run dir (default: 575).",
     )
     parser.add_argument(
+        "--syncpool",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Read the SyncPool runs ('..._sp', default: on). SyncPool is what "
+            "makes the clean text channel exact; --no-syncpool reads the older "
+            "runs whose clean point is below 1.0 for want of it."
+        ),
+    )
+    parser.add_argument(
         "--out-dir",
         type=Path,
         default=None,
@@ -174,13 +190,20 @@ def main():
 
     caps = [int(c) for c in args.capacities.split(",") if c.strip()]
     target = args.target_words if args.length_matched else None
-    sweep_dir = f"{args.system}_capsweep" + (f"_len{target}" if target else "")
+    sweep_dir = (
+        f"{args.system}_capsweep"
+        + (f"_len{target}" if target else "")
+        + ("_sp" if args.syncpool else "")
+    )
     out_dir = args.out_dir or (args.data_dir / "phase4_decode" / sweep_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     rows = []
     for cap in caps:
-        agg = aggregate_one(_decoded_path(args.data_dir, args.system, cap, target), args.attack)
+        agg = aggregate_one(
+            _decoded_path(args.data_dir, args.system, cap, target, args.syncpool),
+            args.attack,
+        )
         if agg is None:
             continue
         rows.append({"message_length": cap, **agg})

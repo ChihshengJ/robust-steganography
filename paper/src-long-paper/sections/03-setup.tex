@@ -4,16 +4,38 @@
     \caption{Bitwise (top) and perfect (bottom) message recovery accuracy under different paraphrase-based attacks on the stegotexts (\S\ref{subsec:attacks}) for our three tasks (columns; \S\ref{subsec:tasks}). Most schemes are fairly robust even to \emph{global} attacks.}
     \label{fig:recovery-results}
 \end{figure*}
-\subsection{Objective} We aim to communicate a hidden message (ciphertext) \msg consisting of a bitstring of length $m$ (i.e., $\mathbf{h} \in \{0,1\}^m$) by embedding it within some covertext $\mathbf{c} \in \Sigma^*$, yielding a stegotext $\mathbf{s} \in \Sigma^*$. For encoding, \covertext is latent, as we generate \stegotext directly given \msg and some task-specific input \inp (e.g., a question).\footnote{Optionally, an error-correcting code (ECC) may be applied to \stegotext to improve the recoverability of \msg (cf.\ \citet{perry2025robust}), although we do not use ECCs in our experiments.} The goal is to successfully transmit \msg to a recipient \emph{even} under an adversarial, semantics-preserving attack \attack (\S\ref{subsec:attacks}) that yields a new text \attackedtext. Our method is \emph{not} designed to be robust to attacks that alter the semantics of \stegotext. Finally, since ours is a \emph{symmetric key} method, we assume both sender and recipient share a secret key $\mathbf{k} \in \{0,1\}^\lambda$. Thus, the recipient must be able to recover \msg from \attackedtext given only $\mathbf{k}$ and given access to relevant public resources, such as a common LLM inference API (which we use in our experiments).
+\subsection{Objective} We aim to communicate a hidden message (ciphertext) \msg consisting of a bitstring of length $m$ (i.e., $\mathbf{h} \in \{0,1\}^m$) by embedding it within some covertext $\mathbf{c} \in \Sigma^*$, yielding a stegotext $\mathbf{s} \in \Sigma^*$. For encoding, \covertext is latent, as we generate \stegotext directly given \msg and some task-specific input \inp (e.g., a question).\footnote{Optionally, an error-correcting code (ECC) may be applied to \stegotext to improve the recoverability of \msg (cf.\ \citet{perry2025robust}), although we do not use ECCs in our experiments.} The goal is to successfully transmit \msg to a recipient \emph{even} under an adversarial, semantics-preserving attack \attack (\S\ref{subsec:attacks}) that yields a new text \attackedtext. Our method is \emph{not} designed to be robust to attacks that alter the semantics of \stegotext. Finally, since ours is a \emph{symmetric key} method, we assume both sender and recipient share a secret key $\mathbf{k} \in \{0,1\}^\lambda$. Thus, the recipient must be able to recover \msg from \attackedtext given only $\mathbf{k}$ and given access to relevant public resources, such as a common LLM inference API or a specific release of a open-source LLM (which we use in our experiments).
 
 \subsection{Encoding and Decoding}
 \label{subsec:encoding-decoding}
 We rely on two core components to facilitate encoding and decoding of \msg:
 \begin{enumerate}[itemsep=0pt, parsep=1pt]
-    \item \units: a set of \emph{semantic units} (e.g., the set of all possible references).
-    \item \f: a function (keyed on $\mathbf{k}$) that generates an $m$-tuple of ordered pairs of semantic units $\mathbf{u} = ((u_1,u'_1),\ldots(u_m,u'_m))$ given \inp.
+    \item \units: a set of \emph{semantic units} (e.g., sub-topics to a question, plot details, references).
+    \item \f: a function (keyed on $\mathbf{k}$) that generates an $m$-tuple of ordered groups of semantic units $\mathbf{u} = ((u_1^{0}, \ldots, u_1^{i}),\ldots(u_m^{0}, \ldots, u_m^{i}))$ given \inp.
 \end{enumerate}
-Semantic units in \units are used to encode bits of \msg and $\mathbf{F}_\mathbf{k}$ provides $m$ pairs of contextually appropriate semantic alternatives $(u,u') \in \mathbf{U} \times \mathbf{U}$ (where $u \neq u'$) with which to do this. The resulting ordered list of semantic units $\mathbf{u_h} = (u_1, \ldots, u_m)$ is then used to construct \stegotext by conditioning the generation of \stegotext on $\mathbf{u}_\mathbf{h}$.\footnote{It is because \stegotext is constructed directly from $\mathbf{u_h}$ that we say \covertext is \emph{latent} in our experiments.} Intuitively, because $\mathbf{u_h}$ consists of \emph{semantic} units, we can expect them to persist through \attack and thus to be recoverable from \attackedtext. Critically, both the pairing of semantic units and the ordering of pairs in $\mathbf{u}$ may be keyed on \key.\footnote{The ordering may also be established by the semantics of the units themselves (e.g., the chronology of a set of events).}
+
+\paragraph{Semantic units}
+A public, deterministic generator $G$ that maps the task input \inp to an ordered list of contextually appropriate semantic units.
+$G(\mathbf{x}) = (u_1,\ldots,u_n)$, $u_i \in \mathbf{U}$, each unremarkable and replaceable with one another.
+In our case, $G$ could be a fixed inference endpoint of a open-source LLM (see \autoref{app:implementation-details} for the settings that make the generation deterministic) or a deterministic pure function of public metadata.
+
+\paragraph{Grouping and Ordering}
+\f generates a sequence of $m$ "slots" $\mathbf{u} = ((u_1^{0}, \ldots, u_1^{i}),\ldots(u_m^{0}, \ldots, u_m^{i}))$ over $G(\mathbf{x})$, an array of ordered groups of distinct, mutually exclusive semantic units. \footnote{Slots of size $g = 2^\beta > 2$ carry $\beta$ bits each and are supported in our implementation}
+More specifically, \key seeds the random shuffling of the indices of $u_i$, with a selected group size (pairs in our case), the indices are cut into consecutive blocks of pairs, which creates both pairing and ordering.
+On the other hand, the pairing can be also conducted within $G(\mathbf{x})$, so \f functions solely for solidifying the mapping between the payload and the slot to ensure the cryptographic security.
+Additionally, a group can contain exactly 1 member in a slot, in which case the embedding is just selecting semantic units in a ordered list to construct the payload.
+
+\paragraph{Encoding}
+Bit $h_i$ selects the alternative semantic unit $u_i = u_i^{h_i}$.
+The selected array of units $\mathbf{u_h} = (u_1, \dots, u_m)$ (or additionally the array of units that are rejected) is sent to a LLM to synthesize the \stegotext where every $u_i$ is fulfilled and every rejected candidate is absent.
+Since the $u_i$ are the semantic content of the stegotext, we expect them to persist through meaning-preserving attacks.
+
+\paragraph{Decoding}
+The recipient Alice reconstructs the $\mathbf{u}$ through \key, $G$, and \inp and recovers each $h_i$ by evaluating which member of $(u_n^{0}, \ldots, u_n^{i})$ is present in the received text.
+We delegate the last task to an LLM and transforms the question into a force choice between two alternatives to increase the decoding accuracy.
+
+
+% Semantic units in \units are used to encode bits of \msg and $\mathbf{F}_\mathbf{k}$ provides $m$ pairs of contextually appropriate semantic alternatives $(u,u') \in \mathbf{U} \times \mathbf{U}$ (where $u \neq u'$) with which to do this. The resulting ordered list of semantic units $\mathbf{u_h} = (u_1, \ldots, u_m)$ is then used to construct \stegotext by conditioning the generation of \stegotext on $\mathbf{u}_\mathbf{h}$.\footnote{It is because \stegotext is constructed directly from $\mathbf{u_h}$ that we say \covertext is \emph{latent} in our experiments.} Intuitively, because $\mathbf{u_h}$ consists of \emph{semantic} units, we can expect them to persist through \attack and thus to be recoverable from \attackedtext. Critically, both the pairing of semantic units and the ordering of pairs in $\mathbf{u}$ may be keyed on \key.\footnote{The ordering may also be established by the semantics of the units themselves (e.g., the chronology of a set of events).}
 
 \subsection{Attacks}
 \label{subsec:attacks}
@@ -39,12 +61,38 @@ We instantiate the approach described in \S\ref{subsec:encoding-decoding} for th
 % The task aims to simulate a session where a user asks a general question that could be answered with various topics. For example, for the question "How can the U.S. government improve public education", many topics with equal importance could be included in the answer, such as staffing, funding, and regulations. Thus, by generating a set of pairs of topics, the choice of the topics encodes the secret bits $h$.
 
 \paragraph{Story Generation (\sg)} Here, \inp is a story premise and \units is the set of possible plot points. The pairs in $\mathbf{u}_\mathbf{h}$ are small variations on the same basic plot point, differing only in their details.
+For example, a plot point could be about the beverage the protagonist picks, so the candidates might be \{"a coke", "a beer"\}.
 
 % This task aims to simulate a session where a user ask a language model to generate a creative story given a short premise. Given the story premise, a model is tasked to generate a creative story focusing on the plot line, based on a list of given plot points and trivial details. Each detail is tied to a plot point and comes from a binary choice between two trivial choices that could not be altered through paraphrase attacks.
 
 % \paragraph{Literature Review} This task takes the title and abstract of an academic paper and a list of references as \inp and produces a related works section for that paper. \units is the set of all possible references. \f produces pairs of references by: (1) sorting the reference list chronologically; (2) generating a SHA-256 hash of each reference; and (3) pairing the $n$\textsuperscript{th} reference whose first hash bit is 0 with the $n$\textsuperscript{th} reference whose first hash bit is 1. \cj{Please verify that this is correct.}
 
-\paragraph{Literature Review (\lr)} In this task, \inp is the metadata of an academic (\emph{seed}) paper: the title, abstract, and a candidate list of references, $\text{ref}(\mathbf{x})$. \units is the set of all possible references. Given \inp, $\mathbf{F}_\mathbf{k}$ generates $\mathbf{u}$ as follows: for each reference $u \in \text{ref}(\mathbf{x})$, a keyed HMAC is computed, $\mathbf{HMAC_k}(u)$, whose output is split into two fields: a one-bit \emph{label} $b(u)\in\{0,1\}$ and a 64-bit \emph{keyrank} $\rho(u)$ inducing a pseudo-random total order over \units. Partitioning $\text{ref}(\mathbf{x})$ into the two keyrank-sorted streams $\text{ref}_0(\mathbf{x}) = (u\in \text{ref}(\mathbf{x}) : b(u)=0)$ and $\text{ref}_1(\mathbf{x}) = (u\in U : b(u)=1)$, $\mathbf{F}_\mathbf{k}$ produces the $i$\textsuperscript{th} pair $(u_i, u'_i)$ by pairing the $i$\textsuperscript{th} element of $\text{ref}_0(\mathbf{x})$ with the $i$\textsuperscript{th} element of $\text{ref}_1(\mathbf{x})$, for $i = 1, \ldots, m$. Thus, each pair contains a reference $u$ with $b(u) = 0$ and a reference $u'$ with $b(u') = 1$. Here, decoding is conditioned only on $\mathbf{u}_\mathbf{h}$, not \inp.
+\paragraph{Literature Review (\lr)}
+In this task, \inp is the metadata of an academic (\emph{seed}) paper: the title, abstract, and a candidate list of references, which serves as \units. 
+For each $u \in$ \units, \f computes a keyed HMAC of $u$'s first-author surname and year, $\mathbf{HMAC_k}(u)$, and takes from its output a one-bit \emph{label} $b_\mathbf{k}(u) \in \{0,1\}$ and a 64-bit \emph{keyrank} $\rho_\mathbf{k}(u)$, which induces a pseudo-random total order over \units.
+Sorting \units by keyrank, \f runs a single loop over the array and emits one group per message bit, essentially picking the first $u_i$ that matches $h_i$, and then continue the loop from that point onward.
+This setup not only introduces the symmetric key into the scheme, but also ensures balanced encoding and eliminates visible selection bias as $\rho_\mathbf{k}$ is uncorrelated with any observable attribute of a reference, so the prefix of the order that \f consumes looks like a random subset of \units.
+
+\subsection{Baselines}
+\label{subsec:baselines}
+We compare our schemes against 2 widely cited linguistic steganography mentioned above, Meteor \citep{kaptchuk2021meteor} and Discop \citep{ding2023discop} to show the vast difference between our framework and the mainstream ones.
+They are both instantiated over GPT-2 \citep{radford2019language} and driven from the same prompt set as our schemes so that the covertext distribution is held fixed.
+
+\paragraph{Constraints for this comparison}
+Since Meteor and Discop are both token-level steganography scheme with high capacity, for them to match the length of our payloads (14-18 bits per stegotext), they would natively emit only 3--4 word, which is too short to be attacked and evaluated in any meaningful way.
+To place them in the same range of length as our schemes, we apply a repetition error correction code that inflates the payload.
+We conducted statistic analysis and empirical experiments and decided on $r \in [174, 263]$ and outputs of $502$--$644$ words to closely match our stegotext lengths per condition.
+
+\paragraph{Control channel calibration}
+Our experiment pipeline stores normal text throughout, like any realistic channel would, but Meteor and Discop both require the decoder to have the exact tokenized sequence the encoder emits \citep{qi2024provably, wang2026retoksync}.
+Thus, we added \citep{qi2024provably}'s implementation on decoding alignment to present a more apple-to-apple comparison.
+
+\paragraph{A missing baseline}
+\citet{perry2025robust} is one of the greatest inspirations of our paper.
+However, their embedding scheme have some intrinsic drawbacks that blocks us from including it into the baselines.
+The locality sensitive hashing is not guaranteed to hash uniformly within a semantic space.
+On the contrary, since the semantics of a chunk is conditioned on the previous context, during the reproduction, we completely failed to encode bits consistently when the capacity was greater than 3 bits with a random projection hash or a PCA hash trained as the paper describes.
+Thus, we do not include their scheme into the baselines even when the two studies are the most adjacent.
 
 % We extract the citations from an existing paper, and then deterministically create a list of citations based on the chronological order and each extracted citation's SHA256 hash to represent the secret message $h$. Combined with the paper title, abstract, and the list of citations, an LLM is asked to generate a synthetic Related Works section based on the topic of the seed paper.
 

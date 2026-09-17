@@ -102,7 +102,7 @@ ATTACK_CONFIGS: list[dict] = [
 
 SYSTEMS = ("topicqa", "story", "litreview", "baseline")
 # In-house token-level baselines: selectable explicitly but excluded from "all".
-BASELINE_LM_SYSTEMS = ("meteor", "discop")
+BASELINE_LM_SYSTEMS = ("discop",)
 
 # Cover-attack plan: covers carry no bits, so they only feed Exp 1 attack-severity
 # baselines. local_paraphrase at medium and maximum tampering is enough to anchor
@@ -161,8 +161,15 @@ def load_sources(
 ) -> list[tuple[dict, str]]:
     """Load (record, text_type) tuples for all sources to attack.
 
-    Stegos: first n_stegos by prompt_idx from {system}_stego.jsonl.
-    Covers: first n_covers by prompt_idx from {system}_cover_c1.jsonl (unless skipped).
+    Stegos: first n_stegos *available* by prompt_idx from {system}_stego.jsonl.
+    Covers: first n_covers available by prompt_idx from {system}_cover_c1.jsonl
+    (unless skipped).
+
+    "Available", not "prompt_idx < n": Phase 1 can legitimately produce no record
+    for a prompt — the Discop baseline skips one whose generation degenerated
+    (see phase1_generate) — and filtering by index would then silently return
+    n-minus-the-gaps sources, quietly shrinking the sample. Taking the first n
+    that exist is identical when there are no gaps.
     """
     sources: list[tuple[dict, str]] = []
 
@@ -170,8 +177,15 @@ def load_sources(
     stego_records = sorted(
         (r for r in read_jsonl(stego_path) if r.get("prompt_idx") is not None),
         key=lambda r: r["prompt_idx"],
-    )
-    stego_records = [r for r in stego_records if r["prompt_idx"] < n_stegos][:n_stegos]
+    )[:n_stegos]
+    if len(stego_records) < n_stegos:
+        log.warning(
+            "[%s] only %d stego records available, wanted %d — generate more "
+            "prompts in Phase 1 if the sample matters.",
+            system,
+            len(stego_records),
+            n_stegos,
+        )
     sources.extend((r, "stego") for r in stego_records)
 
     if not skip_covers:
@@ -179,10 +193,7 @@ def load_sources(
         cover_records = sorted(
             (r for r in read_jsonl(cover_path) if r.get("prompt_idx") is not None),
             key=lambda r: r["prompt_idx"],
-        )
-        cover_records = [r for r in cover_records if r["prompt_idx"] < n_covers][
-            :n_covers
-        ]
+        )[:n_covers]
         sources.extend((r, "cover_c1") for r in cover_records)
 
     return sources
@@ -400,7 +411,7 @@ def main():
         "--system",
         choices=[*SYSTEMS, *BASELINE_LM_SYSTEMS, "all"],
         default="all",
-        help="Which system(s) to attack ('all' excludes meteor/discop)",
+        help="Which system(s) to attack ('all' excludes discop)",
     )
     parser.add_argument(
         "--data-dir",

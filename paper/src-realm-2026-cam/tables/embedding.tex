@@ -1,0 +1,27 @@
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{llcc}
+\toprule
+System & Accuracy & AUC \\
+\midrule
+\multicolumn{3}{l}{\textit{S vs Type 1}} \\
+\qa  & $0.353 \pm 0.024$ & $0.264 \pm 0.047$ \\
+\sg  & $0.395 \pm 0.037$ & $0.312 \pm 0.036$ \\
+\lr & $0.343 \pm 0.048$ & $0.291 \pm 0.058$ \\
+\midrule
+\multicolumn{3}{l}{\textit{S vs Type 2 (length matched)}} \\
+\qa & $0.463 \pm 0.041$ & $0.449 \pm 0.034$ \\
+\sg & $0.808 \pm 0.024$ & $0.892 \pm 0.014$ \\
+\lr & $0.533 \pm 0.098$ & $0.555 \pm 0.117$ \\
+\midrule
+\multicolumn{3}{l}{\textit{S vs Type 3}} \\
+\sg & $0.475 \pm 0.032$ & $0.450 \pm 0.038$ \\
+\bottomrule
+\end{tabular}
+\caption{Embedding-based classifier: $768$-d Google text-embedding-005
+vectors fed to a 2-layer MLP ($256{\to}64$, dropout 0.3), 5-fold stratified
+CV.}
+\label{tab:steg-embedding}
+\end{table}

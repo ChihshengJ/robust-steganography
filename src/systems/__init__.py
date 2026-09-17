@@ -45,7 +45,7 @@ from .core.hash_functions import (
     PCAHash,
     RandomProjectionHash,
 )
-from .core.baselines import DiscopLM, DiscopSystem, MeteorLM, MeteorSystem
+from .core.baselines import DiscopLM, DiscopSystem
 from .core.litreview import LitReviewSystem
 from .core.steg_system import StegSystem
 from .core.story_gen import StorySystem
@@ -62,9 +62,7 @@ __all__ = [
     "StorySystem",
     "LitReviewSystem",
     "TopicQASystem",
-    # In-house token-level baselines (Meteor, Discop)
-    "MeteorSystem",
-    "MeteorLM",
+    # In-house token-level baseline (Discop)
     "DiscopSystem",
     "DiscopLM",
     # Encoders

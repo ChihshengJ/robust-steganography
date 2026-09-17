@@ -42,16 +42,16 @@ LLMs, while introducing the adversary, also lift the bottleneck, as controlled s
 \citet{zhang2020linguistic} encode bits in the selection of implicit semantic attributes, using controlled generation to produce the stegotexts and decode through a trained classifier.
 \citet{bai2024semantic} uses an ontology-entity-tree codebook to embed the message over an empirical entity distribution and extract the payload with an agentic pipeline.
 \citet{perry2025robust} uses rejection sampling to force the embedding of a generated chunk to map to the desired bits with a locality-sensitive hash.
-They each uses a sharable state (i.e., the trained classifier, the ontology with the frequency table, or the domain-specific PCA model).
+They each uses a shareable state (i.e., the trained classifier, the ontology with the frequency table, or the domain-specific PCA model).
 We take the same route but question whether the receiver could hold less ingredients, and show that a symmetric key and a public task input is enough for hiding information in the semantic space.
 
-\subsection{Covert reasoning}
+\subsection{Covert communication between agents}
 Steganography as a communication tool does not only serve people.
 Studies have shown that the chain-of-thoughts of LLMs do not faithfully reflect the reasoning process \citep{lanham2023measuring, radhakrishnan2023question}, and even can be used as a covert communication channel \citep{roger2023preventing}.
-Thus, content-preserving paraphraser between agent communication is a reasonable defense against agents using traditional steganography that designed around covertness only.
+Thus, meaning-preserving paraphraser between agent communication is a reasonable defense against agents using traditional steganography that designed around covertness only.
 A steganography scheme that survives attacks like global paraphrase would be an evidence that the defense still has a blind spot for the semantic space.
 
-More importantly, for deviant agents to share a seed or a flag for misaligned purposes \citep{motwani2024secret}, and since steganoigraphic behavior has been shown to emerge under process supervision \citep{skaf2025large} and to be present in frontier models today \citep{zolkowski2026early}, the payload might be just small enough for a couple of bits to escape the monitoring.
+More importantly, for deviant agents to share a seed or a flag for misaligned purposes \citep{motwani2024secret}, and since stenographic behavior has been shown to emerge under process supervision \citep{skaf2025large} and to be present in frontier models today \citep{zolkowski2026early}, the payload might be just small enough for a couple of bits to escape the monitoring.
 
 \citet{zhou2026conceptual}'s concurrent work shows that chain-of-thought can be a channel for robust steganography by embedding the payload into the strategy of each step of the reasoning. It can be cleanly setup, but fails against a scheme aware monitoring both in detection and removal.
 Our framework provides greater robustness as the semantic content of a stegotext encodes the payload directly, so the payload cannot be removed without altering the meaning of the content.

@@ -4,6 +4,13 @@ from typing import Any
 
 import numpy as np
 
+#: Placeholder for a copy the channel never delivered. Callers pad a short
+#: recovery with this rather than with 0: a missing copy carries no evidence,
+#: whereas a 0 votes against every message bit whose true value is 1. Under the
+#: interleaved layout a truncated stream drops copies of *every* message bit, so
+#: zero-padding would bias the whole message, not just its tail.
+ERASURE = -1
+
 
 class ErrorCorrection(ABC):
     @abstractmethod
@@ -16,7 +23,27 @@ class ErrorCorrection(ABC):
 
 
 class RepetitionCode(ErrorCorrection):
-    def __init__(self, repetitions=3, block_size=1):
+    """Majority-vote repetition code, in block or interleaved layout.
+
+    ``interleave`` selects where the copies of a message bit sit in the encoded
+    stream:
+
+    * block (default) — bit *j* occupies the contiguous run
+      ``[j*r, (j+1)*r)``. Fine for memoryless channels.
+    * interleaved — bit *j* occupies ``j, j+m, j+2m, ...`` for an *m*-bit
+      message.
+
+    The layouts are equivalent under independent bit flips, but not under
+    *bursts*. A token-level decoder that loses synchronization part-way through
+    a stream corrupts one contiguous suffix, which under the block layout wipes
+    out every message bit after the break while leaving the earlier ones
+    untouched — the code contributes nothing. Interleaving spreads that same
+    burst evenly, so every bit keeps a share of clean copies and the majority
+    vote still has something to work with. See ``DiscopSystem``, whose channel is
+    exactly this bursty one.
+    """
+
+    def __init__(self, repetitions=3, block_size=1, interleave=False):
         if repetitions < 1:
             raise ValueError("Repetitions must be at least 1")
         if block_size < 1:
@@ -25,6 +52,7 @@ class RepetitionCode(ErrorCorrection):
             raise ValueError("Repetitions and block_size must be coprime")
         self.repetitions = repetitions
         self.block_size = block_size
+        self.interleave = interleave
 
     def _check_parameters(self, repetitions, block_size):
         """Check if repetitions and block_size are coprime."""
@@ -32,26 +60,65 @@ class RepetitionCode(ErrorCorrection):
 
     def encode(self, bits):
         padded_bits = self._pad_input(bits)
+        if self.interleave:
+            # bit j -> positions j, j+m, j+2m, ...
+            return list(padded_bits) * self.repetitions
+
         encoded_bits = []
         for bit in padded_bits:
             encoded_bits.extend([bit] * self.repetitions)
 
         return encoded_bits
 
+    @staticmethod
+    def _vote(copies):
+        """Strict-majority vote over one bit's copies, ignoring erasures.
+
+        Copies equal to ``ERASURE`` are dropped rather than counted as zeros, so
+        the denominator is the number of copies actually received. Ties break to
+        0; picking an odd rate (see ``calibrate_repetitions``) avoids them.
+        A fully erased bit has no evidence either way and decodes to 0.
+        """
+        kept = np.asarray(copies)
+        kept = kept[kept >= 0]
+        if kept.size == 0:
+            return 0
+        return int(2 * int(kept.sum()) > kept.size)
+
     def decode(self, bits, actual_length):
         # Flatten input array
         bits = np.array(bits).flatten()
 
-        decoded_bits = []
-        for i in range(0, len(bits), self.repetitions):
-            chunk = bits[i : i + self.repetitions]
-            # cut off extra bits if it's shorter than half of the chunk length
-            if len(chunk) in range(self.repetitions // 2 + 1, self.repetitions + 1):
-                decoded_bits.append(int(sum(chunk) > self.repetitions // 2))
+        if self.interleave:
+            decoded_bits = self._decode_interleaved(bits)
+        else:
+            decoded_bits = []
+            for i in range(0, len(bits), self.repetitions):
+                chunk = bits[i : i + self.repetitions]
+                # cut off extra bits if it's shorter than half of the chunk length
+                if len(chunk) in range(self.repetitions // 2 + 1, self.repetitions + 1):
+                    decoded_bits.append(self._vote(chunk))
 
         # Unpad the decoded bitswq
         unpadded_bits = self._unpad_output(decoded_bits)
         return unpadded_bits
+
+    def _decode_interleaved(self, bits):
+        """Majority-vote the strided copies written by the interleaved encoder.
+
+        The stride is the message length *m*, which is only recoverable from the
+        stream length, so a short/over-long recovery is padded up to a whole
+        number of passes first — with ``ERASURE``, not 0, since those copies were
+        never received. Callers already pad to ``error_encoded_length``; this
+        keeps the code correct if one does not.
+        """
+        r = self.repetitions
+        bits = bits.astype(int, copy=False)
+        if len(bits) % r:
+            pad = np.full(r - len(bits) % r, ERASURE, dtype=int)
+            bits = np.concatenate([bits, pad])
+        m = len(bits) // r
+        return [self._vote(bits[j::m]) for j in range(m)]
 
     def _pad_input(self, bits):
         """Add padding bits and padding length field to ensure encoded length is multiple of block_size"""
