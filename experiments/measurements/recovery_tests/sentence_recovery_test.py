@@ -5,17 +5,15 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import openai
 
-from embeddings.paths import pca_artifacts_dir
-from embeddings import (
+from systems.paths import pca_artifacts_dir
+from systems import (
+    BypassEncoder,
     PCAHash,
     RepetitionCode,
     SentenceStegSystem,
 )
-from embeddings.config.system_prompts import CORPORATE_MONOLOGUE_ALT
-from watermarks import (
-    GPT2Model,
-    LanguageModel,
-)
+from systems.config.system_prompts import CORPORATE_MONOLOGUE_ALT
+from attacks.ngram_shuffle import LanguageModel
 from attacks import (
     Attack,
     NGramShuffleAttack,
@@ -25,10 +23,10 @@ from attacks import (
 from attacks.translation import TranslationAttack
 
 from ..utils import (
-    BypassEncoder,
     CheckpointManager,
     CheckpointState,
     ExperimentConfig,
+    GPT2Model,
     ProgressTracker,
     TextLogger,
     index_reducer,

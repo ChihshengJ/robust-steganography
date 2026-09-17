@@ -1,4 +1,0 @@
-Tampering_Level	Recovery_Accuracy
-0.0	40
-0.5	0
-1.0	60

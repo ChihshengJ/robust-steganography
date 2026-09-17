@@ -66,8 +66,7 @@ The project is organized as follows:
   - **measurements/ (legacy)**: Earlier, pre-phase experiment code, kept for reference.
     - **preliminary/**: Standalone probes of the TopicQA premise (subtopic determinism, controllability, crosstalk, decoder behaviour). Self-contained, OpenAI + a local server only.
     - **recovery_tests/**: The checkpointed recovery-under-attack harness that phase3/phase4 replaced, one driver per system.
-    - **embeddings_original.py**: Original measurements of the embedding/rejection-sampling scheme (drift, LSH accuracy, rejection-sampling cost).
-    - **utils.py**: Checkpoint/progress/logging harness used by `recovery_tests/`.
+    - **utils.py**: Checkpoint/progress/logging harness used by `recovery_tests/`, plus a tokenizer-only GPT-2 stand-in for the n-gram shuffle attack.
 - **scripts/**: Bash wrappers that chain the phases for reproduction (`run_all.sh`, `smoke_test.sh`, per-phase scripts). See [`scripts/README.md`](scripts/README.md).
 - **data/experiments/**: Designated path for experiment data storage.
 - **data/litreview/**: Reference corpus for the LitReview system, scraped from the Semantic Scholar API, shipped as a runnable example dataset. `references/` holds the corpus (`corpus.jsonl`, `references.jsonl`, `papers.jsonl`) and `semantic_scholar_requests.py` is the scraper used to regenerate it.

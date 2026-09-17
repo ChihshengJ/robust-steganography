@@ -12,6 +12,22 @@ from typing_extensions import Callable
 from systems import Encoder, StegSystem
 
 
+class GPT2Model:
+    """Drop-in for the removed ``watermarks.GPT2Model``, tokenizer only.
+
+    These drivers only ever handed the model to ``NGramShuffleAttack``, which
+    needs nothing but a ``tokenizer`` that round-trips text <-> token ids (see
+    the ``LanguageModel`` protocol in ``attacks.ngram_shuffle``). So this loads
+    the GPT-2 tokenizer and no model weights.
+    """
+
+    def __init__(self, model_name: str = "gpt2-medium"):
+        from transformers import AutoTokenizer
+
+        self.model_name = model_name
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+
 @dataclass
 class ExperimentConfig:
     """All configuration for an experiment run."""

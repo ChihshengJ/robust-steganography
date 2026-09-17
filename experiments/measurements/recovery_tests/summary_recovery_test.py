@@ -6,16 +6,14 @@ import matplotlib.pyplot as plt
 import openai
 from datasets import load_dataset
 
-from embeddings.paths import pca_artifacts_dir
-from embeddings import (
+from systems.paths import pca_artifacts_dir
+from systems import (
+    BypassEncoder,
     PCAHash,
     RepetitionCode,
-    SummarySystem,
 )
-from watermarks import (
-    GPT2Model,
-    LanguageModel,
-)
+from systems.core.embeddings.summary_system import SummarySystem
+from attacks.ngram_shuffle import LanguageModel
 from attacks import (
     Attack,
     NGramShuffleAttack,
@@ -25,10 +23,10 @@ from attacks import (
 from attacks.translation import TranslationAttack
 
 from ..utils import (
-    BypassEncoder,
     CheckpointManager,
     CheckpointState,
     ExperimentConfig,
+    GPT2Model,
     ProgressTracker,
     TextLogger,
     index_reducer,

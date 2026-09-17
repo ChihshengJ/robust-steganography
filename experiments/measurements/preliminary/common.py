@@ -1,6 +1,12 @@
 import os, json, time, hashlib, random
 from openai import OpenAI
 
+# These scripts are standalone (run from this directory, not via -m), so nothing
+# has imported `systems` to pull the repo-root .env in for us.
+from systems.env import load_env
+
+load_env()
+
 # --- API model (response generation, decoding, paraphrasing) ---
 CLIENT = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 MODEL = "gpt-4.1"

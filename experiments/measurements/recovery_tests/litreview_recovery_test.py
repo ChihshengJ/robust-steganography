@@ -5,16 +5,14 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import openai
 
-from embeddings.paths import pca_artifacts_dir
-from embeddings import (
-    LitReviewSystemV2,
+from systems.paths import pca_artifacts_dir
+from systems import (
+    BypassEncoder,
+    LitReviewSystem,
     PCAHash,
     RepetitionCode,
 )
-from watermarks import (
-    GPT2Model,
-    LanguageModel,
-)
+from attacks.ngram_shuffle import LanguageModel
 from attacks import (
     Attack,
     NGramShuffleAttack,
@@ -25,10 +23,10 @@ from attacks import (
 from attacks.translation import TranslationAttack
 
 from ..utils import (
-    BypassEncoder,
     CheckpointManager,
     CheckpointState,
     ExperimentConfig,
+    GPT2Model,
     ProgressTracker,
     TextLogger,
     index_reducer,
@@ -558,7 +556,7 @@ def main():
     ecc = RepetitionCode(1)
     # ecc = ConvolutionalCode(1, 3)
 
-    system = LitReviewSystemV2(
+    system = LitReviewSystem(
         client,
         error_correction=ecc,
         encoder=BypassEncoder(),
