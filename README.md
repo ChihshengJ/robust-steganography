@@ -63,10 +63,14 @@ The project is organized as follows:
   - **phase2_metrics/**: Scripts for steganalysis experiments dataset generation and evaluation.
   - **phase3_attacks**: Script for generating attacked stegotexts.
   - **phase4_decode**: Scripts for decoding attacked stegotexts and generating final results for the recovery accuracy tests.
+  - **measurements/ (legacy)**: Earlier, pre-phase experiment code, kept for reference.
+    - **preliminary/**: Standalone probes of the TopicQA premise (subtopic determinism, controllability, crosstalk, decoder behaviour). Self-contained, OpenAI + a local server only.
+    - **recovery_tests/**: The checkpointed recovery-under-attack harness that phase3/phase4 replaced, one driver per system.
+    - **embeddings_original.py**: Original measurements of the embedding/rejection-sampling scheme (drift, LSH accuracy, rejection-sampling cost).
+    - **utils.py**: Checkpoint/progress/logging harness used by `recovery_tests/`.
 - **scripts/**: Bash wrappers that chain the phases for reproduction (`run_all.sh`, `smoke_test.sh`, per-phase scripts). See [`scripts/README.md`](scripts/README.md).
 - **data/experiments/**: Designated path for experiment data storage.
 - **data/litreview/**: Reference corpus for the LitReview system, scraped from the Semantic Scholar API, shipped as a runnable example dataset. `references/` holds the corpus (`corpus.jsonl`, `references.jsonl`, `papers.jsonl`) and `semantic_scholar_requests.py` is the scraper used to regenerate it.
-- **measurements/ (legacy)**: Complete scripts for the evaluation on Perry et al.'s steganography scheme.
 - **pca/ (legacy)**: Complete scripts for generating datasets for training PCA models used by the legacy embedding-based models. (The LitReview reference corpus that used to live here has moved to `data/litreview/`.)
 
 ## Reproduction
