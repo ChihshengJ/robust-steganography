@@ -97,7 +97,7 @@ BASELINE_LM_SYSTEMS = ("discop",)
 def build_system(
     system: str,
     client,
-    local_client,
+    generator_client,
     n_subtopics: int = 12,
     group_size: int = 2,
     n_slots: int = 20,
@@ -113,10 +113,10 @@ def build_system(
     """
     if system == "topicqa":
         return make_topicqa(
-            client, local_client, n_subtopics=n_subtopics, group_size=group_size
+            client, generator_client, n_subtopics=n_subtopics, group_size=group_size
         )
     if system == "story":
-        return make_story(client, local_client, n_slots=n_slots)
+        return make_story(client, generator_client, n_slots=n_slots)
     if system == "litreview":
         return make_litreview(client)
     if system == "discop":
@@ -338,12 +338,12 @@ def _worker_init(system, baseline_model, n_subtopics, group_size, n_slots):
     import torch
 
     torch.set_num_threads(1)
-    client, local_client = make_clients()
+    client, generator_client = make_clients()
     _WORKER["system"] = system
     _WORKER["obj"] = build_system(
         system,
         client,
-        local_client,
+        generator_client,
         n_subtopics=n_subtopics,
         group_size=group_size,
         n_slots=n_slots,
@@ -419,7 +419,7 @@ def _decode(task: dict, system_obj: StegSystem) -> dict:
 def run_system(
     system: str,
     client,
-    local_client,
+    generator_client,
     phase1_dir: Path,
     phase3_dir: Path,
     output_dir: Path,
@@ -544,7 +544,7 @@ def run_system(
     system_obj = build_system(
         system,
         client,
-        local_client,
+        generator_client,
         n_subtopics=n_subtopics,
         group_size=group_size,
         n_slots=n_slots,
@@ -823,16 +823,16 @@ def main():
     include_baseline = not args.no_baseline
 
     if args.dry_run:
-        client = local_client = None
+        client = generator_client = None
     else:
-        client, local_client = make_clients()
+        client, generator_client = make_clients()
 
     targets = SYSTEMS if args.system == "all" else (args.system,)
     for system in targets:
         run_system(
             system=system,
             client=client,
-            local_client=local_client,
+            generator_client=generator_client,
             phase1_dir=phase1_dir,
             phase3_dir=phase3_dir,
             output_dir=output_dir,

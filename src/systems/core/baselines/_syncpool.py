@@ -260,7 +260,9 @@ class SegmentationIndex:
 
     # -- receiver-side byte walk ------------------------------------------
 
-    def pool_of_prefix(self, pools: AmbiguityPools, data: bytes, offset: int) -> int | None:
+    def pool_of_prefix(
+        self, pools: AmbiguityPools, data: bytes, offset: int
+    ) -> int | None:
         """Which pool holds the candidate that matches the text at ``offset``?
 
         Returns ``None`` when no candidate is a prefix of the remaining bytes —

@@ -121,7 +121,9 @@ def build_figure(rows: list[dict], width: float, height: float, chance: bool):
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
     ax.set_axisbelow(True)
-    ax.grid(True, axis="y", color=GRID_COLOR, linewidth=(BASE_SIZE / 22) * MM_TO_PT * 0.55)
+    ax.grid(
+        True, axis="y", color=GRID_COLOR, linewidth=(BASE_SIZE / 22) * MM_TO_PT * 0.55
+    )
     for spine in ax.spines.values():
         spine.set_edgecolor(PANEL_BORDER)
         spine.set_linewidth(0.9)
@@ -172,9 +174,7 @@ def build_figure(rows: list[dict], width: float, height: float, chance: bool):
             )
 
     if chance:
-        ax.axhline(
-            CHANCE, ls="--", lw=1.2, color="#8A8A8A", zorder=2, dashes=(4, 3)
-        )
+        ax.axhline(CHANCE, ls="--", lw=1.2, color="#8A8A8A", zorder=2, dashes=(4, 3))
 
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels)
@@ -183,7 +183,10 @@ def build_figure(rows: list[dict], width: float, height: float, chance: bool):
     ax.set_yticks([0, 25, 50, 75, 100])
     ax.set_ylabel("Accuracy (%)", fontsize=22, fontweight="bold")
     ax.tick_params(
-        colors=PANEL_BORDER, labelcolor=AXIS_TEXT_COLOR, labelsize=18, length=BASE_SIZE / 4
+        colors=PANEL_BORDER,
+        labelcolor=AXIS_TEXT_COLOR,
+        labelsize=18,
+        length=BASE_SIZE / 4,
     )
     for lab in ax.get_xticklabels() + ax.get_yticklabels():
         lab.set_fontweight("bold")

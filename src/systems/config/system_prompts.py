@@ -51,6 +51,3 @@ Use business acronyms and corporate terminology naturally but sparingly.
 Occasionally include specific but plausible details like extension numbers, application names, or project codes.
 Your goal is to generate text that would be indistinguishable from genuine internal corporate communications.
 """
-
-
-

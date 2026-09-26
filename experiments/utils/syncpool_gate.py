@@ -81,7 +81,14 @@ def run_system(
 
         token_stats: dict = {}
         text_stats: dict = {}
-        token_ok = list(system.recover_message(text, token_ids=meta["token_ids"], stats=token_stats)) == bits
+        token_ok = (
+            list(
+                system.recover_message(
+                    text, token_ids=meta["token_ids"], stats=token_stats
+                )
+            )
+            == bits
+        )
         text_ok = list(system.recover_message(text, stats=text_stats)) == bits
         n_token_ok += token_ok
         n_text_ok += text_ok
@@ -90,8 +97,14 @@ def run_system(
 
         log.info(
             "  %s %d/%d: %d tokens, %d words, %.0fs | token channel %s | text channel %s",
-            name, i + 1, n, meta["n_tokens"], len(text.split()), time.time() - t0,
-            "OK" if token_ok else "FAIL", "OK" if text_ok else "FAIL",
+            name,
+            i + 1,
+            n,
+            meta["n_tokens"],
+            len(text.split()),
+            time.time() - t0,
+            "OK" if token_ok else "FAIL",
+            "OK" if text_ok else "FAIL",
         )
         if not text_ok:
             log.error("    text-channel stats: %s", text_stats)
@@ -100,8 +113,14 @@ def run_system(
     log.info(
         "%s: token channel %d/%d, text channel %d/%d | %.1f tokens/doc, "
         "%.3f bits/token at r=%d | text-channel fallbacks: %s",
-        name, n_token_ok, n, n_text_ok, n, mean_tokens,
-        (capacity * repetitions) / mean_tokens, repetitions,
+        name,
+        n_token_ok,
+        n,
+        n_text_ok,
+        n,
+        mean_tokens,
+        (capacity * repetitions) / mean_tokens,
+        repetitions,
         {k: v for k, v in totals.items() if k != "n_steps"},
     )
     return n_text_ok == n
@@ -129,7 +148,9 @@ def main() -> int:
             "orders of magnitude faster to run."
         ),
     )
-    parser.add_argument("--n", type=int, default=3, help="Payloads per system (default: 3).")
+    parser.add_argument(
+        "--n", type=int, default=3, help="Payloads per system (default: 3)."
+    )
     parser.add_argument(
         "--syncpool",
         action=argparse.BooleanOptionalAction,
@@ -152,7 +173,9 @@ def main() -> int:
             ", ".join(failed),
         )
         return 1
-    log.info("GATE PASSED: clean text-channel decode is exact for %s.", ", ".join(names))
+    log.info(
+        "GATE PASSED: clean text-channel decode is exact for %s.", ", ".join(names)
+    )
     return 0
 
 

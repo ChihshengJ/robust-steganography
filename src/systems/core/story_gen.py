@@ -1,16 +1,18 @@
 import hashlib
 import json
 import random
-import time
 from typing import Any
 
+from ..config.story_prompts import (
+    SLOT_DECODE_PROMPT,
+    SLOT_GENERATION_PROMPT,
+    STORY_SYNTHESIS_PROMPT,
+)
+from ..utils.new_text import client_base_url, llm
 from .encoder import Encoder
 from .error_correction import ErrorCorrection
-from .steg_system import StegSystem
 from .hash_functions import BitsPerGroupStub
-from ..config.story_prompts import SLOT_GENERATION_PROMPT, SLOT_DECODE_PROMPT, STORY_SYNTHESIS_PROMPT
-
-from ..utils.new_text import client_base_url, llm
+from .steg_system import StegSystem
 
 
 def _parse_slots(raw: str) -> list[dict]:
@@ -39,9 +41,9 @@ LLAMACPP_NO_THINKING = {"chat_template_kwargs": {"enable_thinking": False}}
 class StorySystem(StegSystem):
     """Steganography via binary detail selection in story slots.
 
-    Each slot has two alternative concrete details (A/B). 
-    The message bits determine which detail fills each slot. 
-    Decoding is forced-choice per slot. 
+    Each slot has two alternative concrete details (A/B).
+    The message bits determine which detail fills each slot.
+    Decoding is forced-choice per slot.
     Key-permutation controls which message bit maps to which slot.
     1 bit per slot. N slots = N raw channel bits.
     """
@@ -50,35 +52,36 @@ class StorySystem(StegSystem):
         self,
         client: Any,
         error_correction: ErrorCorrection,
-        local_client: Any,
-        local_model: str,
+        generator_client: Any,
+        generator_model: str,
         n_slots: int = 12,
-        response_model: str = "gpt-4.1",
+        synth_model: str = "gpt-4.1",
         decoder_model: str = "gpt-4.1",
         key: str = "default",
         encoder: Encoder | None = None,
-        response_temperature: float = 0.7,
-        writer_client: Any | None = None,
-        response_top_p: float = 0.7,
-        g_extra_body: dict | None = LLAMACPP_NO_THINKING,
+        synth_temperature: float = 0.7,
+        synth_client: Any | None = None,
+        synth_top_p: float = 0.7,
+        generator_extra_body: dict | None = LLAMACPP_NO_THINKING,
     ) -> None:
-        """G (the slot generator) runs on ``local_client``/``local_model``;
-        ``g_extra_body`` is sent with it and is provider-specific (None sends
-        nothing). ``response_*`` write the story, on ``writer_client``
-        (default: ``client``). ``client``/``decoder_model`` decode."""
+        """The generator G (slot pairs) runs on ``generator_client`` /
+        ``generator_model``; ``generator_extra_body`` is sent with it and is
+        provider-specific (None sends nothing). The synthesizer writes the story
+        with the ``synth_*`` settings, on ``synth_client`` (default: ``client``).
+        ``client``/``decoder_model`` decode."""
         stub = BitsPerGroupStub(1)
         super().__init__(client, stub, error_correction, encoder)
 
-        self.writer_client = writer_client or client
-        self.response_top_p = response_top_p
-        self.g_extra_body = g_extra_body
-        self.local_client = local_client
-        self.local_model = local_model
+        self.synth_client = synth_client or client
+        self.synth_top_p = synth_top_p
+        self.generator_extra_body = generator_extra_body
+        self.generator_client = generator_client
+        self.generator_model = generator_model
         self.n_slots = n_slots
-        self.response_model = response_model
+        self.synth_model = synth_model
         self.decoder_model = decoder_model
         self.key = key
-        self.response_temperature = response_temperature
+        self.synth_temperature = synth_temperature
 
         self._premise: str | None = None
         self._last_metadata: dict | None = None
@@ -97,12 +100,12 @@ class StorySystem(StegSystem):
 
     def generate_slots(self, premise: str) -> list[dict]:
         raw = llm(
-            self.local_client,
-            self.local_model,
+            self.generator_client,
+            self.generator_model,
             SLOT_GENERATION_PROMPT.format(n=self.n_slots, premise=premise),
             temperature=0,
             top_p=1.0,
-            extra_body=self.g_extra_body,
+            extra_body=self.generator_extra_body,
         )
         slots = _parse_slots(raw)
         if len(slots) > self.n_slots:
@@ -117,12 +120,12 @@ class StorySystem(StegSystem):
     def generation_config(self) -> dict:
         """The models and sampling that produced a stego text."""
         return {
-            "g_model": self.local_model,
-            "g_base_url": client_base_url(self.local_client),
-            "writer_model": self.response_model,
-            "writer_base_url": client_base_url(self.writer_client),
-            "writer_temperature": self.response_temperature,
-            "writer_top_p": self.response_top_p,
+            "generator_model": self.generator_model,
+            "generator_base_url": client_base_url(self.generator_client),
+            "synth_model": self.synth_model,
+            "synth_base_url": client_base_url(self.synth_client),
+            "synth_temperature": self.synth_temperature,
+            "synth_top_p": self.synth_top_p,
             "decoder_model": self.decoder_model,
         }
 
@@ -222,18 +225,18 @@ class StorySystem(StegSystem):
             events_str=events_str,
         )
         return llm(
-            self.writer_client,
-            self.response_model,
+            self.synth_client,
+            self.synth_model,
             prompt,
-            temperature=self.response_temperature,
-            top_p=self.response_top_p,
+            temperature=self.synth_temperature,
+            top_p=self.synth_top_p,
             max_tokens=3000,
         )
 
     def paraphrase(self, text: str, model: str | None = None) -> str:
         return llm(
             self.client,
-            model or self.response_model,
+            model or self.synth_model,
             f"Rewrite this story completely in your own words, "
             f"preserving all plot events and concrete details:\n\n{text}",
             temperature=0.7,
@@ -283,9 +286,7 @@ class StorySystem(StegSystem):
             )
         return story
 
-    def recover_message(
-        self, stego_text: str, slots: list[dict] | None = None
-    ) -> Any:
+    def recover_message(self, stego_text: str, slots: list[dict] | None = None) -> Any:
         """Decode a story. ``slots`` is the receiver's G(premise) output, if
         already computed; decoding many texts of one premise then costs one G
         call instead of one per text. None regenerates it here."""

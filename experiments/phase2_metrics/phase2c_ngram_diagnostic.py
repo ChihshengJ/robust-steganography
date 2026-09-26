@@ -92,7 +92,7 @@ def discriminating_ngrams(
     def pack(idxs):
         return [(names[i], coef[i], df_s[i], df_c[i]) for i in idxs]
 
-    toward_cover = pack(order[:top_k])        # most negative -> class 0 (cover)
+    toward_cover = pack(order[:top_k])  # most negative -> class 0 (cover)
     toward_stego = pack(order[::-1][:top_k])  # most positive -> class 1 (stego)
     return toward_stego, toward_cover, len(names)
 
@@ -110,9 +110,7 @@ def main() -> None:
         description="n-gram TF-IDF stegoanalysis diagnostic"
     )
     parser.add_argument("--data-dir", type=Path, default=Path("data/experiments"))
-    parser.add_argument(
-        "--sub-experiment", choices=["2a", "2b"], default="2b"
-    )
+    parser.add_argument("--sub-experiment", choices=["2a", "2b"], default="2b")
     parser.add_argument("--system", default="litreview")
     parser.add_argument(
         "--truncate-words",
@@ -148,8 +146,7 @@ def main() -> None:
 
     print("=" * 74)
     print(
-        f"n-gram diagnostic: {args.sub_experiment} / {args.system}  "
-        f"(S vs {cover_type})"
+        f"n-gram diagnostic: {args.sub_experiment} / {args.system}  (S vs {cover_type})"
     )
     print(
         f"  n_stego={len(stego_texts)}  n_cover={len(cover_texts)}  "

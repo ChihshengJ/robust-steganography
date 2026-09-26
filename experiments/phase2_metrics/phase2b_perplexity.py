@@ -103,7 +103,11 @@ def main() -> None:
     completed_ids = load_completed_ids(jsonl_path)
     log.info("Found %d already-scored records in %s", len(completed_ids), jsonl_path)
 
-    log.info("Loading PerplexityScorer (model=%s, device=%s)", args.model, args.device or "auto")
+    log.info(
+        "Loading PerplexityScorer (model=%s, device=%s)",
+        args.model,
+        args.device or "auto",
+    )
     scorer = PerplexityScorer(model_name=args.model, device=args.device)
     log.info("Scorer ready on device=%s", scorer.device)
 
@@ -120,7 +124,9 @@ def main() -> None:
             if args.limit is not None:
                 phase1_records = phase1_records[: args.limit]
 
-            log.info("[%s/%s] %d candidate records", system, text_type, len(phase1_records))
+            log.info(
+                "[%s/%s] %d candidate records", system, text_type, len(phase1_records)
+            )
             for i, rec in enumerate(phase1_records):
                 rid = rec["id"]
                 if rid in completed_ids:
@@ -149,7 +155,11 @@ def main() -> None:
                 if (i + 1) % 25 == 0 or (i + 1) == len(phase1_records):
                     log.info(
                         "  [%s/%s] %d/%d (last ppl=%.2f)",
-                        system, text_type, i + 1, len(phase1_records), score["perplexity"],
+                        system,
+                        text_type,
+                        i + 1,
+                        len(phase1_records),
+                        score["perplexity"],
                     )
 
     log.info("Scored %d new records (%d already done)", n_scored, n_skipped)

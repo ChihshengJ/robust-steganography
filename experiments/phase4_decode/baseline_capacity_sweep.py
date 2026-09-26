@@ -37,7 +37,11 @@ log = logging.getLogger(__name__)
 def _decoded_path(
     data_dir: Path, system: str, cap: int, target_words: int | None, syncpool: bool
 ) -> Path:
-    run = f"{system}_cap{cap}" if target_words is None else f"{system}_cap{cap}_len{target_words}"
+    run = (
+        f"{system}_cap{cap}"
+        if target_words is None
+        else f"{system}_cap{cap}_len{target_words}"
+    )
     if syncpool:
         run += "_sp"
     return data_dir / "phase4_decode" / run / f"{system}_decoded.jsonl"
@@ -209,7 +213,9 @@ def main():
         rows.append({"message_length": cap, **agg})
 
     if not rows:
-        log.error("no data aggregated; run phases 1/3/4a at the requested capacities first.")
+        log.error(
+            "no data aggregated; run phases 1/3/4a at the requested capacities first."
+        )
         return
 
     tag = args.attack

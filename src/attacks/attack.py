@@ -69,9 +69,35 @@ def complete(
 # Academic / common abbreviations whose trailing period should NOT end a sentence.
 # Keeps citations like "Wu et al. (2018)" intact during sentence splitting.
 _SENTENCE_ABBREVS = {
-    "et al", "al", "e.g", "i.e", "cf", "fig", "figs", "eq", "eqs",
-    "no", "nos", "vol", "vols", "pp", "eds", "ed", "inc", "ltd", "co", "corp",
-    "ref", "refs", "sec", "secs", "ch", "app", "approx", "vs", "etc",
+    "et al",
+    "al",
+    "e.g",
+    "i.e",
+    "cf",
+    "fig",
+    "figs",
+    "eq",
+    "eqs",
+    "no",
+    "nos",
+    "vol",
+    "vols",
+    "pp",
+    "eds",
+    "ed",
+    "inc",
+    "ltd",
+    "co",
+    "corp",
+    "ref",
+    "refs",
+    "sec",
+    "secs",
+    "ch",
+    "app",
+    "approx",
+    "vs",
+    "etc",
 }
 
 

@@ -376,7 +376,11 @@ def run_system(
     if dry_run:
         for source, src_type, cfg, tp, run_idx in plan[:3]:
             rid = build_record_id(
-                source["id"], cfg["label"], tp, run_idx, task_attacker(cfg, attacker_model)
+                source["id"],
+                cfg["label"],
+                tp,
+                run_idx,
+                task_attacker(cfg, attacker_model),
             )
             log.info(f"  e.g. {rid} ({src_type})")
         if len(plan) > 3:
@@ -398,7 +402,10 @@ def run_system(
     for task in plan:
         source, _, cfg, tampering, run_idx = task
         rid = build_record_id(
-            source["id"], cfg["label"], tampering, run_idx,
+            source["id"],
+            cfg["label"],
+            tampering,
+            run_idx,
             task_attacker(cfg, attacker_model),
         )
         if rid in completed:
@@ -580,7 +587,7 @@ def main():
     elif args.attacker_provider == "together":
         client = make_together_client()
     else:
-        client, _local_client = make_clients()
+        client, _generator_client = make_clients()
 
     targets = SYSTEMS if args.system == "all" else (args.system,)
     for system in targets:

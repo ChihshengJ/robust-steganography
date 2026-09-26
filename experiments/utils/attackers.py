@@ -35,4 +35,3 @@ def attacker_slug(model: str) -> str:
     'deepseek-v4-flash'."""
     name = model.rsplit("/", 1)[-1].lower()
     return re.sub(r"[^a-z0-9.]+", "-", name).strip("-")
-

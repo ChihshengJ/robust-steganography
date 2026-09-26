@@ -560,17 +560,19 @@ def main():
     system = TopicQASystem(
         client,
         error_correction=ecc,
-        local_client=local_client,
-        local_model="Qwen3.5-4B-UD-Q8_K_XL.gguf",
+        generator_client=local_client,
+        generator_model="Qwen3.5-4B-UD-Q8_K_XL.gguf",
         n_subtopics=12,
         group_size=2,
-        response_model="gpt-4.1",
+        synth_model="gpt-4.1",
         decoder_model="gpt-4.1",
         key="kakegurui",
         encoder=BypassEncoder(),
     )
 
-    question = "What are the main challenges facing public education in the United States?"
+    question = (
+        "What are the main challenges facing public education in the United States?"
+    )
 
     attack_configs = [
         {"label": "Paraphrase (global)", "attack_type": "paraphrase", "local": False},

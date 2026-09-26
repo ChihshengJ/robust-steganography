@@ -90,8 +90,8 @@ def _direct_gpt_call(client, prompt: str, max_tokens: int = 4000) -> str:
     raise TimeoutError()
 
 
-def _direct_local_call(
-    local_client,
+def _direct_generator_call(
+    generator_client,
     model: str,
     prompt: str,
     max_tokens: int = 3000,
@@ -107,7 +107,7 @@ def _direct_local_call(
     """
     for attempt in range(3):
         try:
-            r = local_client.chat.completions.create(
+            r = generator_client.chat.completions.create(
                 model=model,
                 temperature=temperature,
                 max_tokens=max_tokens,
@@ -191,7 +191,7 @@ def _parse_json_list(raw: str) -> list[str]:
 
 
 def _generate_story_outline_cover(
-    client, local_client, local_model: str, premise: str, n_beats: int
+    client, generator_client, generator_model: str, premise: str, n_beats: int
 ) -> tuple[str, list[str]]:
     """Story C2 cover: Qwen generates a free-form outline, GPT-4.1 synthesizes.
 
@@ -201,9 +201,9 @@ def _generate_story_outline_cover(
     isolates whether the slot-encoding mechanism itself leaves a trace.
     Uses the same STORY_SYNTHESIS_PROMPT as the stego pipeline.
     """
-    raw = _direct_local_call(
-        local_client,
-        local_model,
+    raw = _direct_generator_call(
+        generator_client,
+        generator_model,
         STORY_OUTLINE_PROMPT.format(n=n_beats, premise=premise),
         max_tokens=2000,
         temperature=0,
@@ -274,7 +274,7 @@ def _load_checkpoint(paths: dict[str, Path]) -> tuple[set[str], dict[str, dict]]
 
 def generate_topicqa(
     client,
-    local_client,
+    generator_client,
     prompts: list[dict],
     messages: dict,
     output_dir: Path,
@@ -285,7 +285,7 @@ def generate_topicqa(
     """Generate TopicQA texts: 1 S + 1 C1 + 1 C2 per prompt (experiment.md Phase 1)."""
     paths = _out_paths(output_dir, "topicqa")
     system = make_topicqa(
-        client, local_client, n_subtopics=n_subtopics, group_size=group_size
+        client, generator_client, n_subtopics=n_subtopics, group_size=group_size
     )
     completed, records_map = _load_checkpoint(paths)
 
@@ -395,7 +395,7 @@ def generate_topicqa(
 
 def generate_story(
     client,
-    local_client,
+    generator_client,
     prompts: list[dict],
     messages: dict,
     output_dir: Path,
@@ -404,7 +404,7 @@ def generate_story(
 ):
     """Generate StorySlot texts: 1 S + 1 C1 + 1 C2 per prompt."""
     paths = _out_paths(output_dir, "story")
-    system = make_story(client, local_client, n_slots=n_slots)
+    system = make_story(client, generator_client, n_slots=n_slots)
     completed, records_map = _load_checkpoint(paths)
 
     stego_msgs = messages["stego_messages"]
@@ -477,7 +477,11 @@ def generate_story(
         c2_rid = make_record_id("story", "cover_c2", p_idx)
         if c2_rid not in completed:
             c2_text, c2_beats = _generate_story_outline_cover(
-                client, local_client, system.local_model, premise, system.n_slots
+                client,
+                generator_client,
+                system.generator_model,
+                premise,
+                system.n_slots,
             )
             c2_record = _make_record(
                 record_id=c2_rid,
@@ -490,7 +494,7 @@ def generate_story(
                 system_state=None,
                 metadata={
                     "outline": c2_beats,
-                    "outline_generator": system.local_model,
+                    "outline_generator": system.generator_model,
                 },
                 length_target=round_words(stego_record["word_count"]),
                 paired_stego_id=s_rid,
@@ -1259,7 +1263,7 @@ def main():
         with open(prompts_dir / "messages.json") as f:
             all_messages = json.load(f)
 
-    client, local_client = make_clients()
+    client, generator_client = make_clients()
 
     if args.system in ("topicqa", "all"):
         with open(prompts_dir / "topicqa_prompts.json") as f:
@@ -1277,7 +1281,7 @@ def main():
             topicqa_n_subtopics = 12
         generate_topicqa(
             client,
-            local_client,
+            generator_client,
             prompts,
             all_messages["topicqa"],
             output_dir,
@@ -1294,7 +1298,7 @@ def main():
         story_n_slots = args.n_slots if args.n_slots is not None else 20
         generate_story(
             client,
-            local_client,
+            generator_client,
             prompts,
             all_messages["story"],
             output_dir,

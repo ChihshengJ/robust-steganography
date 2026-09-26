@@ -143,7 +143,10 @@ def main():
 
         raw_code = chat_completion(
             [
-                {"role": "system", "content": "Write precise program behaviors a solution to a HumanEval problem should be tested for."},
+                {
+                    "role": "system",
+                    "content": "Write precise program behaviors a solution to a HumanEval problem should be tested for.",
+                },
                 {"role": "user", "content": build_prompt(problem)},
             ]
         )

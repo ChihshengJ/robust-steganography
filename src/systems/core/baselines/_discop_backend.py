@@ -199,7 +199,9 @@ class DiscopLM:
 
     def __init__(self, model_name: str = "gpt2", device=None):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(model_name, low_cpu_mem_usage=True)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name, low_cpu_mem_usage=True
+        )
         self.model.eval()
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -240,7 +242,9 @@ class DiscopLM:
         return probs.tolist(), indices.tolist(), past
 
 
-def encode_discop(lm: DiscopLM, message_bits, context_ids, seed, temp=1.0, top_p=0.92, max_length=512):
+def encode_discop(
+    lm: DiscopLM, message_bits, context_ids, seed, temp=1.0, top_p=0.92, max_length=512
+):
     """Grow message bits into GPT-2 tokens. Stops once all bits are embedded.
 
     Returns (generated_token_ids, n_bits_embedded). ``n_bits_embedded`` short of
@@ -268,8 +272,17 @@ def encode_discop(lm: DiscopLM, message_bits, context_ids, seed, temp=1.0, top_p
     return generated, embedded
 
 
-def decode_discop(lm: DiscopLM, stego_text, context_ids, seed, temp=1.0, top_p=0.92,
-                  token_ids=None, stats=None, max_bits=None):
+def decode_discop(
+    lm: DiscopLM,
+    stego_text,
+    context_ids,
+    seed,
+    temp=1.0,
+    top_p=0.92,
+    token_ids=None,
+    stats=None,
+    max_bits=None,
+):
     """Recover the embedded bit stream from a stego text or its token ids.
 
     Two channels: pass ``token_ids``
@@ -399,7 +412,9 @@ def encode_discop_syncpool(
     singleton = 0
     last_bit_step = -1
     for step in range(max_length):
-        probs, indices, past = lm._probs_indices(prev, past, temp, top_p, GPT2_FILTER_IDS_SYNCPOOL)
+        probs, indices, past = lm._probs_indices(
+            prev, past, temp, top_p, GPT2_FILTER_IDS_SYNCPOOL
+        )
         pools = index.pools(indices, probs)
         pool_ids = list(range(len(pools)))
         pool_probs = pools.probs.tolist()
@@ -484,7 +499,9 @@ def decode_discop_syncpool(
     step = 0
 
     while (step < len(ids)) if on_token_channel else (offset < len(data)):
-        probs, indices, past = lm._probs_indices(prev, past, temp, top_p, GPT2_FILTER_IDS_SYNCPOOL)
+        probs, indices, past = lm._probs_indices(
+            prev, past, temp, top_p, GPT2_FILTER_IDS_SYNCPOOL
+        )
         pools = index.pools(indices, probs)
         pool_ids = list(range(len(pools)))
         pool_probs = pools.probs.tolist()

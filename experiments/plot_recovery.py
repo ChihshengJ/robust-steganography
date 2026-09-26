@@ -151,7 +151,9 @@ def build_figure(long: list[dict], width: float, height: float):
     # series[(system, metric, attack)] -> {capacity: accuracy}
     series: dict[tuple[str, str, str], dict[int, float]] = defaultdict(dict)
     for r in long:
-        series[(r["system"], r["metric"], r["attack_label"])][r["capacity"]] = r["accuracy"]
+        series[(r["system"], r["metric"], r["attack_label"])][r["capacity"]] = r[
+            "accuracy"
+        ]
 
     # facet_grid: y is shared across every panel, x is free per column.
     ys = [r["accuracy"] for r in long]
@@ -223,7 +225,10 @@ def build_figure(long: list[dict], width: float, height: float):
                     fontweight="bold",
                     backgroundcolor=STRIP_FILL,
                     bbox=dict(
-                        facecolor=STRIP_FILL, edgecolor=PANEL_BORDER, linewidth=0.9, pad=6
+                        facecolor=STRIP_FILL,
+                        edgecolor=PANEL_BORDER,
+                        linewidth=0.9,
+                        pad=6,
                     ),
                     pad=10,
                 )
@@ -240,7 +245,10 @@ def build_figure(long: list[dict], width: float, height: float):
                     va="bottom",
                     labelpad=22,
                     bbox=dict(
-                        facecolor=STRIP_FILL, edgecolor=PANEL_BORDER, linewidth=0.9, pad=6
+                        facecolor=STRIP_FILL,
+                        edgecolor=PANEL_BORDER,
+                        linewidth=0.9,
+                        pad=6,
                     ),
                 )
 

@@ -36,7 +36,11 @@ class PerplexityScorer:
         seq_len = input_ids.size(1)
 
         if seq_len <= 1:
-            return {"perplexity": float("inf"), "mean_nll": float("inf"), "num_tokens": seq_len}
+            return {
+                "perplexity": float("inf"),
+                "mean_nll": float("inf"),
+                "num_tokens": seq_len,
+            }
 
         nlls = []
         stride = self.max_length // 2

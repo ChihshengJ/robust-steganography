@@ -118,4 +118,3 @@ Requirements:
 - Make sure every single claim gets represented separately in the output, NO overlap, NO merging, keep every claim separate.
 - Every citation must appear exactly as given — do NOT alter author names, years, or citation format.
 """
-

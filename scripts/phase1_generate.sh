@@ -2,7 +2,7 @@
 #
 # Phase 1 — generate stego (S), same-pipeline cover (C1) and prompted cover (C2)
 # texts. API-heavy. Long-form QA and StoryGen additionally need the local llama.cpp
-# server up (scripts/serve_local_model.sh); LitReview and baseline do not.
+# server up (scripts/serve_local_model.sh); LitReview does not.
 #
 # Two layouts, selected by how you call it:
 #

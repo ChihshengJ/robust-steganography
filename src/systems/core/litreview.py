@@ -183,20 +183,20 @@ class LitReviewSystem(StegSystem):
         model: str = "gpt-4.1",
         encoder: Encoder | None = None,
         key: str = "default",
-        writer_client=None,
-        writer_model: str | None = None,
-        writer_temperature: float = 0.0,
-        writer_top_p: float = 0.7,
+        synth_client=None,
+        synth_model: str | None = None,
+        synth_temperature: float = 0.0,
+        synth_top_p: float = 0.7,
     ):
-        """``client``/``model`` extract the citations when decoding. The writer_*
-        settings write the review when encoding; the writer defaults to the
-        same client and model."""
+        """``client``/``model`` extract the citations when decoding. The
+        synthesizer writes the review with the ``synth_*`` settings when
+        encoding, and defaults to the same client and model."""
         self.client = client
         self.model = model
-        self.writer_client = writer_client or client
-        self.writer_model = writer_model or model
-        self.writer_temperature = writer_temperature
-        self.writer_top_p = writer_top_p
+        self.synth_client = synth_client or client
+        self.synth_model = synth_model or model
+        self.synth_temperature = synth_temperature
+        self.synth_top_p = synth_top_p
         self.key = key
         self.hash_fn = None
         self.ecc = error_correction
@@ -310,11 +310,11 @@ class LitReviewSystem(StegSystem):
         """The models and sampling that produced a stego text. LitReview has
         no G model: its units come from the public bibliography."""
         return {
-            "g_model": None,
-            "writer_model": self.writer_model,
-            "writer_base_url": client_base_url(self.writer_client),
-            "writer_temperature": self.writer_temperature,
-            "writer_top_p": self.writer_top_p,
+            "generator_model": None,
+            "synth_model": self.synth_model,
+            "synth_base_url": client_base_url(self.synth_client),
+            "synth_temperature": self.synth_temperature,
+            "synth_top_p": self.synth_top_p,
             "decoder_model": self.model,
         }
 
@@ -325,14 +325,14 @@ class LitReviewSystem(StegSystem):
         )
 
         return llm(
-            self.writer_client,
-            self.writer_model,
+            self.synth_client,
+            self.synth_model,
             prompt=f"References:\n{refs_formatted}",
             system=GENERATE_REVIEW.format(
                 seed_title=paper["title"],
                 seed_abstract=paper.get("abstract", "")[:600],
             ),
-            temperature=self.writer_temperature,
-            top_p=self.writer_top_p,
+            temperature=self.synth_temperature,
+            top_p=self.synth_top_p,
             max_tokens=4000,
         )

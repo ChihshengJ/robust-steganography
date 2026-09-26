@@ -155,38 +155,38 @@ def make_record(
 
 def _make_clients() -> tuple[openai.OpenAI, openai.OpenAI]:
     client = openai.OpenAI()
-    local_client = openai.OpenAI(base_url=LOCAL_BASE_URL, api_key="unused")
-    return client, local_client
+    generator_client = openai.OpenAI(base_url=LOCAL_BASE_URL, api_key="unused")
+    return client, generator_client
 
 
-def _make_topicqa(client, local_client):
+def _make_topicqa(client, generator_client):
     return TopicQASystem(
         client,
         error_correction=RepetitionCode(1),
-        local_client=local_client,
-        local_model=LOCAL_MODEL,
+        generator_client=generator_client,
+        generator_model=LOCAL_MODEL,
         n_subtopics=12,
         group_size=2,
-        response_model="gpt-4.1",
+        synth_model="gpt-4.1",
         decoder_model="gpt-4.1",
         key="default",
         encoder=BypassEncoder(),
-        response_temperature=0.7,
+        synth_temperature=0.7,
     )
 
 
-def _make_story(client, local_client):
+def _make_story(client, generator_client):
     return StorySystem(
         client,
         error_correction=RepetitionCode(1),
-        local_client=local_client,
-        local_model=LOCAL_MODEL,
+        generator_client=generator_client,
+        generator_model=LOCAL_MODEL,
         n_slots=20,
-        response_model="gpt-4.1",
+        synth_model="gpt-4.1",
         decoder_model="gpt-4.1",
         key="default",
         encoder=BypassEncoder(),
-        response_temperature=0.7,
+        synth_temperature=0.7,
     )
 
 
@@ -206,8 +206,8 @@ def _make_litreview(client):
 # ---------------------------------------------------------------------------
 
 
-def generate_topicqa(client, local_client, output_path: Path):
-    system = _make_topicqa(client, local_client)
+def generate_topicqa(client, generator_client, output_path: Path):
+    system = _make_topicqa(client, generator_client)
     completed = load_completed_ids(output_path)
     records_map = load_records_map(output_path)
 
@@ -308,8 +308,8 @@ def generate_topicqa(client, local_client, output_path: Path):
 # ---------------------------------------------------------------------------
 
 
-def generate_story(client, local_client, output_path: Path):
-    system = _make_story(client, local_client)
+def generate_story(client, generator_client, output_path: Path):
+    system = _make_story(client, generator_client)
     completed = load_completed_ids(output_path)
     records_map = load_records_map(output_path)
 
@@ -533,13 +533,13 @@ def main():
     args = parser.parse_args()
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    client, local_client = _make_clients()
+    client, generator_client = _make_clients()
 
     if args.system in ("topicqa", "all"):
-        generate_topicqa(client, local_client, RESULTS_DIR / "topicqa_texts.jsonl")
+        generate_topicqa(client, generator_client, RESULTS_DIR / "topicqa_texts.jsonl")
 
     if args.system in ("story", "all"):
-        generate_story(client, local_client, RESULTS_DIR / "story_texts.jsonl")
+        generate_story(client, generator_client, RESULTS_DIR / "story_texts.jsonl")
 
     if args.system in ("litreview", "all"):
         generate_litreview(client, RESULTS_DIR / "litreview_texts.jsonl")

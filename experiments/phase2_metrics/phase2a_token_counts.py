@@ -52,7 +52,9 @@ def _build_record(rec: dict) -> dict:
     if stored_tok is not None and stored_tok != tok:
         log.warning(
             "token_count mismatch for %s: stored=%s recomputed=%s — using recomputed",
-            rec["id"], stored_tok, tok,
+            rec["id"],
+            stored_tok,
+            tok,
         )
 
     out = {
@@ -102,7 +104,9 @@ def _summarize(records: list[dict]) -> dict:
             "char_count": _stat_block([r["char_count"] for r in group]),
         }
         if text_type == "stego":
-            bpt = [r["bits_per_token"] for r in group if r["bits_per_token"] is not None]
+            bpt = [
+                r["bits_per_token"] for r in group if r["bits_per_token"] is not None
+            ]
             block["bits_per_token"] = _stat_block(bpt)
         summary.setdefault(system, {})[text_type] = block
     return summary
@@ -111,9 +115,15 @@ def _summarize(records: list[dict]) -> dict:
 def _write_csv(records: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
-        "id", "system", "text_type", "prompt_idx",
-        "token_count", "word_count", "char_count",
-        "message_bits_len", "bits_per_token",
+        "id",
+        "system",
+        "text_type",
+        "prompt_idx",
+        "token_count",
+        "word_count",
+        "char_count",
+        "message_bits_len",
+        "bits_per_token",
     ]
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)

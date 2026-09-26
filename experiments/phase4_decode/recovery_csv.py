@@ -86,9 +86,7 @@ def load_records(path: Path) -> list[dict]:
 
 def aggregate_run(records: list[dict]) -> list[dict]:
     """Return one aggregated cell per (attack_label, attacker_model, tampering_level)."""
-    cells: dict[tuple, dict[str, list[dict]]] = defaultdict(
-        lambda: defaultdict(list)
-    )
+    cells: dict[tuple, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
     for r in records:
         if r.get("bit_error_rate") is None:
             continue
@@ -106,9 +104,12 @@ def aggregate_run(records: list[dict]) -> list[dict]:
             sum(1.0 - x["bit_error_rate"] for x in runs) / len(runs)
             for runs in by_src.values()
         ]
-        all_runs = [bool(x.get("perfect_recovery")) for runs in by_src.values() for x in runs]
+        all_runs = [
+            bool(x.get("perfect_recovery")) for runs in by_src.values() for x in runs
+        ]
         stego_perfect = [
-            all(bool(x.get("perfect_recovery")) for x in runs) for runs in by_src.values()
+            all(bool(x.get("perfect_recovery")) for x in runs)
+            for runs in by_src.values()
         ]
         rows.append(
             {

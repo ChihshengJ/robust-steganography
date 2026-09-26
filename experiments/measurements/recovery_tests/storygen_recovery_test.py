@@ -563,8 +563,8 @@ def main():
     system = StorySystem(
         client=client,
         error_correction=ecc,
-        local_client=local_client,
-        local_model="Qwen3.5-9B-Q4_K_M.gguf",
+        generator_client=local_client,
+        generator_model="Qwen3.5-9B-Q4_K_M.gguf",
         n_slots=20,
         encoder=BypassEncoder(),
     )

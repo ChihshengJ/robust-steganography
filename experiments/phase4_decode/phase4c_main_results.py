@@ -233,9 +233,7 @@ def aggregate_system(decoded_path: Path) -> dict:
         cell_key = (attack_label, attacker, tampering)
         bucket = cell_buckets[cell_key]
         bucket["per_stego_ber"].append(_mean(bers))
-        runs_perfect = per_stego_perfect[
-            (attack_label, attacker, tampering, source_id)
-        ]
+        runs_perfect = per_stego_perfect[(attack_label, attacker, tampering, source_id)]
         bucket["per_run_perfect"].extend(runs_perfect)
         bucket["all_runs_perfect_per_stego"].append(all(runs_perfect))
 

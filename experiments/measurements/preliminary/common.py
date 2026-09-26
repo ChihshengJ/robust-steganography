@@ -50,30 +50,43 @@ Example Output: ["Personal Beliefs", "Financial Security", "Establishment Locati
 Question: {question}"""
 
 
-def llm(prompt, system="You are a helpful assistant.", model=MODEL, temperature=0,
-        max_tokens=1000, client=None):
+def llm(
+    prompt,
+    system="You are a helpful assistant.",
+    model=MODEL,
+    temperature=0,
+    max_tokens=1000,
+    client=None,
+):
     client = client or CLIENT
     for attempt in range(3):
         try:
             r = client.chat.completions.create(
-                model=model, temperature=temperature, max_tokens=max_tokens,
-                messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
             )
             return r.choices[0].message.content.strip()
         except Exception as e:
-            if attempt == 2: raise
-            print(f"  retry {attempt+1}: {e}")
-            time.sleep(2 ** attempt)
+            if attempt == 2:
+                raise
+            print(f"  retry {attempt + 1}: {e}")
+            time.sleep(2**attempt)
 
 
 def _parse_topic_list(raw):
     raw = raw.strip()
-    if raw.startswith("```"): raw = raw.split("\n", 1)[1].rsplit("```", 1)[0]
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[1].rsplit("```", 1)[0]
     # Try to find a JSON array in the response
     start = raw.find("[")
     end = raw.rfind("]")
     if start != -1 and end != -1:
-        raw = raw[start:end + 1]
+        raw = raw[start : end + 1]
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
@@ -132,7 +145,7 @@ Question: {question}"""
 
 
 def decode_group(response, question, group, model=MODEL):
-    options = "\n".join(f"({chr(65+i)}) {t}" for i, t in enumerate(group))
+    options = "\n".join(f"({chr(65 + i)}) {t}" for i, t in enumerate(group))
     prompt = f"""Read this response to the question "{question}":
 
 ---
@@ -153,5 +166,7 @@ Reply with ONLY the letter (A, B, etc.)."""
 def paraphrase(text, model=MODEL):
     return llm(
         f"Rewrite this text completely in your own words, preserving all informational content:\n\n{text}",
-        model=model, temperature=0.7, max_tokens=2000,
+        model=model,
+        temperature=0.7,
+        max_tokens=2000,
     )

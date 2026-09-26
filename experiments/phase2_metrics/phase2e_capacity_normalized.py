@@ -65,8 +65,9 @@ CAP_DIR_RE = re.compile(r"^(?P<system>[a-z]+)_cap(?P<m>\d+)(?P<suffix>.*)$")
 # --------------------------------------------------------------------------- #
 # bootstrap
 # --------------------------------------------------------------------------- #
-def bca_ci(x: np.ndarray, stat=np.mean, n_boot: int = 1000, alpha: float = 0.05,
-           seed: int = 0) -> tuple[float, float]:
+def bca_ci(
+    x: np.ndarray, stat=np.mean, n_boot: int = 1000, alpha: float = 0.05, seed: int = 0
+) -> tuple[float, float]:
     """Bias-corrected and accelerated bootstrap CI (E4 asks for BCa everywhere)."""
     x = np.asarray(x, dtype=float)
     n = x.size
@@ -80,6 +81,7 @@ def bca_ci(x: np.ndarray, stat=np.mean, n_boot: int = 1000, alpha: float = 0.05,
     prop = np.mean(boots < theta_hat)
     prop = min(max(prop, 1.0 / n_boot), 1.0 - 1.0 / n_boot)
     from scipy.stats import norm  # noqa: PLC0415
+
     z0 = norm.ppf(prop)
 
     # acceleration via jackknife
@@ -109,7 +111,7 @@ def _read_jsonl(path: Path) -> list[dict]:
         if not line:
             continue
         r = json.loads(line)
-        if r["id"] in seen:          # phase-1 reruns appended duplicates
+        if r["id"] in seen:  # phase-1 reruns appended duplicates
             continue
         seen.add(r["id"])
         out.append(r)
@@ -126,13 +128,15 @@ def discover_conditions(phase1_dir: Path) -> list[dict]:
         stego = d / f"{system}_stego.jsonl"
         if not stego.exists():
             continue
-        conds.append({
-            "run": d.name,
-            "system": system,
-            "m": int(mt.group("m")),
-            "variant": mt.group("suffix").lstrip("_") or "main",
-            "path": stego,
-        })
+        conds.append(
+            {
+                "run": d.name,
+                "system": system,
+                "m": int(mt.group("m")),
+                "variant": mt.group("suffix").lstrip("_") or "main",
+                "path": stego,
+            }
+        )
     return conds
 
 
@@ -160,11 +164,17 @@ def perfect_rates(decode_dir: Path, run: str, system: str) -> dict[tuple, dict]:
 
     out = {}
     for attack, by_src in per.items():
-        stego_perfect = [all(bool(x.get("perfect_recovery")) for x in runs)
-                         for runs in by_src.values()]
-        all_runs = [bool(x.get("perfect_recovery")) for runs in by_src.values() for x in runs]
-        stego_acc = [float(np.mean([1.0 - x["bit_error_rate"] for x in runs]))
-                     for runs in by_src.values()]
+        stego_perfect = [
+            all(bool(x.get("perfect_recovery")) for x in runs)
+            for runs in by_src.values()
+        ]
+        all_runs = [
+            bool(x.get("perfect_recovery")) for runs in by_src.values() for x in runs
+        ]
+        stego_acc = [
+            float(np.mean([1.0 - x["bit_error_rate"] for x in runs]))
+            for runs in by_src.values()
+        ]
         out[attack] = {
             "n_stegos": len(by_src),
             "perfect_stego_rate": float(np.mean(stego_perfect)),
@@ -182,16 +192,31 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="E1: normalized payload capacity")
     ap.add_argument("--data-dir", type=Path, default=Path("data/experiments"))
     ap.add_argument("--out-dir", type=Path, default=None)
-    ap.add_argument("--tex-out", type=Path, default=Path("paper/src/tables/capacity.tex"))
+    ap.add_argument(
+        "--tex-out", type=Path, default=Path("paper/src/tables/capacity.tex")
+    )
     ap.add_argument("--n-boot", type=int, default=1000)
-    ap.add_argument("--attacker", default=DEFAULT_ATTACKER,
-                    help="attacker model whose global-paraphrase goodput fills G_w in the tex table")
-    ap.add_argument("--include-variants", default="main",
-                    help="comma list of variants to include: main,naive,... or 'all'")
-    ap.add_argument("--recompute-tokens", action="store_true",
-                    help="re-tokenize with tiktoken o200k_base instead of trusting phase-1")
-    ap.add_argument("--restrict-to-decoded", action="store_true", default=True,
-                    help="keep only stegotexts that were actually decoded in phase 4")
+    ap.add_argument(
+        "--attacker",
+        default=DEFAULT_ATTACKER,
+        help="attacker model whose global-paraphrase goodput fills G_w in the tex table",
+    )
+    ap.add_argument(
+        "--include-variants",
+        default="main",
+        help="comma list of variants to include: main,naive,... or 'all'",
+    )
+    ap.add_argument(
+        "--recompute-tokens",
+        action="store_true",
+        help="re-tokenize with tiktoken o200k_base instead of trusting phase-1",
+    )
+    ap.add_argument(
+        "--restrict-to-decoded",
+        action="store_true",
+        default=True,
+        help="keep only stegotexts that were actually decoded in phase 4",
+    )
     args = ap.parse_args()
 
     phase1 = args.data_dir / "phase1_texts"
@@ -203,8 +228,11 @@ def main() -> None:
     if args.recompute_tokens:
         from experiments.utils.token_counter import count_tokens  # noqa: PLC0415
 
-    wanted = None if args.include_variants == "all" else set(
-        v.strip() for v in args.include_variants.split(",") if v.strip())
+    wanted = (
+        None
+        if args.include_variants == "all"
+        else set(v.strip() for v in args.include_variants.split(",") if v.strip())
+    )
 
     per_doc: list[dict] = []
     by_cond: list[dict] = []
@@ -223,8 +251,12 @@ def main() -> None:
             before = len(recs)
             recs = [r for r in recs if r["id"] in keep]
             if len(recs) != before:
-                log.warning("%s: dropped %d stegotext(s) with no phase-4 decode "
-                            "(kept %d)", cond["run"], before - len(recs), len(recs))
+                log.warning(
+                    "%s: dropped %d stegotext(s) with no phase-4 decode (kept %d)",
+                    cond["run"],
+                    before - len(recs),
+                    len(recs),
+                )
 
         m = cond["m"]
         for r in recs:
@@ -233,14 +265,23 @@ def main() -> None:
             tok = count_tokens(r["text"]) if count_tokens else r["token_count"]
             wc = r["word_count"]
             native = md.get("n_payload_bits") or m
-            per_doc.append({
-                "run": cond["run"], "system": cond["system"], "variant": cond["variant"],
-                "id": r["id"], "m_bits": m, "m_native_bits": native,
-                "repetitions": ss.get("repetitions") or 1,
-                "words": wc, "tokens": tok,
-                "bits_per_word": m / wc, "bits_per_token": m / tok,
-                "native_bits_per_word": native / wc, "native_bits_per_token": native / tok,
-            })
+            per_doc.append(
+                {
+                    "run": cond["run"],
+                    "system": cond["system"],
+                    "variant": cond["variant"],
+                    "id": r["id"],
+                    "m_bits": m,
+                    "m_native_bits": native,
+                    "repetitions": ss.get("repetitions") or 1,
+                    "words": wc,
+                    "tokens": tok,
+                    "bits_per_word": m / wc,
+                    "bits_per_token": m / tok,
+                    "native_bits_per_word": native / wc,
+                    "native_bits_per_token": native / tok,
+                }
+            )
 
         rows = [d for d in per_doc if d["run"] == cond["run"]]
         w = np.array([d["words"] for d in rows], float)
@@ -250,17 +291,33 @@ def main() -> None:
         rw_lo, rw_hi = bca_ci(rw, n_boot=args.n_boot)
         rt_lo, rt_hi = bca_ci(rt, n_boot=args.n_boot)
         rec = {
-            "run": cond["run"], "system": cond["system"], "variant": cond["variant"],
-            "m_bits": m, "n": len(rows),
+            "run": cond["run"],
+            "system": cond["system"],
+            "variant": cond["variant"],
+            "m_bits": m,
+            "n": len(rows),
             "m_native_bits": rows[0]["m_native_bits"],
             "repetitions": rows[0]["repetitions"],
-            "words_mean": w.mean(), "words_sd": w.std(ddof=1), "words_median": np.median(w),
-            "tokens_mean": t.mean(), "tokens_sd": t.std(ddof=1), "tokens_median": np.median(t),
-            "bits_per_word": rw.mean(), "bits_per_word_lo": rw_lo, "bits_per_word_hi": rw_hi,
-            "bits_per_token": rt.mean(), "bits_per_token_lo": rt_lo, "bits_per_token_hi": rt_hi,
-            "bits_per_word_agg": m / w.mean(), "bits_per_token_agg": m / t.mean(),
-            "native_bits_per_word": float(np.mean([d["native_bits_per_word"] for d in rows])),
-            "native_bits_per_token": float(np.mean([d["native_bits_per_token"] for d in rows])),
+            "words_mean": w.mean(),
+            "words_sd": w.std(ddof=1),
+            "words_median": np.median(w),
+            "tokens_mean": t.mean(),
+            "tokens_sd": t.std(ddof=1),
+            "tokens_median": np.median(t),
+            "bits_per_word": rw.mean(),
+            "bits_per_word_lo": rw_lo,
+            "bits_per_word_hi": rw_hi,
+            "bits_per_token": rt.mean(),
+            "bits_per_token_lo": rt_lo,
+            "bits_per_token_hi": rt_hi,
+            "bits_per_word_agg": m / w.mean(),
+            "bits_per_token_agg": m / t.mean(),
+            "native_bits_per_word": float(
+                np.mean([d["native_bits_per_word"] for d in rows])
+            ),
+            "native_bits_per_token": float(
+                np.mean([d["native_bits_per_token"] for d in rows])
+            ),
         }
         by_cond.append(rec)
 
@@ -269,20 +326,32 @@ def main() -> None:
         for (attack, attacker), st in rates.items():
             pr = st["perfect_stego_rate"]
             g = rw * pr
-            g_lo, g_hi = bca_ci(np.array(
-                [a * b for a, b in zip(rw, st["_stego_perfect"])], float
-            ), n_boot=args.n_boot) if len(rw) == len(st["_stego_perfect"]) else (float("nan"),) * 2
-            goodput.append({
-                "run": cond["run"], "system": cond["system"], "m_bits": m,
-                "attack": attack, "attacker_model": attacker,
-                "n_stegos": st["n_stegos"],
-                "bitwise_accuracy": st["bitwise_accuracy"],
-                "perfect_stego_rate": pr, "perfect_run_rate": st["perfect_run_rate"],
-                "goodput_bits_per_doc": m * pr,
-                "goodput_bits_per_word": float(g.mean()),
-                "goodput_bits_per_word_lo": g_lo, "goodput_bits_per_word_hi": g_hi,
-                "goodput_bits_per_token": float((rt * pr).mean()),
-            })
+            g_lo, g_hi = (
+                bca_ci(
+                    np.array([a * b for a, b in zip(rw, st["_stego_perfect"])], float),
+                    n_boot=args.n_boot,
+                )
+                if len(rw) == len(st["_stego_perfect"])
+                else (float("nan"),) * 2
+            )
+            goodput.append(
+                {
+                    "run": cond["run"],
+                    "system": cond["system"],
+                    "m_bits": m,
+                    "attack": attack,
+                    "attacker_model": attacker,
+                    "n_stegos": st["n_stegos"],
+                    "bitwise_accuracy": st["bitwise_accuracy"],
+                    "perfect_stego_rate": pr,
+                    "perfect_run_rate": st["perfect_run_rate"],
+                    "goodput_bits_per_doc": m * pr,
+                    "goodput_bits_per_word": float(g.mean()),
+                    "goodput_bits_per_word_lo": g_lo,
+                    "goodput_bits_per_word_hi": g_hi,
+                    "goodput_bits_per_token": float((rt * pr).mean()),
+                }
+            )
 
     _write_csv(out_dir / "capacity_per_doc.csv", per_doc)
     _write_csv(out_dir / "capacity_by_condition.csv", by_cond)
@@ -291,8 +360,12 @@ def main() -> None:
         json.dump({"by_condition": by_cond, "goodput": goodput}, f, indent=2)
 
     _write_tex(args.tex_out, by_cond, goodput, args.attacker)
-    log.info("wrote %d per-doc rows, %d conditions, %d goodput rows",
-             len(per_doc), len(by_cond), len(goodput))
+    log.info(
+        "wrote %d per-doc rows, %d conditions, %d goodput rows",
+        len(per_doc),
+        len(by_cond),
+        len(goodput),
+    )
 
 
 def _write_csv(path: Path, rows: list[dict]) -> None:
@@ -330,8 +403,11 @@ def _write_tex(
         prev = r["system"]
         g = gp.get((r["run"], "global_paraphrase", attacker))
         gtxt = f"{g['goodput_bits_per_word']:.4f}" if g else "--"
-        gross = (f"{r['native_bits_per_word']:.2f}"
-                 if r["m_native_bits"] != r["m_bits"] else "--")
+        gross = (
+            f"{r['native_bits_per_word']:.2f}"
+            if r["m_native_bits"] != r["m_bits"]
+            else "--"
+        )
         lines.append(
             f"{TASK_LABEL.get(r['system'], r['system'])} & {r['m_bits']} & "
             f"{r['words_mean']:.0f}\\,$\\pm$\\,{r['words_sd']:.0f} & "

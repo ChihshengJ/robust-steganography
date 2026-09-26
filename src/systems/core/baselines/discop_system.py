@@ -184,7 +184,9 @@ class DiscopSystem(StegSystem):
         }
         return text
 
-    def recover_message(self, stego_text: str, token_ids=None, stats=None, **kwargs) -> Any:
+    def recover_message(
+        self, stego_text: str, token_ids=None, stats=None, **kwargs
+    ) -> Any:
         """Recover the payload from a stego text, or from its emitted ids.
 
         ``token_ids`` selects the **token channel** — the scheme itself, with no

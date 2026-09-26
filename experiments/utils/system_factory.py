@@ -31,20 +31,21 @@ LOCAL_MODEL = os.environ.get("LOCAL_MODEL", "Qwen3.5-4B-UD-Q8_K_XL.gguf")
 
 
 def make_clients(
-    local_base_url: str | None = None,
+    generator_base_url: str | None = None,
 ) -> tuple[openai.OpenAI, openai.OpenAI]:
-    """Create the OpenAI API client and the local llama.cpp client.
+    """Create the OpenAI API client and the generator client.
 
-    The remote client honours OpenAI's own env vars (``OPENAI_API_KEY``, and
-    ``OPENAI_BASE_URL`` if you front it with a proxy). The local client points
-    at ``local_base_url`` (default: ``LOCAL_BASE_URL`` / ``$LOCAL_BASE_URL``).
+    The API client honours OpenAI's own env vars (``OPENAI_API_KEY``, and
+    ``OPENAI_BASE_URL`` if you front it with a proxy). The generator client
+    points at ``generator_base_url``, by default the local llama.cpp server
+    (``LOCAL_BASE_URL`` / ``$LOCAL_BASE_URL``).
     """
     client = openai.OpenAI()
-    local_client = openai.OpenAI(
-        base_url=local_base_url or LOCAL_BASE_URL,
+    generator_client = openai.OpenAI(
+        base_url=generator_base_url or LOCAL_BASE_URL,
         api_key="unused",
     )
-    return client, local_client
+    return client, generator_client
 
 
 # Together AI, OpenAI-compatible. Hosts the attacker models from families other
@@ -62,7 +63,7 @@ def make_together_client() -> openai.OpenAI:
 
 def make_topicqa(
     client: openai.OpenAI,
-    local_client: openai.OpenAI,
+    generator_client: openai.OpenAI,
     n_subtopics: int = 12,
     group_size: int = 2,
 ) -> TopicQASystem:
@@ -74,65 +75,66 @@ def make_topicqa(
     return TopicQASystem(
         client,
         error_correction=RepetitionCode(1),
-        local_client=local_client,
-        local_model=LOCAL_MODEL,
+        generator_client=generator_client,
+        generator_model=LOCAL_MODEL,
         n_subtopics=n_subtopics,
         group_size=group_size,
-        response_model="gpt-4.1",
+        synth_model="gpt-4.1",
         decoder_model="gpt-4.1",
         key="default",
         encoder=BypassEncoder(),
-        response_temperature=0.7,
+        synth_temperature=0.7,
     )
 
 
 def make_story(
     client: openai.OpenAI,
-    local_client: openai.OpenAI,
+    generator_client: openai.OpenAI,
     n_slots: int = 16,
     *,
-    g_model: str | None = None,
-    g_extra_body: dict | None = LLAMACPP_NO_THINKING,
-    writer_client: openai.OpenAI | None = None,
-    writer_model: str = "gpt-4.1",
-    writer_temperature: float = 0.7,
-    writer_top_p: float = 0.7,
+    generator_model: str | None = None,
+    generator_extra_body: dict | None = LLAMACPP_NO_THINKING,
+    synth_client: openai.OpenAI | None = None,
+    synth_model: str = "gpt-4.1",
+    synth_temperature: float = 0.7,
+    synth_top_p: float = 0.7,
 ) -> StorySystem:
     """Create a StorySystem with standard experiment parameters.
 
-    Capacity = n_slots bits (1 bit per slot ranking). G runs on ``local_client``
-    with ``g_model`` (default LOCAL_MODEL). The writer defaults to ``client``.
+    Capacity = n_slots bits (1 bit per slot ranking). The generator G runs on
+    ``generator_client`` with ``generator_model`` (default LOCAL_MODEL). The
+    synthesizer defaults to ``client``.
     ``client`` with GPT-4.1 always decodes. The defaults are the configuration
     every existing result was generated with.
     """
     return StorySystem(
         client,
         error_correction=RepetitionCode(1),
-        local_client=local_client,
-        local_model=g_model or LOCAL_MODEL,
+        generator_client=generator_client,
+        generator_model=generator_model or LOCAL_MODEL,
         n_slots=n_slots,
-        response_model=writer_model,
+        synth_model=synth_model,
         decoder_model="gpt-4.1",
         key="default",
         encoder=BypassEncoder(),
-        response_temperature=writer_temperature,
-        writer_client=writer_client,
-        response_top_p=writer_top_p,
-        g_extra_body=g_extra_body,
+        synth_temperature=synth_temperature,
+        synth_client=synth_client,
+        synth_top_p=synth_top_p,
+        generator_extra_body=generator_extra_body,
     )
 
 
 def make_litreview(
     client: openai.OpenAI,
     *,
-    writer_client: openai.OpenAI | None = None,
-    writer_model: str = "gpt-4.1",
-    writer_temperature: float = 0.0,
-    writer_top_p: float = 0.7,
+    synth_client: openai.OpenAI | None = None,
+    synth_model: str = "gpt-4.1",
+    synth_temperature: float = 0.0,
+    synth_top_p: float = 0.7,
 ) -> LitReviewSystem:
     """Create a LitReviewSystem with corpus loaded.
 
-    The writer defaults to ``client``. ``client`` with GPT-4.1 always extracts
+    The synthesizer defaults to ``client``. ``client`` with GPT-4.1 always extracts
     citations when decoding. The defaults are the configuration every existing
     result was generated with.
     """
@@ -144,10 +146,10 @@ def make_litreview(
         model="gpt-4.1",
         encoder=BypassEncoder(),
         key="default",
-        writer_client=writer_client,
-        writer_model=writer_model,
-        writer_temperature=writer_temperature,
-        writer_top_p=writer_top_p,
+        synth_client=synth_client,
+        synth_model=synth_model,
+        synth_temperature=synth_temperature,
+        synth_top_p=synth_top_p,
     )
 
 

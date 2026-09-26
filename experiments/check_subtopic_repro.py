@@ -74,7 +74,7 @@ def main():
     local_client = openai.OpenAI(base_url=args.base_url, api_key="unused")
     system = make_topicqa(client, local_client)
     if args.local_model:
-        system.local_model = args.local_model
+        system.generator_model = args.local_model
 
     n_exact = n_reordered = n_drift = n_error = 0
 

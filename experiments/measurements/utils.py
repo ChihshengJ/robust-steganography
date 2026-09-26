@@ -203,7 +203,6 @@ class TextLogger:
         return True
 
 
-
 def index_reducer(index: int) -> Callable[[np.ndarray], np.ndarray]:
     def reducer(bits: np.ndarray) -> np.ndarray:
         return np.array([bits[index]], dtype=np.int8)

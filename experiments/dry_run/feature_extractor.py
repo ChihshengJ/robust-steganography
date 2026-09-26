@@ -165,8 +165,12 @@ class FeatureExtractor:
         bi_entropy = -float(np.sum(bi_probs * np.log2(bi_probs + 1e-12)))
 
         return {
-            "bigram_repetition_rate": bi_repeated / len(bi_counts) if bi_counts else 0.0,
-            "trigram_repetition_rate": tri_repeated / len(tri_counts) if tri_counts else 0.0,
+            "bigram_repetition_rate": bi_repeated / len(bi_counts)
+            if bi_counts
+            else 0.0,
+            "trigram_repetition_rate": tri_repeated / len(tri_counts)
+            if tri_counts
+            else 0.0,
             "bigram_entropy": bi_entropy,
         }
 

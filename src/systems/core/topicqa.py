@@ -44,15 +44,15 @@ class TopicQASystem(StegSystem):
         self,
         client: Any,
         error_correction: ErrorCorrection,
-        local_client: Any,
-        local_model: str,
+        generator_client: Any,
+        generator_model: str,
         n_subtopics: int = 12,
         group_size: int = 2,
-        response_model: str = "gpt-4.1",
+        synth_model: str = "gpt-4.1",
         decoder_model: str = "gpt-4.1",
         key: str = "default",
         encoder: Encoder | None = None,
-        response_temperature: float = 0.7,
+        synth_temperature: float = 0.7,
     ) -> None:
         if group_size < 2 or (group_size & (group_size - 1)) != 0:
             raise ValueError(f"group_size must be a power of 2, got {group_size}")
@@ -62,15 +62,15 @@ class TopicQASystem(StegSystem):
 
         super().__init__(client, stub, error_correction, encoder)
 
-        self.local_client = local_client
-        self.local_model = local_model
+        self.generator_client = generator_client
+        self.generator_model = generator_model
         self.n_subtopics = n_subtopics
         self.group_size = group_size
         self.bits_per_group = bits_per_group
-        self.response_model = response_model
+        self.synth_model = synth_model
         self.decoder_model = decoder_model
         self.key = key
-        self.response_temperature = response_temperature
+        self.synth_temperature = synth_temperature
 
         self._question: str | None = None
         self._last_metadata: dict | None = None
@@ -93,8 +93,8 @@ class TopicQASystem(StegSystem):
 
     def generate_subtopics(self, question: str) -> list[str]:
         raw = llm(
-            self.local_client,
-            self.local_model,
+            self.generator_client,
+            self.generator_model,
             SUBTOPIC_PROMPT.format(n=self.n_subtopics, question=question),
             temperature=0,
             max_tokens=2500,
@@ -137,9 +137,9 @@ class TopicQASystem(StegSystem):
         )
         return llm(
             self.client,
-            self.response_model,
+            self.synth_model,
             prompt,
-            temperature=self.response_temperature,
+            temperature=self.synth_temperature,
             max_tokens=2500,
         )
 
@@ -170,7 +170,7 @@ class TopicQASystem(StegSystem):
     def paraphrase(self, text: str, model: str | None = None) -> str:
         return llm(
             self.client,
-            model or self.response_model,
+            model or self.synth_model,
             f"Rewrite this text completely in your own words, "
             f"preserving all informational content:\n\n{text}",
             temperature=0.7,

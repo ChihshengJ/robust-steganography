@@ -177,7 +177,9 @@ def run_system(
         try:
             bs_f1 = batched_bertscore(refs, hyps)
         except Exception as e:
-            log.warning("[%s] bertscore batch failed: %s — falling back per-record", system, e)
+            log.warning(
+                "[%s] bertscore batch failed: %s — falling back per-record", system, e
+            )
             bs_f1 = []
             for ref, hyp in zip(refs, hyps):
                 try:
@@ -377,7 +379,9 @@ def main():
 
     if args.capacity is not None:
         if args.system == "all":
-            parser.error("--capacity requires --system to be one of topicqa/story/litreview (not 'all').")
+            parser.error(
+                "--capacity requires --system to be one of topicqa/story/litreview (not 'all')."
+            )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"
             log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")

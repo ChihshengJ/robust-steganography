@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 STEGO_GEN_MODEL = "gpt-4.1"
 
+
 @dataclass
 class BacktrackConfig:
     max_attempts_per_step: int = 20
