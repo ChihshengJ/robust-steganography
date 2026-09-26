@@ -10,7 +10,7 @@ from .steg_system import StegSystem
 from .hash_functions import BitsPerGroupStub
 from ..config.story_prompts import SLOT_GENERATION_PROMPT, SLOT_DECODE_PROMPT, STORY_SYNTHESIS_PROMPT
 
-from ..utils.new_text import llm
+from ..utils.new_text import client_base_url, llm
 
 
 def _parse_slots(raw: str) -> list[dict]:
@@ -30,6 +30,10 @@ def _parse_slots(raw: str) -> list[dict]:
         if isinstance(s, dict) and "slot" in s and "A" in s and "B" in s:
             valid.append(s)
     return valid
+
+
+# Request body for G on llama.cpp: Qwen3.x chat templates think by default.
+LLAMACPP_NO_THINKING = {"chat_template_kwargs": {"enable_thinking": False}}
 
 
 class StorySystem(StegSystem):
@@ -54,10 +58,20 @@ class StorySystem(StegSystem):
         key: str = "default",
         encoder: Encoder | None = None,
         response_temperature: float = 0.7,
+        writer_client: Any | None = None,
+        response_top_p: float = 0.7,
+        g_extra_body: dict | None = LLAMACPP_NO_THINKING,
     ) -> None:
+        """G (the slot generator) runs on ``local_client``/``local_model``;
+        ``g_extra_body`` is sent with it and is provider-specific (None sends
+        nothing). ``response_*`` write the story, on ``writer_client``
+        (default: ``client``). ``client``/``decoder_model`` decode."""
         stub = BitsPerGroupStub(1)
         super().__init__(client, stub, error_correction, encoder)
 
+        self.writer_client = writer_client or client
+        self.response_top_p = response_top_p
+        self.g_extra_body = g_extra_body
         self.local_client = local_client
         self.local_model = local_model
         self.n_slots = n_slots
@@ -88,7 +102,7 @@ class StorySystem(StegSystem):
             SLOT_GENERATION_PROMPT.format(n=self.n_slots, premise=premise),
             temperature=0,
             top_p=1.0,
-            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+            extra_body=self.g_extra_body,
         )
         slots = _parse_slots(raw)
         if len(slots) > self.n_slots:
@@ -99,6 +113,18 @@ class StorySystem(StegSystem):
                 f"expected {self.n_slots}"
             )
         return slots
+
+    def generation_config(self) -> dict:
+        """The models and sampling that produced a stego text."""
+        return {
+            "g_model": self.local_model,
+            "g_base_url": client_base_url(self.local_client),
+            "writer_model": self.response_model,
+            "writer_base_url": client_base_url(self.writer_client),
+            "writer_temperature": self.response_temperature,
+            "writer_top_p": self.response_top_p,
+            "decoder_model": self.decoder_model,
+        }
 
     def _key_permutation(self, n: int) -> list[int]:
         """Key-derived permutation mapping bit position -> slot index."""
@@ -196,10 +222,11 @@ class StorySystem(StegSystem):
             events_str=events_str,
         )
         return llm(
-            self.client,
+            self.writer_client,
             self.response_model,
             prompt,
             temperature=self.response_temperature,
+            top_p=self.response_top_p,
             max_tokens=3000,
         )
 
@@ -237,6 +264,7 @@ class StorySystem(StegSystem):
             "slots": slots,
             "assigned": assigned,
             "chunks": chunks,
+            "config": self.generation_config(),
         }
         return story, metadata
 

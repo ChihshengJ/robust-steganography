@@ -13,7 +13,7 @@ from ..paths import litreview_references
 from .encoder import CharacterEncoder, Encoder
 from .error_correction import ErrorCorrection
 from .steg_system import StegSystem
-from ..utils.new_text import llm
+from ..utils.new_text import client_base_url, llm
 
 
 def ref_bit_hash(author_last_name: str, year: int) -> int:
@@ -183,9 +183,20 @@ class LitReviewSystem(StegSystem):
         model: str = "gpt-4.1",
         encoder: Encoder | None = None,
         key: str = "default",
+        writer_client=None,
+        writer_model: str | None = None,
+        writer_temperature: float = 0.0,
+        writer_top_p: float = 0.7,
     ):
+        """``client``/``model`` extract the citations when decoding. The writer_*
+        settings write the review when encoding; the writer defaults to the
+        same client and model."""
         self.client = client
         self.model = model
+        self.writer_client = writer_client or client
+        self.writer_model = writer_model or model
+        self.writer_temperature = writer_temperature
+        self.writer_top_p = writer_top_p
         self.key = key
         self.hash_fn = None
         self.ecc = error_correction
@@ -251,6 +262,7 @@ class LitReviewSystem(StegSystem):
                 for r in selected
             ],
             "message_bits": message_bits,
+            "config": self.generation_config(),
         }
 
         stego_text = self._generate_review(paper, selected)
@@ -294,6 +306,18 @@ class LitReviewSystem(StegSystem):
         decoded_bits = self.ecc.decode(ecc_bits, self._error_encoded_length)
         return self.encoder.decode(decoded_bits)
 
+    def generation_config(self) -> dict:
+        """The models and sampling that produced a stego text. LitReview has
+        no G model: its units come from the public bibliography."""
+        return {
+            "g_model": None,
+            "writer_model": self.writer_model,
+            "writer_base_url": client_base_url(self.writer_client),
+            "writer_temperature": self.writer_temperature,
+            "writer_top_p": self.writer_top_p,
+            "decoder_model": self.model,
+        }
+
     def _generate_review(self, paper: dict, selected_refs: list[dict]) -> str:
         refs_formatted = "\n".join(
             f"  - {r['author_text']} ({r['year']}). {r['ref_title']}"
@@ -301,13 +325,14 @@ class LitReviewSystem(StegSystem):
         )
 
         return llm(
-            self.client,
-            self.model,
+            self.writer_client,
+            self.writer_model,
             prompt=f"References:\n{refs_formatted}",
             system=GENERATE_REVIEW.format(
                 seed_title=paper["title"],
                 seed_abstract=paper.get("abstract", "")[:600],
             ),
-            temperature=0,
+            temperature=self.writer_temperature,
+            top_p=self.writer_top_p,
             max_tokens=4000,
         )

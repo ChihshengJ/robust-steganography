@@ -62,6 +62,13 @@ def llm(
             time.sleep(2**attempt)
 
 
+def client_base_url(client) -> str | None:
+    """The endpoint a client talks to, recorded so a stego text's provenance
+    says where its models ran (e.g. the local GGUF server vs. a hosted API)."""
+    url = getattr(client, "base_url", None)
+    return str(url) if url is not None else None
+
+
 def clean_response(text) -> str:
     # Regex to find the last full sentence ending with ., !, or ?
     match = re.search(r"([.!?])[^.!?]*$", text)

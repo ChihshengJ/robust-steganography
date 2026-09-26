@@ -19,6 +19,7 @@ from systems import (
     TopicQASystem,
 )
 from systems.core.litreview import load_corpus
+from systems.core.story_gen import LLAMACPP_NO_THINKING
 from systems.paths import litreview_references
 
 # Local (llama.cpp / OpenAI-compatible) server used for deterministic subtopic
@@ -92,27 +93,52 @@ def make_story(
     client: openai.OpenAI,
     local_client: openai.OpenAI,
     n_slots: int = 16,
+    *,
+    g_model: str | None = None,
+    g_extra_body: dict | None = LLAMACPP_NO_THINKING,
+    writer_client: openai.OpenAI | None = None,
+    writer_model: str = "gpt-4.1",
+    writer_temperature: float = 0.7,
+    writer_top_p: float = 0.7,
 ) -> StorySystem:
     """Create a StorySystem with standard experiment parameters.
 
-    Capacity = n_slots bits (1 bit per slot ranking).
+    Capacity = n_slots bits (1 bit per slot ranking). G runs on ``local_client``
+    with ``g_model`` (default LOCAL_MODEL). The writer defaults to ``client``.
+    ``client`` with GPT-4.1 always decodes. The defaults are the configuration
+    every existing result was generated with.
     """
     return StorySystem(
         client,
         error_correction=RepetitionCode(1),
         local_client=local_client,
-        local_model=LOCAL_MODEL,
+        local_model=g_model or LOCAL_MODEL,
         n_slots=n_slots,
-        response_model="gpt-4.1",
+        response_model=writer_model,
         decoder_model="gpt-4.1",
         key="default",
         encoder=BypassEncoder(),
-        response_temperature=0.7,
+        response_temperature=writer_temperature,
+        writer_client=writer_client,
+        response_top_p=writer_top_p,
+        g_extra_body=g_extra_body,
     )
 
 
-def make_litreview(client: openai.OpenAI) -> LitReviewSystem:
-    """Create a LitReviewSystem with corpus loaded."""
+def make_litreview(
+    client: openai.OpenAI,
+    *,
+    writer_client: openai.OpenAI | None = None,
+    writer_model: str = "gpt-4.1",
+    writer_temperature: float = 0.0,
+    writer_top_p: float = 0.7,
+) -> LitReviewSystem:
+    """Create a LitReviewSystem with corpus loaded.
+
+    The writer defaults to ``client``. ``client`` with GPT-4.1 always extracts
+    citations when decoding. The defaults are the configuration every existing
+    result was generated with.
+    """
     corpus = load_corpus(*litreview_references())
     return LitReviewSystem(
         client,
@@ -121,6 +147,10 @@ def make_litreview(client: openai.OpenAI) -> LitReviewSystem:
         model="gpt-4.1",
         encoder=BypassEncoder(),
         key="default",
+        writer_client=writer_client,
+        writer_model=writer_model,
+        writer_temperature=writer_temperature,
+        writer_top_p=writer_top_p,
     )
 
 
