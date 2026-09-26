@@ -45,6 +45,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import inspect
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -171,6 +172,14 @@ def make_baseline_record(stego_rec: dict) -> dict:
     }
 
 
+def _accepts_kwarg(fn, name: str) -> bool:
+    """Whether ``fn`` takes keyword ``name`` (explicitly or via **kwargs)."""
+    params = inspect.signature(fn).parameters
+    return name in params or any(
+        p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()
+    )
+
+
 def decode_one(
     system_obj: StegSystem,
     attacked_text: str,
@@ -188,16 +197,17 @@ def decode_one(
     """
     if token_ids is None and not attacked_text:
         return None, "empty attacked_text"
+    kwargs = {}
+    if token_ids is not None:
+        kwargs["token_ids"] = token_ids
+    # Only the token-level baselines report decode stats; the semantic systems'
+    # recover_message takes no such argument, and passing it anyway fails every
+    # decode with a TypeError that is then scored as BER 1.0.
+    if stats is not None and _accepts_kwarg(system_obj.recover_message, "stats"):
+        kwargs["stats"] = stats
     try:
         restore_system_state(system_obj, state or {})
-        if token_ids is not None:
-            recovered = system_obj.recover_message(
-                attacked_text, token_ids=token_ids, stats=stats
-            )
-        elif stats is not None:
-            recovered = system_obj.recover_message(attacked_text, stats=stats)
-        else:
-            recovered = system_obj.recover_message(attacked_text)
+        recovered = system_obj.recover_message(attacked_text, **kwargs)
     except Exception as e:
         return None, repr(e)
 
