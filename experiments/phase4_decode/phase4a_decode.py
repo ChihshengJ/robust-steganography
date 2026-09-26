@@ -12,6 +12,11 @@ separate run. Enabled by default; turn off with ``--no-baseline``.
 The original ``message_bits`` are looked up from
 ``data/experiments/phase1_texts/{system}_stego.jsonl`` by ``source_id``.
 
+StorySlot's receiver regenerates G(premise) once per stego, not once per
+decode, and keeps it in ``{system}_g_cache.jsonl`` next to the decoded file,
+each entry marked with whether it matches the sender's encode-time output.
+Decoded records carry that as ``g_matches_encode`` (None for other systems).
+
 Output schema:
 
     {
@@ -20,6 +25,7 @@ Output schema:
       "system": "topicqa",
       "attack_label": "global_paraphrase",
       "attack_type": "paraphrase",
+      "attacker_model": "gpt-4.1",
       "local": false,
       "tampering_level": 1.0,
       "run_idx": 0,
@@ -29,7 +35,8 @@ Output schema:
       "bit_error_rate": 0.167,
       "perfect_recovery": false,
       "num_bit_errors": 1,
-      "error": null
+      "error": null,
+      "g_matches_encode": null
     }
 
 Resumable: ids already present in the output JSONL are skipped on resume.
@@ -172,6 +179,77 @@ def make_baseline_record(stego_rec: dict) -> dict:
     }
 
 
+# Systems whose receiver regenerates a G(x) output from the public input before
+# decoding: StorySlot's A/B slots. See build_g_cache.
+G_SYSTEMS = frozenset({"story"})
+
+
+def build_g_cache(
+    system: str,
+    system_obj: StegSystem,
+    stego_by_id: dict[str, dict],
+    source_ids: set[str],
+    cache_path: Path,
+) -> dict[str, dict]:
+    """The receiver's G(premise) per source, computed once and persisted.
+
+    The receiver regenerates G(x) from the public input; under the pinned engine
+    it is deterministic, so one call per input serves every attacked text of it
+    instead of one call per decode. Each entry records whether the receiver's
+    output equals the sender's encode-time one (``matches_encode``; None when
+    the stego record predates storing it). On a mismatch sender and receiver
+    disagree on the slots, and that source can fail with no attack at all.
+
+    Entries already in ``cache_path`` are reused, so a resumed run keeps
+    decoding with the receiver output it started with.
+    """
+    cache = {r["source_id"]: r for r in read_jsonl(cache_path)}
+    n_reused = len(source_ids & cache.keys())
+    for sid in sorted(source_ids - cache.keys()):
+        stego_rec = stego_by_id[sid]
+        premise = (stego_rec.get("system_state") or {}).get("premise")
+        if premise is None:
+            log.warning(
+                "[%s] %s has no premise; its decodes regenerate G per text",
+                system,
+                sid,
+            )
+            continue
+        slots = system_obj.generate_slots(premise)
+        encode_slots = (stego_rec.get("metadata") or {}).get("slots")
+        entry = {
+            "source_id": sid,
+            "premise": premise,
+            "slots": slots,
+            "matches_encode": None if encode_slots is None else slots == encode_slots,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        append_jsonl(cache_path, entry)
+        cache[sid] = entry
+
+    entries = [cache[s] for s in source_ids if s in cache]
+    checked = [e for e in entries if e["matches_encode"] is not None]
+    mismatched = sorted(e["source_id"] for e in checked if not e["matches_encode"])
+    log.info(
+        "[%s] G cache %s: %d computed, %d reused; receiver G matches encode-time G "
+        "on %d/%d checked sources",
+        system,
+        cache_path,
+        len(entries) - n_reused,
+        n_reused,
+        len(checked) - len(mismatched),
+        len(checked),
+    )
+    if mismatched:
+        log.warning(
+            "[%s] receiver G differs from encode-time G for %d sources: %s",
+            system,
+            len(mismatched),
+            ", ".join(mismatched),
+        )
+    return cache
+
+
 def _accepts_kwarg(fn, name: str) -> bool:
     """Whether ``fn`` takes keyword ``name`` (explicitly or via **kwargs)."""
     params = inspect.signature(fn).parameters
@@ -187,6 +265,7 @@ def decode_one(
     expected_len: int,
     token_ids: list[int] | None = None,
     stats: dict | None = None,
+    g_output: list[dict] | None = None,
 ) -> tuple[list[int] | None, str | None]:
     """Restore state and run recover_message. Returns (bits, error_str_or_None).
 
@@ -205,6 +284,8 @@ def decode_one(
     # decode with a TypeError that is then scored as BER 1.0.
     if stats is not None and _accepts_kwarg(system_obj.recover_message, "stats"):
         kwargs["stats"] = stats
+    if g_output is not None:
+        kwargs["slots"] = g_output
     try:
         restore_system_state(system_obj, state or {})
         recovered = system_obj.recover_message(attacked_text, **kwargs)
@@ -271,6 +352,7 @@ def _decode_task(task: dict) -> dict:
         expected_len=len(original_bits),
         token_ids=task["token_ids"],
         stats=decode_stats,
+        g_output=task["g_output"],
     )
     if err is not None or recovered is None:
         ber_block = {
@@ -302,6 +384,7 @@ def _decode_task(task: dict) -> dict:
         "num_bit_errors": ber_block["num_errors"],
         "error": err,
         "decode_channel": "token" if task["token_ids"] else "text",
+        "g_matches_encode": task["g_matches_encode"],
         "decode_stats": decode_stats or None,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
@@ -480,8 +563,24 @@ def run_system(
                 or {},
                 "attacked_text": rec.get("attacked_text"),
                 "token_ids": rec.get("token_ids"),
+                "g_output": None,
+                "g_matches_encode": None,
             }
         )
+
+    if system in G_SYSTEMS and tasks:
+        g_cache = build_g_cache(
+            system,
+            system_obj,
+            stego_by_id,
+            {t["source_id"] for t in tasks},
+            output_dir / f"{system}_g_cache.jsonl",
+        )
+        for t in tasks:
+            entry = g_cache.get(t["source_id"])
+            if entry is not None:
+                t["g_output"] = entry["slots"]
+                t["g_matches_encode"] = entry["matches_encode"]
 
     bar = tqdm(total=len(tasks), desc=f"decode/{system}", unit="rec", dynamic_ncols=True)
 
@@ -536,6 +635,7 @@ def run_system(
             expected_len=len(original_bits),
             token_ids=rec.get("token_ids"),
             stats=decode_stats,
+            g_output=rec["g_output"],
         )
 
         if err is not None or recovered is None:
@@ -569,6 +669,7 @@ def run_system(
                 "num_bit_errors": ber_block["num_errors"],
                 "error": err,
                 "decode_channel": "token" if rec.get("token_ids") else "text",
+                "g_matches_encode": rec["g_matches_encode"],
                 "decode_stats": decode_stats or None,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }

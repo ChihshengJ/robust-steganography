@@ -255,7 +255,12 @@ class StorySystem(StegSystem):
             )
         return story
 
-    def recover_message(self, stego_text: str) -> Any:
+    def recover_message(
+        self, stego_text: str, slots: list[dict] | None = None
+    ) -> Any:
+        """Decode a story. ``slots`` is the receiver's G(premise) output, if
+        already computed; decoding many texts of one premise then costs one G
+        call instead of one per text. None regenerates it here."""
         if self._error_encoded_length is None:
             raise ValueError(
                 "No encoded length set. Run hide_message first "
@@ -266,7 +271,8 @@ class StorySystem(StegSystem):
 
         expected_bits = self._error_encoded_length
 
-        slots = self.generate_slots(self._premise)
+        if slots is None:
+            slots = self.generate_slots(self._premise)
         if expected_bits > len(slots):
             raise ValueError(
                 f"Expected {expected_bits} bits but only {len(slots)} slots"
