@@ -52,7 +52,7 @@ import numpy as np
 from attacks.paraphrase import ParaphraseAttack
 from attacks.synonym import SynonymAttack
 from attacks.translation import TranslationAttack
-from experiments.utils.io import append_jsonl, read_jsonl
+from experiments.utils.io import append_jsonl, read_jsonl, stable_seed
 from experiments.utils.system_factory import make_clients
 from experiments.utils.token_counter import count_tokens
 
@@ -157,8 +157,7 @@ def derive_seed(
     source_id: str, attack_label: str, tampering: float, run_idx: int
 ) -> int:
     """Deterministic seed in [0, 2**31) for sentence-selection reproducibility."""
-    key = f"{source_id}|{attack_label}|{tampering}|{run_idx}"
-    return abs(hash(key)) & 0x7FFFFFFF
+    return stable_seed(f"{source_id}|{attack_label}|{tampering}|{run_idx}")
 
 
 def load_sources(

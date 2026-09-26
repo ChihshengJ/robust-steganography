@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -72,3 +73,13 @@ def make_record_id(system: str, text_type: str, prompt_idx: int) -> str:
     """
     short = _TYPE_SHORT.get(text_type, text_type)
     return f"{system}_{short}_{prompt_idx:03d}"
+
+
+def stable_seed(key: str) -> int:
+    """Deterministic seed in [0, 2**31) derived from ``key``.
+
+    Uses SHA-256 rather than the builtin ``hash()``, which is salted per
+    process (PYTHONHASHSEED) and so gives a different seed on every run.
+    """
+    digest = hashlib.sha256(key.encode("utf-8")).digest()
+    return int.from_bytes(digest[:4], "big") & 0x7FFFFFFF

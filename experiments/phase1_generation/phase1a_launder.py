@@ -44,7 +44,12 @@ from pathlib import Path
 
 import numpy as np
 
-from experiments.utils.io import append_jsonl, load_completed_ids, read_jsonl
+from experiments.utils.io import (
+    append_jsonl,
+    load_completed_ids,
+    read_jsonl,
+    stable_seed,
+)
 from experiments.utils.system_factory import make_clients
 from experiments.utils.token_counter import count_tokens
 from attacks.paraphrase import ParaphraseAttack
@@ -78,7 +83,7 @@ def derive_seed(source_id: str, run_idx: int) -> int:
     """Deterministic seed in [0, 2**31). Global paraphrase variance comes from
     temperature, not the RNG, so this is purely for record-keeping / parity
     with Phase 3 — and matters only if --runs is combined with local mode."""
-    return abs(hash(f"{source_id}|laundered|{run_idx}")) & 0x7FFFFFFF
+    return stable_seed(f"{source_id}|laundered|{run_idx}")
 
 
 def load_stegos(stego_path: Path, n_stegos: int | None) -> list[dict]:
