@@ -58,15 +58,16 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
+import openai
 from tqdm import tqdm
 
+from experiments.utils.attackers import attacker_of
 from experiments.utils.io import (
     append_jsonl,
     load_completed_ids,
     load_records_map,
     read_jsonl,
 )
-from experiments.utils.attackers import attacker_of
 from experiments.utils.metrics import bit_error_rate
 from experiments.utils.system_factory import (
     make_baseline,
@@ -250,6 +251,14 @@ def build_g_cache(
     return cache
 
 
+class DecoderUnavailable(RuntimeError):
+    """The decoder's API failed after its retries; the record was not decoded.
+
+    Scoring it as BER 1.0 would count an outage as a decoding failure. Phase 4a
+    writes it to {system}_decode_failures.jsonl and retries it on the next run.
+    """
+
+
 def _accepts_kwarg(fn, name: str) -> bool:
     """Whether ``fn`` takes keyword ``name`` (explicitly or via **kwargs)."""
     params = inspect.signature(fn).parameters
@@ -268,6 +277,9 @@ def decode_one(
     g_output: list[dict] | None = None,
 ) -> tuple[list[int] | None, str | None]:
     """Restore state and run recover_message. Returns (bits, error_str_or_None).
+
+    A decoder API call that fails after its retries raises DecoderUnavailable
+    instead: the text was never decoded, so it has no BER to score.
 
     ``token_ids``, for the Discop baseline only, decodes the ids the
     encoder emitted instead of re-tokenizing the text — the *token channel*.
@@ -289,6 +301,8 @@ def decode_one(
     try:
         restore_system_state(system_obj, state or {})
         recovered = system_obj.recover_message(attacked_text, **kwargs)
+    except openai.APIError as e:
+        raise DecoderUnavailable(repr(e)) from e
     except Exception as e:
         return None, repr(e)
 
@@ -342,8 +356,18 @@ def _worker_init(system, baseline_model, n_subtopics, group_size, n_slots):
 
 def _decode_task(task: dict) -> dict:
     """Decode one attacked record. Runs in a worker process."""
-    system_obj = _WORKER["obj"]
+    return _decode(task, _WORKER["obj"])
+
+
+def _decode(task: dict, system_obj: StegSystem) -> dict:
+    """Decode one attacked record into its output record.
+
+    Raises DecoderUnavailable when the decoder's API is down.
+    """
     original_bits = task["original_bits"]
+    # Counters for the decoder's silent realignment/fallback paths. In a
+    # clean decode these must be zero; under attack they fire constantly,
+    # which is itself the diagnostic.
     decode_stats: dict = {}
     recovered, err = decode_one(
         system_obj=system_obj,
@@ -443,7 +467,8 @@ def run_system(
             "[%s] skipping %d failed attack records (rerun Phase 3 to retry them): %s",
             system,
             len(failed),
-            ", ".join(r["id"] for r in failed[:5]) + (" ..." if len(failed) > 5 else ""),
+            ", ".join(r["id"] for r in failed[:5])
+            + (" ..." if len(failed) > 5 else ""),
         )
         attack_records = [
             r for r in attack_records if not r.get("error") and r.get("attacked_text")
@@ -514,8 +539,11 @@ def run_system(
             )
         baseline_model = next(iter(models), None)
         if baseline_model:
-            log.info("[%s] decoding with local LM %r (from Phase 1 records)",
-                     system, baseline_model)
+            log.info(
+                "[%s] decoding with local LM %r (from Phase 1 records)",
+                system,
+                baseline_model,
+            )
     system_obj = build_system(
         system,
         client,
@@ -558,9 +586,7 @@ def run_system(
                 "tampering_level": rec["tampering_level"],
                 "run_idx": rec["run_idx"],
                 "original_bits": list(original_bits),
-                "state": rec.get("system_state")
-                or stego_rec.get("system_state")
-                or {},
+                "state": rec.get("system_state") or stego_rec.get("system_state") or {},
                 "attacked_text": rec.get("attacked_text"),
                 "token_ids": rec.get("token_ids"),
                 "g_output": None,
@@ -582,7 +608,11 @@ def run_system(
                 t["g_output"] = entry["slots"]
                 t["g_matches_encode"] = entry["matches_encode"]
 
-    bar = tqdm(total=len(tasks), desc=f"decode/{system}", unit="rec", dynamic_ncols=True)
+    bar = tqdm(
+        total=len(tasks), desc=f"decode/{system}", unit="rec", dynamic_ncols=True
+    )
+    failures_path = output_dir / f"{system}_decode_failures.jsonl"
+    n_unavailable = 0
 
     def _record(out_rec: dict) -> None:
         nonlocal n_decoded, n_errors, n_perfect
@@ -596,6 +626,26 @@ def run_system(
         bar.update(1)
         bar.set_postfix(done=n_decoded, err=n_errors, perfect=n_perfect, refresh=False)
 
+    def _unavailable(task: dict, error: str) -> None:
+        # Not added to the decoded file or to `completed`: the next run retries it.
+        nonlocal n_unavailable
+        n_unavailable += 1
+        append_jsonl(
+            failures_path,
+            {
+                "id": task["id"],
+                "source_id": task["source_id"],
+                "system": task["system"],
+                "attack_label": task["attack_label"],
+                "attacker_model": task["attacker_model"],
+                "tampering_level": task["tampering_level"],
+                "run_idx": task["run_idx"],
+                "error": error,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        bar.update(1)
+
     if max_workers > 1 and tasks:
         # Workers build their own system; the one built above is unused on this
         # path but harmless (and still the thing that validated the model).
@@ -604,76 +654,18 @@ def run_system(
             initializer=_worker_init,
             initargs=(system, baseline_model, n_subtopics, group_size, n_slots),
         ) as pool:
-            futures = [pool.submit(_decode_task, t) for t in tasks]
+            futures = {pool.submit(_decode_task, t): t for t in tasks}
             for fut in as_completed(futures):
-                _record(fut.result())
-        bar.close()
-        log.info(
-            "[%s] done. decoded=%d errors=%d perfect=%d",
-            system,
-            n_decoded,
-            n_errors,
-            n_perfect,
-        )
-        return
-
-    for task in tasks:
-        source_id = task["source_id"]
-        original_bits = task["original_bits"]
-        state = task["state"]
-        attacked_text = task["attacked_text"]
-        rec = task
-
-        # Counters for the decoder's silent realignment/fallback paths. In a
-        # clean decode these must be zero; under attack they fire constantly,
-        # which is itself the diagnostic.
-        decode_stats: dict = {}
-        recovered, err = decode_one(
-            system_obj=system_obj,
-            attacked_text=attacked_text,
-            state=state,
-            expected_len=len(original_bits),
-            token_ids=rec.get("token_ids"),
-            stats=decode_stats,
-            g_output=rec["g_output"],
-        )
-
-        if err is not None or recovered is None:
-            ber_block = {
-                "ber": 1.0,
-                "bitwise_accuracy": 0.0,
-                "num_errors": len(original_bits),
-                "perfect": False,
-            }
-            recovered_for_log = None
-        else:
-            ber_block = bit_error_rate(original_bits, recovered)
-            recovered_for_log = recovered
-
-        _record(
-            {
-                "id": rec["id"],
-                "source_id": source_id,
-                "system": system,
-                "attack_label": rec["attack_label"],
-                "attack_type": rec.get("attack_type", rec["attack_label"]),
-                "attacker_model": rec["attacker_model"],
-                "local": rec.get("local", False),
-                "tampering_level": rec["tampering_level"],
-                "run_idx": rec["run_idx"],
-                "original_bits": list(original_bits),
-                "recovered_bits": recovered_for_log,
-                "bitwise_accuracy": ber_block["bitwise_accuracy"],
-                "bit_error_rate": ber_block["ber"],
-                "perfect_recovery": ber_block["perfect"],
-                "num_bit_errors": ber_block["num_errors"],
-                "error": err,
-                "decode_channel": "token" if rec.get("token_ids") else "text",
-                "g_matches_encode": rec["g_matches_encode"],
-                "decode_stats": decode_stats or None,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-        )
+                try:
+                    _record(fut.result())
+                except DecoderUnavailable as e:
+                    _unavailable(futures[fut], str(e))
+    else:
+        for task in tasks:
+            try:
+                _record(_decode(task, system_obj))
+            except DecoderUnavailable as e:
+                _unavailable(task, str(e))
 
     bar.close()
     log.info(
@@ -683,6 +675,14 @@ def run_system(
         n_errors,
         n_perfect,
     )
+    if n_unavailable:
+        log.warning(
+            "[%s] %d records not decoded: decoder API unavailable (see %s); "
+            "rerun the same command to retry them.",
+            system,
+            n_unavailable,
+            failures_path,
+        )
 
 
 # ---------------------------------------------------------------------------
