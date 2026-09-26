@@ -4,6 +4,14 @@ library(tidyr)
 
 df <- read.csv("recovery_results.csv", check.names = FALSE)
 
+# One attacker per figure: keep its LLM-attack rows plus rows with no attacker
+# (synonym, no_attack). CSVs from before the column existed pass through.
+attacker <- "gpt-4.1"
+if ("attacker_model" %in% names(df)) {
+  df <- df %>%
+    filter(is.na(attacker_model) | attacker_model == "" | attacker_model == attacker)
+}
+
 attacks <- c("local_paraphrase", "synonym", "global_backtranslation", "global_paraphrase")
 
 filtered <- df %>%

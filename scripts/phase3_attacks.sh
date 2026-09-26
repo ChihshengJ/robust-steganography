@@ -10,7 +10,11 @@
 #     SYSTEM=topicqa CAPACITY=6  scripts/phase3_attacks.sh
 #
 # Env knobs: SYSTEM (default all*), CAPACITY, SUBDIR, MAX_WORKERS (default 8),
+#            ATTACKER_MODEL (default gpt-4.1), ATTACKER_PROVIDER (openai|together),
 #            DATA_DIR, PYTHON. Extra args forwarded, e.g. --attack global_paraphrase.
+# Another attacker writes into the same attacked file under its own ids:
+#     SYSTEM=story CAPACITY=16 ATTACKER_PROVIDER=together \
+#         ATTACKER_MODEL=deepseek-ai/DeepSeek-V4-Flash scripts/phase3_attacks.sh
 # *CAPACITY requires SYSTEM != all; loop per system for the native-capacity run.
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 
@@ -20,5 +24,7 @@ MAX_WORKERS="${MAX_WORKERS:-8}"
 args=( --system "$SYSTEM" --data-dir "$DATA_DIR" --max-workers "$MAX_WORKERS" )
 [ -n "${CAPACITY:-}" ] && args+=( --capacity "$CAPACITY" )
 [ -n "${SUBDIR+x}" ]   && args+=( --subdir "$SUBDIR" )
+[ -n "${ATTACKER_MODEL:-}" ]    && args+=( --attacker-model "$ATTACKER_MODEL" )
+[ -n "${ATTACKER_PROVIDER:-}" ] && args+=( --attacker-provider "$ATTACKER_PROVIDER" )
 
 run_py experiments.phase3_attacks "${args[@]}" "$@"

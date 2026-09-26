@@ -39,6 +39,7 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
+from experiments.utils.attackers import attacker_of
 from experiments.utils.io import append_jsonl, load_completed_ids, read_jsonl
 
 logging.basicConfig(
@@ -206,6 +207,7 @@ def run_system(
                 "system": r["system"],
                 "attack_label": r["attack_label"],
                 "attack_type": r.get("attack_type"),
+                "attacker_model": attacker_of(r),
                 "local": r.get("local"),
                 "tampering_level": r["tampering_level"],
                 "run_idx": r["run_idx"],
@@ -230,7 +232,13 @@ def run_system(
 # ---------------------------------------------------------------------------
 
 
-GROUP_FIELDS = ("system", "source_text_type", "attack_label", "tampering_level")
+GROUP_FIELDS = (
+    "system",
+    "source_text_type",
+    "attack_label",
+    "attacker_model",
+    "tampering_level",
+)
 METRIC_FIELDS = ("bertscore_f1", "cosine_similarity", "bleu", "ter")
 
 
@@ -257,6 +265,9 @@ def build_summary(systems: tuple[str, ...], out_dir: Path) -> dict:
         if not path.exists():
             continue
         for r in read_jsonl(path):
+            # Metric files from before attacker_model was recorded lack the
+            # field; attacker_of fills it from attack_type.
+            r["attacker_model"] = attacker_of(r)
             key = tuple(r.get(f) for f in GROUP_FIELDS)
             slot = grouped.setdefault(key, {m: [] for m in METRIC_FIELDS})
             for m in METRIC_FIELDS:
@@ -271,7 +282,8 @@ def build_summary(systems: tuple[str, ...], out_dir: Path) -> dict:
             str(k[0]),
             str(k[1]),
             str(k[2]),
-            float(k[3]) if k[3] is not None else -1.0,
+            str(k[3]),
+            float(k[4]) if k[4] is not None else -1.0,
         ),
     ):
         row = dict(zip(GROUP_FIELDS, key))

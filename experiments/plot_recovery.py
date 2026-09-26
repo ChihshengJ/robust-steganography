@@ -94,11 +94,17 @@ def _expand(lo: float, hi: float, mult: float = 0.05) -> tuple[float, float]:
 # --------------------------------------------------------------------------- #
 
 
-def load_long(csv_path: Path) -> list[dict]:
-    """Read the CSV, apply the R filter, and pivot the two metrics to long form."""
+def load_long(csv_path: Path, attacker: str) -> list[dict]:
+    """Read the CSV, apply the R filter, and pivot the two metrics to long form.
+
+    LLM-attack rows are kept only for `attacker`; rows with no attacker
+    (synonym, no_attack) and CSVs from before the column existed are kept.
+    """
     rows = []
     with csv_path.open(encoding="utf-8", newline="") as f:
         for r in csv.DictReader(f):
+            if r.get("attacker_model") not in (None, "", attacker):
+                continue
             attack = r["attack_label"]
             if attack not in ATTACK_TAMPERING:
                 continue
@@ -296,6 +302,11 @@ def main() -> None:
     ap.add_argument("--width", type=float, default=12.0)
     ap.add_argument("--height", type=float, default=6.0)
     ap.add_argument("--dpi", type=int, default=300)
+    ap.add_argument(
+        "--attacker",
+        default="gpt-4.1",
+        help="attacker model whose paraphrase/back-translation rows are plotted",
+    )
     args = ap.parse_args()
 
     if not args.csv.exists():
@@ -304,7 +315,7 @@ def main() -> None:
             "`python -m experiments.phase4_decode.recovery_csv`"
         )
 
-    long = load_long(args.csv)
+    long = load_long(args.csv, args.attacker)
     if not long:
         raise SystemExit(f"no rows survived the filter in {args.csv}")
     log.info("%d plotted values from %s", len(long), args.csv)

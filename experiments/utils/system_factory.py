@@ -49,6 +49,19 @@ def make_clients(
     return client, local_client
 
 
+# Together AI, OpenAI-compatible. Hosts the attacker models from families other
+# than the GPT-4.1 decoder. Overridable like LOCAL_BASE_URL.
+TOGETHER_BASE_URL = os.environ.get("TOGETHER_BASE_URL", "https://api.together.xyz/v1")
+
+
+def make_together_client() -> openai.OpenAI:
+    """Create an OpenAI-compatible client for Together AI (``TOGETHER_API_KEY``)."""
+    api_key = os.environ.get("TOGETHER_API_KEY")
+    if not api_key:
+        raise RuntimeError("TOGETHER_API_KEY is not set (add it to .env).")
+    return openai.OpenAI(base_url=TOGETHER_BASE_URL, api_key=api_key)
+
+
 def make_topicqa(
     client: openai.OpenAI,
     local_client: openai.OpenAI,

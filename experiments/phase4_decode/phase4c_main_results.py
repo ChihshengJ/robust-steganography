@@ -50,6 +50,7 @@ from pathlib import Path
 
 from tqdm import tqdm
 
+from experiments.utils.attackers import DEFAULT_ATTACKER, attacker_of
 from experiments.utils.io import read_jsonl
 from experiments.utils.token_counter import bits_per_token
 
@@ -202,11 +203,17 @@ def aggregate_system(decoded_path: Path) -> dict:
 
     records = read_jsonl(decoded_path)
 
-    # Level 1: group runs by (attack_label, tampering, source_id) → list of BER.
-    per_stego: dict[tuple[str, float, str], list[float]] = defaultdict(list)
-    per_stego_perfect: dict[tuple[str, float, str], list[bool]] = defaultdict(list)
+    # Level 1: group runs by (attack_label, attacker, tampering, source_id) → BERs.
+    # Results from different attacker models never share a cell.
+    per_stego: dict[tuple, list[float]] = defaultdict(list)
+    per_stego_perfect: dict[tuple, list[bool]] = defaultdict(list)
     for r in records:
-        key = (r["attack_label"], float(r["tampering_level"]), r["source_id"])
+        key = (
+            r["attack_label"],
+            attacker_of(r),
+            float(r["tampering_level"]),
+            r["source_id"],
+        )
         ber = r.get("bit_error_rate")
         if ber is None:
             continue
@@ -214,19 +221,21 @@ def aggregate_system(decoded_path: Path) -> dict:
         per_stego_perfect[key].append(bool(r.get("perfect_recovery", False)))
 
     # Level 2: collapse runs → one value per stego, then aggregate over stegos.
-    cells: dict[tuple[str, float], dict] = {}
-    cell_buckets: dict[tuple[str, float], dict[str, list]] = defaultdict(
+    cells: dict[tuple, dict] = {}
+    cell_buckets: dict[tuple, dict[str, list]] = defaultdict(
         lambda: {
             "per_stego_ber": [],
             "per_run_perfect": [],
             "all_runs_perfect_per_stego": [],
         }
     )
-    for (attack_label, tampering, source_id), bers in per_stego.items():
-        cell_key = (attack_label, tampering)
+    for (attack_label, attacker, tampering, source_id), bers in per_stego.items():
+        cell_key = (attack_label, attacker, tampering)
         bucket = cell_buckets[cell_key]
         bucket["per_stego_ber"].append(_mean(bers))
-        runs_perfect = per_stego_perfect[(attack_label, tampering, source_id)]
+        runs_perfect = per_stego_perfect[
+            (attack_label, attacker, tampering, source_id)
+        ]
         bucket["per_run_perfect"].extend(runs_perfect)
         bucket["all_runs_perfect_per_stego"].append(all(runs_perfect))
 
@@ -263,7 +272,10 @@ def build_main_results(
     systems: tuple[str, ...],
     aggregates: dict[str, dict],
     token_eff: dict[str, dict],
+    attacker: str = DEFAULT_ATTACKER,
 ) -> dict:
+    """One row per system. LLM-attack columns come from `attacker`; attacks
+    without an attacker (no_attack, synonym) are the same for every table."""
     rows: list[dict] = []
     for system in systems:
         cells = aggregates.get(system, {}).get("cells", {})
@@ -277,7 +289,11 @@ def build_main_results(
         }
 
         for label, tampering in HEADLINE_ATTACKS:
-            cell = cells.get((label, tampering), {})
+            cell = (
+                cells.get((label, attacker, tampering))
+                or cells.get((label, None, tampering))
+                or {}
+            )
             tag = label
             row[f"{tag}_ber_mean"] = cell.get("ber_mean")
             row[f"{tag}_ber_std"] = cell.get("ber_std")
@@ -287,7 +303,7 @@ def build_main_results(
 
         rows.append(row)
 
-    return {"systems": systems, "rows": rows}
+    return {"systems": systems, "attacker": attacker, "rows": rows}
 
 
 def write_main_table_tsv(table: dict, path: Path) -> None:
@@ -331,11 +347,12 @@ def build_attack_curves(
     for system in systems:
         cells = aggregates.get(system, {}).get("cells", {})
         per_attack: dict[str, list[dict]] = {}
-        for (label, tampering), cell in cells.items():
+        for (label, attacker, tampering), cell in cells.items():
             if label not in CURVE_ATTACKS:
                 continue
             per_attack.setdefault(label, []).append(
                 {
+                    "attacker_model": attacker,
                     "tampering_level": tampering,
                     "ber_mean": cell["ber_mean"],
                     "ber_std": cell["ber_std"],
@@ -346,7 +363,9 @@ def build_attack_curves(
                 }
             )
         for label in per_attack:
-            per_attack[label].sort(key=lambda d: d["tampering_level"])
+            per_attack[label].sort(
+                key=lambda d: (str(d["attacker_model"]), d["tampering_level"])
+            )
         curves[system] = per_attack
     return curves
 
@@ -355,6 +374,7 @@ def write_attack_curves_tsv(curves: dict, path: Path) -> None:
     headers = [
         "system",
         "attack_label",
+        "attacker_model",
         "tampering_level",
         "ber_mean",
         "ber_std",
@@ -373,6 +393,7 @@ def write_attack_curves_tsv(curves: dict, path: Path) -> None:
                         [
                             system,
                             attack_label,
+                            p["attacker_model"] or "",
                             p["tampering_level"],
                             _fmt(p["ber_mean"]),
                             _fmt(p["ber_std"]),
@@ -390,11 +411,24 @@ def write_attack_curves_tsv(curves: dict, path: Path) -> None:
 
 
 def _serialize_aggregate(agg: dict) -> dict:
-    """Convert the (label, tampering) tuple-keyed cells into JSON-friendly form."""
+    """Convert the (label, attacker, tampering) tuple-keyed cells into JSON-friendly form."""
     out_cells = []
-    for (label, tampering), cell in agg.get("cells", {}).items():
-        out_cells.append({"attack_label": label, "tampering_level": tampering, **cell})
-    out_cells.sort(key=lambda d: (d["attack_label"], d["tampering_level"]))
+    for (label, attacker, tampering), cell in agg.get("cells", {}).items():
+        out_cells.append(
+            {
+                "attack_label": label,
+                "attacker_model": attacker,
+                "tampering_level": tampering,
+                **cell,
+            }
+        )
+    out_cells.sort(
+        key=lambda d: (
+            d["attack_label"],
+            str(d["attacker_model"]),
+            d["tampering_level"],
+        )
+    )
     return {"n_records": agg.get("n_records", 0), "cells": out_cells}
 
 
@@ -474,6 +508,14 @@ def main():
         default=SYSTEMS,
         help="Comma-separated systems to include.",
     )
+    parser.add_argument(
+        "--attacker",
+        default=DEFAULT_ATTACKER,
+        help=(
+            "Attacker model whose LLM-attack results fill the main table "
+            f"(default {DEFAULT_ATTACKER}). attack_curves.* list every attacker."
+        ),
+    )
     args = parser.parse_args()
 
     capacities = (
@@ -506,14 +548,14 @@ def main():
         agg = aggregate_system(path)
         aggregates[system] = agg
         log.info(
-            "[%s] aggregated %d decoded records into %d (attack, tampering) cells from %s",
+            "[%s] aggregated %d decoded records into %d (attack, attacker, tampering) cells from %s",
             system,
             agg.get("n_records", 0),
             len(agg.get("cells", {})),
             path,
         )
 
-    main_table = build_main_results(args.systems, aggregates, token_eff)
+    main_table = build_main_results(args.systems, aggregates, token_eff, args.attacker)
     curves = build_attack_curves(args.systems, aggregates)
 
     main_json_path = out_dir / "main_results.json"
@@ -522,6 +564,7 @@ def main():
     curves_tsv_path = out_dir / "attack_curves.tsv"
 
     main_payload = {
+        "headline_attacker": args.attacker,
         "headline_attacks": [
             {"attack_label": label, "tampering_level": tp}
             for label, tp in HEADLINE_ATTACKS

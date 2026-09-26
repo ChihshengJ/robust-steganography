@@ -12,6 +12,13 @@ Output layout (matches experiment.md lines 52-55):
         story_attacked.jsonl
         litreview_attacked.jsonl
 
+LLM attacks run on --attacker-model (default gpt-4.1, via OpenAI; pass
+--attacker-provider together for models hosted on Together AI). Each record
+stores it as `attacker_model` (None for synonym), and records from a non-default
+attacker get an `_atk-{slug}` id suffix, so several attackers can share one
+attacked file. Sentence-selection seeds don't depend on the attacker, so local
+attacks by different models touch the same sentences of a given text.
+
 An attack that fails after its retries (API errors, unusable output) is
 written to {system}_attack_failures.jsonl instead, never to the attacked file,
 so Phase 4 cannot decode it as if it were an attacked text. Rerunning the same
@@ -35,6 +42,8 @@ Usage:
     python -m experiments.phase3_attacks --system topicqa --n-stegos 2 --skip-covers \
         --attack global_paraphrase            # smoke test
     python -m experiments.phase3_attacks --system all --dry-run
+    python -m experiments.phase3_attacks --system story --capacity 16 \
+        --attacker-provider together --attacker-model deepseek-ai/DeepSeek-V4-Flash
 """
 
 from __future__ import annotations
@@ -52,8 +61,13 @@ import numpy as np
 from attacks.paraphrase import ParaphraseAttack
 from attacks.synonym import SynonymAttack
 from attacks.translation import TranslationAttack
+from experiments.utils.attackers import (
+    DEFAULT_ATTACKER,
+    LLM_ATTACK_TYPES,
+    attacker_slug,
+)
 from experiments.utils.io import append_jsonl, read_jsonl, stable_seed
-from experiments.utils.system_factory import make_clients
+from experiments.utils.system_factory import make_clients, make_together_client
 from experiments.utils.token_counter import count_tokens
 
 logging.basicConfig(
@@ -124,33 +138,49 @@ COVER_ALLOWED: set[tuple[str, float]] = {
 # ---------------------------------------------------------------------------
 
 
-def build_attacks(client) -> dict[str, object]:
-    """Instantiate one attack object per attack_label.
+def build_attacks(client, model: str = DEFAULT_ATTACKER) -> dict[str, object]:
+    """Instantiate one attack object per attack_label; LLM attacks run on `model`.
 
     Translation temp is 0.7 (matches paraphrase) so the 3 runs sample real variance.
     """
     return {
         "synonym": SynonymAttack(method="wordnet"),
         "local_paraphrase": ParaphraseAttack(
-            client=client, model="gpt-4.1", temperature=0.7
+            client=client, model=model, temperature=0.7
         ),
         "local_backtranslation": TranslationAttack(
-            client=client, model="gpt-4.1", temperature=0.7
+            client=client, model=model, temperature=0.7
         ),
         "global_paraphrase": ParaphraseAttack(
-            client=client, model="gpt-4.1", temperature=0.7
+            client=client, model=model, temperature=0.7
         ),
         "global_backtranslation": TranslationAttack(
-            client=client, model="gpt-4.1", temperature=0.7
+            client=client, model=model, temperature=0.7
         ),
     }
 
 
+def task_attacker(cfg: dict, attacker_model: str) -> str | None:
+    """The attacker model a task runs on, or None for an attack with no LLM."""
+    return attacker_model if cfg["attack_type"] in LLM_ATTACK_TYPES else None
+
+
 def build_record_id(
-    source_id: str, attack_label: str, tampering: float, run_idx: int
+    source_id: str,
+    attack_label: str,
+    tampering: float,
+    run_idx: int,
+    attacker: str | None = None,
 ) -> str:
-    """Composite id, e.g. topicqa_s_000_global_paraphrase_1.0_run0."""
-    return f"{source_id}_{attack_label}_{tampering}_run{run_idx}"
+    """Composite id, e.g. topicqa_s_000_global_paraphrase_1.0_run0.
+
+    A non-default attacker adds a suffix (..._run0_atk-deepseek-v4-flash); the
+    default and non-LLM attacks keep the original ids, so existing files resume.
+    """
+    rid = f"{source_id}_{attack_label}_{tampering}_run{run_idx}"
+    if attacker is not None and attacker != DEFAULT_ATTACKER:
+        rid += f"_atk-{attacker_slug(attacker)}"
+    return rid
 
 
 def derive_seed(
@@ -256,15 +286,17 @@ def make_record(
     attacked_text: str | None,
     error: str | None,
     seed: int,
+    attacker: str | None,
 ) -> dict:
     original_text = source["text"]
     record = {
-        "id": build_record_id(source["id"], cfg["label"], tampering, run_idx),
+        "id": build_record_id(source["id"], cfg["label"], tampering, run_idx, attacker),
         "source_id": source["id"],
         "source_text_type": source_text_type,
         "system": source["system"],
         "attack_label": cfg["label"],
         "attack_type": cfg["attack_type"],
+        "attacker_model": attacker,
         "local": cfg["local"],
         "tampering_level": tampering,
         "run_idx": run_idx,
@@ -290,6 +322,7 @@ def make_record(
 def execute_task(
     task: tuple[dict, str, dict, float, int],
     attacks: dict,
+    attacker_model: str,
 ) -> tuple[str, dict, str | None]:
     """Run a single attack task and return (record_id, record, error_or_None).
 
@@ -310,6 +343,7 @@ def execute_task(
         attacked_text=attacked_text,
         error=error,
         seed=seed,
+        attacker=task_attacker(cfg, attacker_model),
     )
     return record["id"], record, error
 
@@ -325,6 +359,7 @@ def run_system(
     attack_filter: set[str] | None,
     dry_run: bool,
     max_workers: int,
+    attacker_model: str = DEFAULT_ATTACKER,
 ):
     out_path = output_dir / f"{system}_attacked.jsonl"
     failures_path = output_dir / f"{system}_attack_failures.jsonl"
@@ -340,13 +375,15 @@ def run_system(
 
     if dry_run:
         for source, src_type, cfg, tp, run_idx in plan[:3]:
-            rid = build_record_id(source["id"], cfg["label"], tp, run_idx)
+            rid = build_record_id(
+                source["id"], cfg["label"], tp, run_idx, task_attacker(cfg, attacker_model)
+            )
             log.info(f"  e.g. {rid} ({src_type})")
         if len(plan) > 3:
             log.info(f"  ... and {len(plan) - 3} more")
         return
 
-    attacks = build_attacks(client)
+    attacks = build_attacks(client, attacker_model)
     # Files written before failures were split out hold failed records with
     # attacked_text=None; they don't count as done, so a rerun retries them.
     completed = {
@@ -360,7 +397,10 @@ def run_system(
     n_skipped = 0
     for task in plan:
         source, _, cfg, tampering, run_idx = task
-        rid = build_record_id(source["id"], cfg["label"], tampering, run_idx)
+        rid = build_record_id(
+            source["id"], cfg["label"], tampering, run_idx,
+            task_attacker(cfg, attacker_model),
+        )
         if rid in completed:
             n_skipped += 1
             continue
@@ -380,7 +420,9 @@ def run_system(
     n_errors = 0
 
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futures = [ex.submit(execute_task, task, attacks) for task in pending]
+        futures = [
+            ex.submit(execute_task, task, attacks, attacker_model) for task in pending
+        ]
         for fut in as_completed(futures):
             try:
                 rid, record, error = fut.result()
@@ -492,6 +534,20 @@ def main():
         ),
     )
     parser.add_argument(
+        "--attacker-model",
+        default=DEFAULT_ATTACKER,
+        help=(
+            f"Model for the LLM attacks (paraphrase, back-translation); default "
+            f"{DEFAULT_ATTACKER}. Synonym uses no LLM and is unaffected."
+        ),
+    )
+    parser.add_argument(
+        "--attacker-provider",
+        choices=("openai", "together"),
+        default="openai",
+        help="API serving --attacker-model (together needs TOGETHER_API_KEY).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print planned counts without making API calls",
@@ -518,8 +574,11 @@ def main():
 
     attack_filter = set(args.attack) if args.attack else None
 
+    log.info("Attacker: %s via %s", args.attacker_model, args.attacker_provider)
     if args.dry_run:
         client = None
+    elif args.attacker_provider == "together":
+        client = make_together_client()
     else:
         client, _local_client = make_clients()
 
@@ -536,6 +595,7 @@ def main():
             attack_filter=attack_filter,
             dry_run=args.dry_run,
             max_workers=max(1, args.max_workers),
+            attacker_model=args.attacker_model,
         )
 
     log.info("Phase 3 attacks complete.")

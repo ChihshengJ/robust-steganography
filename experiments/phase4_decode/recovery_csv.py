@@ -1,6 +1,6 @@
 """Compile the Phase 4a decode outputs into the flat CSV that ``plot_recovery.R`` reads.
 
-One row per (run, attack_label, tampering_level), with the two accuracy metrics
+One row per (run, attack_label, attacker_model, tampering_level), with the two accuracy metrics
 the figure plots. Aggregation matches ``phase4c_main_results`` and
 ``baseline_capacity_sweep``: per stego, average bitwise accuracy over its attack
 runs (soaking up attack variance), then average over stegos. Perfect recovery is
@@ -26,6 +26,8 @@ import logging
 import re
 from collections import defaultdict
 from pathlib import Path
+
+from experiments.utils.attackers import attacker_of
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -55,6 +57,7 @@ FIELDS = (
     "run",
     "capacity",
     "attack_label",
+    "attacker_model",
     "tampering_level",
     "n_stegos",
     "n_records",
@@ -82,18 +85,22 @@ def load_records(path: Path) -> list[dict]:
 
 
 def aggregate_run(records: list[dict]) -> list[dict]:
-    """Return one aggregated cell per (attack_label, tampering_level)."""
-    cells: dict[tuple[str, float], dict[str, list[dict]]] = defaultdict(
+    """Return one aggregated cell per (attack_label, attacker_model, tampering_level)."""
+    cells: dict[tuple, dict[str, list[dict]]] = defaultdict(
         lambda: defaultdict(list)
     )
     for r in records:
         if r.get("bit_error_rate") is None:
             continue
-        key = (r["attack_label"], float(r.get("tampering_level", 0.0)))
+        key = (
+            r["attack_label"],
+            attacker_of(r) or "",
+            float(r.get("tampering_level", 0.0)),
+        )
         cells[key][r["source_id"]].append(r)
 
     rows = []
-    for (attack, tampering), by_src in sorted(cells.items()):
+    for (attack, attacker, tampering), by_src in sorted(cells.items()):
         # Step 1: per-stego mean over runs. Step 2: mean over stegos.
         stego_acc = [
             sum(1.0 - x["bit_error_rate"] for x in runs) / len(runs)
@@ -106,6 +113,7 @@ def aggregate_run(records: list[dict]) -> list[dict]:
         rows.append(
             {
                 "attack_label": attack,
+                "attacker_model": attacker,
                 "tampering_level": tampering,
                 "n_stegos": len(by_src),
                 "n_records": len(all_runs),

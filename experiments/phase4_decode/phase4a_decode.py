@@ -58,6 +58,7 @@ from experiments.utils.io import (
     load_records_map,
     read_jsonl,
 )
+from experiments.utils.attackers import attacker_of
 from experiments.utils.metrics import bit_error_rate
 from experiments.utils.system_factory import (
     make_baseline,
@@ -279,6 +280,7 @@ def _decode_task(task: dict) -> dict:
         "system": task["system"],
         "attack_label": task["attack_label"],
         "attack_type": task["attack_type"],
+        "attacker_model": task["attacker_model"],
         "local": task["local"],
         "tampering_level": task["tampering_level"],
         "run_idx": task["run_idx"],
@@ -458,6 +460,7 @@ def run_system(
                 "system": system,
                 "attack_label": rec["attack_label"],
                 "attack_type": rec.get("attack_type", rec["attack_label"]),
+                "attacker_model": attacker_of(rec),
                 "local": rec.get("local", False),
                 "tampering_level": rec["tampering_level"],
                 "run_idx": rec["run_idx"],
@@ -544,6 +547,7 @@ def run_system(
                 "system": system,
                 "attack_label": rec["attack_label"],
                 "attack_type": rec.get("attack_type", rec["attack_label"]),
+                "attacker_model": rec["attacker_model"],
                 "local": rec.get("local", False),
                 "tampering_level": rec["tampering_level"],
                 "run_idx": rec["run_idx"],

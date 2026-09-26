@@ -23,7 +23,7 @@ close but not equal and the paper should say which it reports.
 Outputs (under data/experiments/phase2_metrics/):
     capacity_per_doc.csv          one row per stegotext
     capacity_by_condition.csv     one row per (system, m) condition
-    capacity_goodput.csv          one row per (system, m, attack)
+    capacity_goodput.csv          one row per (system, m, attack, attacker)
     capacity_summary.json
     capacity_table.tex            main-paper table body
 
@@ -43,6 +43,8 @@ from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
+
+from experiments.utils.attackers import DEFAULT_ATTACKER, attacker_of
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -141,19 +143,20 @@ def decode_source_ids(decode_dir: Path, run: str, system: str) -> set[str] | Non
     return {json.loads(l)["source_id"] for l in p.open() if l.strip()}
 
 
-def perfect_rates(decode_dir: Path, run: str, system: str) -> dict[str, dict]:
-    """attack_label -> {perfect_stego_rate, perfect_run_rate, bitwise, n_stegos}."""
+def perfect_rates(decode_dir: Path, run: str, system: str) -> dict[tuple, dict]:
+    """(attack_label, attacker_model) -> {perfect_stego_rate, perfect_run_rate,
+    bitwise, n_stegos}. attacker_model is None for attacks without an LLM."""
     p = decode_dir / run / f"{system}_decoded.jsonl"
     if not p.exists():
         return {}
-    per: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
+    per: dict[tuple, dict[str, list]] = defaultdict(lambda: defaultdict(list))
     for line in p.open():
         if not line.strip():
             continue
         r = json.loads(line)
         if r.get("bit_error_rate") is None:
             continue
-        per[r["attack_label"]][r["source_id"]].append(r)
+        per[(r["attack_label"], attacker_of(r))][r["source_id"]].append(r)
 
     out = {}
     for attack, by_src in per.items():
@@ -181,6 +184,8 @@ def main() -> None:
     ap.add_argument("--out-dir", type=Path, default=None)
     ap.add_argument("--tex-out", type=Path, default=Path("paper/src/tables/capacity.tex"))
     ap.add_argument("--n-boot", type=int, default=1000)
+    ap.add_argument("--attacker", default=DEFAULT_ATTACKER,
+                    help="attacker model whose global-paraphrase goodput fills G_w in the tex table")
     ap.add_argument("--include-variants", default="main",
                     help="comma list of variants to include: main,naive,... or 'all'")
     ap.add_argument("--recompute-tokens", action="store_true",
@@ -260,7 +265,8 @@ def main() -> None:
         by_cond.append(rec)
 
         # goodput per attack: delivered bits/word = R_w * P(perfect)
-        for attack, st in perfect_rates(phase4, cond["run"], cond["system"]).items():
+        rates = perfect_rates(phase4, cond["run"], cond["system"])
+        for (attack, attacker), st in rates.items():
             pr = st["perfect_stego_rate"]
             g = rw * pr
             g_lo, g_hi = bca_ci(np.array(
@@ -268,7 +274,8 @@ def main() -> None:
             ), n_boot=args.n_boot) if len(rw) == len(st["_stego_perfect"]) else (float("nan"),) * 2
             goodput.append({
                 "run": cond["run"], "system": cond["system"], "m_bits": m,
-                "attack": attack, "n_stegos": st["n_stegos"],
+                "attack": attack, "attacker_model": attacker,
+                "n_stegos": st["n_stegos"],
                 "bitwise_accuracy": st["bitwise_accuracy"],
                 "perfect_stego_rate": pr, "perfect_run_rate": st["perfect_run_rate"],
                 "goodput_bits_per_doc": m * pr,
@@ -283,7 +290,7 @@ def main() -> None:
     with (out_dir / "capacity_summary.json").open("w") as f:
         json.dump({"by_condition": by_cond, "goodput": goodput}, f, indent=2)
 
-    _write_tex(args.tex_out, by_cond, goodput)
+    _write_tex(args.tex_out, by_cond, goodput, args.attacker)
     log.info("wrote %d per-doc rows, %d conditions, %d goodput rows",
              len(per_doc), len(by_cond), len(goodput))
 
@@ -300,8 +307,10 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
     log.info("wrote %s", path)
 
 
-def _write_tex(path: Path, by_cond: list[dict], goodput: list[dict]) -> None:
-    gp = {(g["run"], g["attack"]): g for g in goodput}
+def _write_tex(
+    path: Path, by_cond: list[dict], goodput: list[dict], attacker: str
+) -> None:
+    gp = {(g["run"], g["attack"], g["attacker_model"]): g for g in goodput}
     order = {s: i for i, s in enumerate(OURS + BASELINES)}
     rows = sorted(by_cond, key=lambda r: (order.get(r["system"], 99), r["m_bits"]))
 
@@ -319,7 +328,7 @@ def _write_tex(path: Path, by_cond: list[dict], goodput: list[dict]) -> None:
         if prev is not None and r["system"] != prev:
             lines.append(r"\midrule")
         prev = r["system"]
-        g = gp.get((r["run"], "global_paraphrase"))
+        g = gp.get((r["run"], "global_paraphrase", attacker))
         gtxt = f"{g['goodput_bits_per_word']:.4f}" if g else "--"
         gross = (f"{r['native_bits_per_word']:.2f}"
                  if r["m_native_bits"] != r["m_bits"] else "--")
