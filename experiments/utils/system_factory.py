@@ -61,6 +61,21 @@ def make_together_client() -> openai.OpenAI:
     return openai.OpenAI(base_url=TOGETHER_BASE_URL, api_key=api_key)
 
 
+PROVIDERS = ("openai", "together", "local")
+
+
+def make_client(provider: str) -> openai.OpenAI:
+    """Client for a provider: 'openai', 'together' (TOGETHER_API_KEY), or
+    'local' (the llama.cpp server at LOCAL_BASE_URL)."""
+    if provider == "openai":
+        return openai.OpenAI()
+    if provider == "together":
+        return make_together_client()
+    if provider == "local":
+        return openai.OpenAI(base_url=LOCAL_BASE_URL, api_key="unused")
+    raise ValueError(f"unknown provider {provider!r}; choose from {PROVIDERS}")
+
+
 def make_topicqa(
     client: openai.OpenAI,
     generator_client: openai.OpenAI,

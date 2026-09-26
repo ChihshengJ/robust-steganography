@@ -8,8 +8,6 @@ group by it so results from different attackers never pool into one cell.
 
 from __future__ import annotations
 
-import re
-
 # The attacker every LLM attack used before the attacker became configurable.
 DEFAULT_ATTACKER = "gpt-4.1"
 
@@ -29,9 +27,3 @@ def attacker_of(record: dict) -> str | None:
         return DEFAULT_ATTACKER
     return None
 
-
-def attacker_slug(model: str) -> str:
-    """Short, id-safe attacker name, e.g. 'deepseek-ai/DeepSeek-V4-Flash' ->
-    'deepseek-v4-flash'."""
-    name = model.rsplit("/", 1)[-1].lower()
-    return re.sub(r"[^a-z0-9.]+", "-", name).strip("-")

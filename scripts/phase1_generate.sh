@@ -16,6 +16,13 @@
 #         SYSTEM=story   CAPACITY=18 scripts/phase1_generate.sh   # 20 slots, +2 convention
 #         SYSTEM=litreview CAPACITY=20 scripts/phase1_generate.sh
 #
+# Configuration (story/litreview; unset = the default configuration):
+#     SYNTH_MODEL, SYNTH_PROVIDER, SYNTH_TEMPERATURE, SYNTH_TOP_P,
+#     GENERATOR_MODEL, GENERATOR_PROVIDER, GENERATOR_EXTRA_BODY (story only).
+# A non-default configuration needs --stego-only and writes to a tagged subdir:
+#     SYSTEM=litreview CAPACITY=16 SYNTH_PROVIDER=together \
+#         SYNTH_MODEL=deepseek-ai/DeepSeek-V4-Flash scripts/phase1_generate.sh --stego-only
+#
 # Env knobs: SYSTEM (default all), CAPACITY, SUBDIR, DATA_DIR, PYTHON.
 # Anything else is forwarded, e.g.:  scripts/phase1_generate.sh --limit 5 --dry-run
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
@@ -26,5 +33,12 @@ args=(--system "$SYSTEM" --data-dir "$DATA_DIR")
 [ -n "${CAPACITY:-}" ] && args+=(--capacity "$CAPACITY")
 # SUBDIR is honoured even when set to the empty string (selects top-level).
 [ -n "${SUBDIR+x}" ] && args+=(--subdir "$SUBDIR")
+[ -n "${SYNTH_MODEL:-}" ] && args+=(--synth-model "$SYNTH_MODEL")
+[ -n "${SYNTH_PROVIDER:-}" ] && args+=(--synth-provider "$SYNTH_PROVIDER")
+[ -n "${SYNTH_TEMPERATURE:-}" ] && args+=(--synth-temperature "$SYNTH_TEMPERATURE")
+[ -n "${SYNTH_TOP_P:-}" ] && args+=(--synth-top-p "$SYNTH_TOP_P")
+[ -n "${GENERATOR_MODEL:-}" ] && args+=(--generator-model "$GENERATOR_MODEL")
+[ -n "${GENERATOR_PROVIDER:-}" ] && args+=(--generator-provider "$GENERATOR_PROVIDER")
+[ -n "${GENERATOR_EXTRA_BODY:-}" ] && args+=(--generator-extra-body "$GENERATOR_EXTRA_BODY")
 
 run_py experiments.phase1_generation.phase1_generate "${args[@]}" "$@"

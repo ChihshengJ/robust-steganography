@@ -48,8 +48,12 @@ from experiments.utils.io import (
     load_completed_ids,
     load_records_map,
     make_record_id,
+    model_slug,
 )
 from experiments.utils.system_factory import (
+    LOCAL_MODEL,
+    PROVIDERS,
+    make_client,
     make_clients,
     make_discop,
     make_litreview,
@@ -58,6 +62,7 @@ from experiments.utils.system_factory import (
 )
 from experiments.utils.token_counter import count_tokens, count_words, round_words
 from systems.config.story_prompts import STORY_SYNTHESIS_PROMPT
+from systems.core.story_gen import LLAMACPP_NO_THINKING
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -268,6 +273,103 @@ def _load_checkpoint(paths: dict[str, Path]) -> tuple[set[str], dict[str, dict]]
 
 
 # ---------------------------------------------------------------------------
+# Configuration: generator, synthesizer, sampling (StorySlot / LitReview)
+# ---------------------------------------------------------------------------
+
+CONFIG_SYSTEMS = ("story", "litreview")
+CONFIG_FLAGS = (
+    "synth_model",
+    "synth_provider",
+    "synth_temperature",
+    "synth_top_p",
+    "generator_model",
+    "generator_provider",
+)
+# Fields that define a configuration when checking a resume against stored
+# records. Endpoint URLs are left out: a moved server is the same configuration.
+_RESUME_KEYS = (
+    "generator_model",
+    "synth_model",
+    "synth_temperature",
+    "synth_top_p",
+    "decoder_model",
+)
+
+
+def default_config(system: str) -> dict:
+    """The configuration every existing result was generated with."""
+    return {
+        "synth_model": "gpt-4.1",
+        "synth_provider": "openai",
+        "synth_temperature": 0.7 if system == "story" else 0.0,
+        "synth_top_p": 0.7,
+        "generator_model": LOCAL_MODEL if system == "story" else None,
+        "generator_provider": "local" if system == "story" else None,
+    }
+
+
+def resolve_config(system: str, args: argparse.Namespace) -> dict:
+    """The default configuration with every flag the caller set applied."""
+    config = default_config(system)
+    for key in CONFIG_FLAGS:
+        value = getattr(args, key)
+        if value is not None:
+            config[key] = value
+    return config
+
+
+def config_tag(system: str, config: dict) -> str:
+    """Subdir suffix naming a configuration, e.g.
+    'syn-deepseek-v4-flash_t1_p0.95_gen-qwen3.5-9b'."""
+    tag = (
+        f"syn-{model_slug(config['synth_model'])}"
+        f"_t{config['synth_temperature']:g}_p{config['synth_top_p']:g}"
+    )
+    if system == "story":
+        tag += f"_gen-{model_slug(config['generator_model'])}"
+    return tag
+
+
+def config_system_kwargs(system: str, config: dict, generator_extra_body) -> dict:
+    """make_story / make_litreview keyword arguments for a configuration."""
+    kwargs = {
+        "synth_client": make_client(config["synth_provider"]),
+        "synth_model": config["synth_model"],
+        "synth_temperature": config["synth_temperature"],
+        "synth_top_p": config["synth_top_p"],
+    }
+    if system == "story":
+        kwargs["generator_model"] = config["generator_model"]
+        kwargs["generator_extra_body"] = generator_extra_body
+    return kwargs
+
+
+def _check_resume_config(records_map: dict[str, dict], current: dict) -> None:
+    """Refuse to resume into stego records generated under another configuration.
+
+    Records written before configurations were recorded carry no config; they
+    are the default configuration, and a non-default one never shares their
+    subdir (it gets a config_tag suffix).
+    """
+    for rid, record in records_map.items():
+        if record.get("text_type") != "stego":
+            continue
+        stored = (record.get("metadata") or {}).get("config")
+        if stored is None:
+            continue
+        diff = {
+            k: (stored.get(k), current.get(k))
+            for k in _RESUME_KEYS
+            if stored.get(k) != current.get(k)
+        }
+        if diff:
+            raise SystemExit(
+                f"{rid} was generated under a different configuration "
+                f"(stored, requested): {diff}. Use a different --subdir."
+            )
+
+
+# ---------------------------------------------------------------------------
 # TopicQA generation
 # ---------------------------------------------------------------------------
 
@@ -401,11 +503,19 @@ def generate_story(
     output_dir: Path,
     stego_only: bool = False,
     n_slots: int = 20,
+    system_kwargs: dict | None = None,
 ):
-    """Generate StorySlot texts: 1 S + 1 C1 + 1 C2 per prompt."""
+    """Generate StorySlot texts: 1 S + 1 C1 + 1 C2 per prompt.
+
+    ``system_kwargs`` (see config_system_kwargs) selects a non-default
+    generator/synthesizer configuration.
+    """
     paths = _out_paths(output_dir, "story")
-    system = make_story(client, generator_client, n_slots=n_slots)
+    system = make_story(
+        client, generator_client, n_slots=n_slots, **(system_kwargs or {})
+    )
     completed, records_map = _load_checkpoint(paths)
+    _check_resume_config(records_map, system.generation_config())
 
     stego_msgs = messages["stego_messages"]
     c1_msgs = messages["c1_messages"]
@@ -517,11 +627,17 @@ def generate_litreview(
     messages: dict,
     output_dir: Path,
     stego_only: bool = False,
+    system_kwargs: dict | None = None,
 ):
-    """Generate LitReview texts: 1 S + 1 C1 + 1 C2 per prompt."""
+    """Generate LitReview texts: 1 S + 1 C1 + 1 C2 per prompt.
+
+    ``system_kwargs`` (see config_system_kwargs) selects a non-default
+    synthesizer configuration.
+    """
     paths = _out_paths(output_dir, "litreview")
-    system = make_litreview(client)
+    system = make_litreview(client, **(system_kwargs or {}))
     completed, records_map = _load_checkpoint(paths)
+    _check_resume_config(records_map, system.generation_config())
 
     stego_msgs = messages["stego_messages"]
     c1_msgs = messages["c1_messages"]
@@ -1171,7 +1287,81 @@ def main():
             "is measured from a 5-prompt pilot against --target-words."
         ),
     )
+    config_group = parser.add_argument_group(
+        "configuration (story/litreview only)",
+        "Generator, synthesizer and sampling. Unset flags keep the configuration "
+        "every existing result was generated with (GPT-4.1 synthesizer via OpenAI, "
+        "top_p 0.7, T 0.7 for story / 0 for litreview; local LOCAL_MODEL generator). "
+        "A non-default configuration writes to a subdir suffixed with its tag and "
+        "requires --stego-only.",
+    )
+    config_group.add_argument("--synth-model", default=None, help="Synthesizer model.")
+    config_group.add_argument(
+        "--synth-provider",
+        choices=PROVIDERS,
+        default=None,
+        help="API serving --synth-model.",
+    )
+    config_group.add_argument(
+        "--synth-temperature", type=float, default=None, help="Synthesizer temperature."
+    )
+    config_group.add_argument(
+        "--synth-top-p", type=float, default=None, help="Synthesizer top_p."
+    )
+    config_group.add_argument(
+        "--generator-model", default=None, help="Story only: generator (G) model."
+    )
+    config_group.add_argument(
+        "--generator-provider",
+        choices=PROVIDERS,
+        default=None,
+        help="Story only: API serving --generator-model.",
+    )
+    config_group.add_argument(
+        "--generator-extra-body",
+        type=json.loads,
+        default=None,
+        help=(
+            "Story only: JSON request body sent with generator calls (provider-specific; "
+            "'null' sends none). Default: the llama.cpp no-thinking body for the local "
+            "provider, none otherwise."
+        ),
+    )
     args = parser.parse_args()
+
+    # --- Configuration: resolve flags; a non-default one gets its own subdir ---
+    config = None
+    set_flags = [k for k in CONFIG_FLAGS if getattr(args, k) is not None]
+    if args.generator_extra_body is not None:
+        set_flags.append("generator_extra_body")
+    if set_flags:
+        if args.system not in CONFIG_SYSTEMS:
+            parser.error(
+                f"--{set_flags[0].replace('_', '-')} needs --system story or litreview."
+            )
+        generator_flags = [f for f in set_flags if f.startswith("generator_")]
+        if args.system == "litreview" and generator_flags:
+            parser.error("LitReview has no generator; drop the --generator-* flags.")
+        config = resolve_config(args.system, args)
+        if config == default_config(args.system):
+            config = None
+        elif not args.stego_only:
+            parser.error(
+                "a non-default configuration needs --stego-only: covers for "
+                "configurations come with the normal-generation rework."
+            )
+    hosted_generator = config is not None and config["generator_provider"] not in (
+        None,
+        "local",
+    )
+    if args.generator_extra_body is not None and not hosted_generator:
+        parser.error(
+            "--generator-extra-body is for a hosted --generator-provider; the local "
+            "server always gets the llama.cpp no-thinking body."
+        )
+    generator_extra_body = (
+        args.generator_extra_body if hosted_generator else LLAMACPP_NO_THINKING
+    )
 
     # Token-level baselines default to a native payload if none is given, so
     # their messages come from the inline-capacity path (they have no entry in
@@ -1199,6 +1389,11 @@ def main():
             if args.system in BASELINE_LM_SYSTEMS and args.syncpool:
                 args.subdir += "_sp"
             log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")
+
+    if config is not None:
+        tag = config_tag(args.system, config)
+        args.subdir = f"{args.subdir}_{tag}" if args.subdir else tag
+        log.info(f"Configuration {config}; subdir {args.subdir!r}")
 
     prompts_dir = args.data_dir / "prompts"
     output_dir = args.data_dir / "phase1_texts"
@@ -1264,6 +1459,11 @@ def main():
             all_messages = json.load(f)
 
     client, generator_client = make_clients()
+    system_kwargs = None
+    if config is not None:
+        system_kwargs = config_system_kwargs(args.system, config, generator_extra_body)
+        if args.system == "story":
+            generator_client = make_client(config["generator_provider"])
 
     if args.system in ("topicqa", "all"):
         with open(prompts_dir / "topicqa_prompts.json") as f:
@@ -1304,6 +1504,7 @@ def main():
             output_dir,
             stego_only=args.stego_only,
             n_slots=story_n_slots,
+            system_kwargs=system_kwargs,
         )
 
     if args.system in ("litreview", "all"):
@@ -1318,6 +1519,7 @@ def main():
             all_messages["litreview"],
             output_dir,
             stego_only=args.stego_only,
+            system_kwargs=system_kwargs,
         )
 
     if args.system in BASELINE_LM_SYSTEMS:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
 
@@ -73,6 +74,13 @@ def make_record_id(system: str, text_type: str, prompt_idx: int) -> str:
     """
     short = _TYPE_SHORT.get(text_type, text_type)
     return f"{system}_{short}_{prompt_idx:03d}"
+
+
+def model_slug(model: str) -> str:
+    """Short, id-safe model name, e.g. 'deepseek-ai/DeepSeek-V4-Flash' ->
+    'deepseek-v4-flash'. Used in record ids and output subdir names."""
+    name = model.rsplit("/", 1)[-1].lower()
+    return re.sub(r"[^a-z0-9.]+", "-", name).strip("-")
 
 
 def stable_seed(key: str) -> int:

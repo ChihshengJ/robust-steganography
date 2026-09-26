@@ -64,9 +64,8 @@ from attacks.translation import TranslationAttack
 from experiments.utils.attackers import (
     DEFAULT_ATTACKER,
     LLM_ATTACK_TYPES,
-    attacker_slug,
 )
-from experiments.utils.io import append_jsonl, read_jsonl, stable_seed
+from experiments.utils.io import append_jsonl, model_slug, read_jsonl, stable_seed
 from experiments.utils.system_factory import make_clients, make_together_client
 from experiments.utils.token_counter import count_tokens
 
@@ -179,7 +178,7 @@ def build_record_id(
     """
     rid = f"{source_id}_{attack_label}_{tampering}_run{run_idx}"
     if attacker is not None and attacker != DEFAULT_ATTACKER:
-        rid += f"_atk-{attacker_slug(attacker)}"
+        rid += f"_atk-{model_slug(attacker)}"
     return rid
 
 
