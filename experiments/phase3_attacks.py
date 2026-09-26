@@ -12,6 +12,11 @@ Output layout (matches experiment.md lines 52-55):
         story_attacked.jsonl
         litreview_attacked.jsonl
 
+An attack that fails after its retries (API errors, unusable output) is
+written to {system}_attack_failures.jsonl instead, never to the attacked file,
+so Phase 4 cannot decode it as if it were an attacked text. Rerunning the same
+command retries every record that is not yet in the attacked file.
+
 Per-system record counts:
     Stego:  30 src x (synonym 3 + local_paraphrase 9 + local_BT 9 + global_paraphrase 3 + global_BT 3)
             = 30 x 27 = 810
@@ -47,7 +52,7 @@ import numpy as np
 from attacks.paraphrase import ParaphraseAttack
 from attacks.synonym import SynonymAttack
 from attacks.translation import TranslationAttack
-from experiments.utils.io import append_jsonl, load_completed_ids, read_jsonl
+from experiments.utils.io import append_jsonl, read_jsonl
 from experiments.utils.system_factory import make_clients
 from experiments.utils.token_counter import count_tokens
 
@@ -323,6 +328,7 @@ def run_system(
     max_workers: int,
 ):
     out_path = output_dir / f"{system}_attacked.jsonl"
+    failures_path = output_dir / f"{system}_attack_failures.jsonl"
     sources = load_sources(phase1_dir, system, n_stegos, n_covers, skip_covers)
     plan = plan_records(sources, attack_filter)
 
@@ -342,7 +348,13 @@ def run_system(
         return
 
     attacks = build_attacks(client)
-    completed = load_completed_ids(out_path)
+    # Files written before failures were split out hold failed records with
+    # attacked_text=None; they don't count as done, so a rerun retries them.
+    completed = {
+        r["id"]
+        for r in read_jsonl(out_path)
+        if r.get("attacked_text") and not r.get("error")
+    }
     log.info(f"[{system}] {len(completed)} records already done; resuming")
 
     pending: list[tuple[dict, str, dict, float, int]] = []
@@ -381,6 +393,9 @@ def run_system(
             if error:
                 n_errors += 1
                 log.warning(f"[{system}] {rid} attack failed: {error}")
+                with write_lock:
+                    append_jsonl(failures_path, record)
+                continue
 
             with write_lock:
                 append_jsonl(out_path, record)
@@ -396,6 +411,11 @@ def run_system(
         f"[{system}] done. wrote {n_done_now} new records "
         f"({n_skipped} skipped, {n_errors} errors)"
     )
+    if n_errors:
+        log.warning(
+            f"[{system}] {n_errors} attacks failed (see {failures_path}); "
+            f"rerun the same command to retry them."
+        )
 
 
 # ---------------------------------------------------------------------------

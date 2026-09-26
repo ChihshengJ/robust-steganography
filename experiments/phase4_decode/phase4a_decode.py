@@ -339,6 +339,20 @@ def run_system(
         attack_records = [
             r for r in attack_records if r["attack_label"] in attack_filter
         ]
+    # A failed attack is not an attacked text: decoding it would score the
+    # attack's failure as a decoding failure (BER 1.0). Phase 3 now writes
+    # failures elsewhere, but files from before that carry them inline.
+    failed = [r for r in attack_records if r.get("error") or not r.get("attacked_text")]
+    if failed:
+        log.warning(
+            "[%s] skipping %d failed attack records (rerun Phase 3 to retry them): %s",
+            system,
+            len(failed),
+            ", ".join(r["id"] for r in failed[:5]) + (" ..." if len(failed) > 5 else ""),
+        )
+        attack_records = [
+            r for r in attack_records if not r.get("error") and r.get("attacked_text")
+        ]
     log.info(
         "[%s] %d attacked stego records to decode (after filter)",
         system,

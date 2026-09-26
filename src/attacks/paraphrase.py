@@ -3,7 +3,7 @@ import re
 
 from openai import OpenAI
 
-from .attack import Attack, iter_sentences_with_gaps
+from .attack import Attack, complete, iter_sentences_with_gaps
 
 SYSTEM_PROMPT_LOCAL = """You are a paraphrasing assistant.
 Rewrite the given sentence using completely different words and phrasing while preserving the exact meaning.
@@ -42,6 +42,22 @@ Then, using ONLY those key points, write a fully restructured paraphrase after t
 
 ## Self-Check Before Outputting
 Verify: (1) Does every key point appear in the paraphrase? (2) Is the paragraph/sentence order substantially different from the original? (3) Would a side-by-side comparison show no sentence-level correspondence? If any answer is no, revise before outputting."""
+
+
+def _extract_paraphrase(response: str) -> str:
+    """Take the prose after the "[paraphrased message]" marker.
+
+    A response without the marker is rejected rather than used whole: the whole
+    response starts with the "[key points]" list, which restates the original's
+    content and would leak it into the attacked text.
+    """
+    match = re.search(
+        r"\[paraphrased message\]\s*(.*)", response, re.DOTALL | re.IGNORECASE
+    )
+    if not match or not match.group(1).strip():
+        raise ValueError("paraphrase marker missing from response")
+    # Collapse newlines for consistency
+    return " ".join(match.group(1).split())
 
 
 class ParaphraseAttack(Attack):
@@ -84,40 +100,20 @@ class ParaphraseAttack(Attack):
 
     def _global_paraphrase(self, text: str) -> str:
         """Paraphrase entire text at once."""
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": SYSTEM_PROMPT_GLOBAL,
-                    },
-                    {"role": "user", "content": f"Paraphrase this text:\n\n{text}"},
-                ],
-                temperature=self.temperature,
-                top_p=0.95,
-            )
-            result = response.choices[0].message.content.strip()
-
-            # Extract content after the marker
-            match = re.search(
-                r"\[paraphrased message\]\s*(.*)", result, re.DOTALL | re.IGNORECASE
-            )
-            if match:
-                result = match.group(1).strip()
-                # Clean up any remaining newlines for consistency
-                result = " ".join(result.split())
-            else:
-                # Fallback: if marker not found, use the whole response
-                print(
-                    "Warning: Marker not found in paraphrase response, using full output"
-                )
-                result = " ".join(result.split())
-
-            return result
-        except Exception as e:
-            print(f"Global paraphrase attack failed: {e}")
-            return text
+        return complete(
+            self.client,
+            parse=_extract_paraphrase,
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT_GLOBAL,
+                },
+                {"role": "user", "content": f"Paraphrase this text:\n\n{text}"},
+            ],
+            temperature=self.temperature,
+            top_p=0.95,
+        )
 
     def _local_paraphrase(self, text: str, tampering: float) -> str:
         """Paraphrase each sentence independently while preserving structure."""
@@ -129,25 +125,21 @@ class ParaphraseAttack(Attack):
             if not sentence.strip() or random.random() >= tampering:
                 new_parts.append(sentence)
                 continue
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT_LOCAL},
-                        {"role": "user", "content": sentence.strip()},
-                    ],
-                    temperature=self.temperature,
-                    top_p=0.95,
-                )
-                paraphrased = response.choices[0].message.content.strip()
-                # Preserve the original sentence's trailing punctuation
-                m = re.search(r"[.!?]+$", sentence.rstrip())
-                trailing = m.group(0) if m else ""
-                paraphrased = paraphrased.rstrip(".!?").rstrip() + trailing
-                new_parts.append(paraphrased)
-            except Exception as e:
-                print(f"Local paraphrase attack failed for sentence: {e}")
-                new_parts.append(sentence)
+            paraphrased = complete(
+                self.client,
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT_LOCAL},
+                    {"role": "user", "content": sentence.strip()},
+                ],
+                temperature=self.temperature,
+                top_p=0.95,
+            )
+            # Preserve the original sentence's trailing punctuation
+            m = re.search(r"[.!?]+$", sentence.rstrip())
+            trailing = m.group(0) if m else ""
+            paraphrased = paraphrased.rstrip(".!?").rstrip() + trailing
+            new_parts.append(paraphrased)
 
         result = "".join(new_parts)
         result = re.sub(r"([.!?])\1+", r"\1", result)

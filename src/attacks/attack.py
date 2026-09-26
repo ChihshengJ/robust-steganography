@@ -1,7 +1,69 @@
+import random
+import time
 from functools import cache
-from typing import Iterator, Tuple
+from typing import Callable, Iterator, Tuple
 
 import nltk
+import openai
+
+
+class AttackFailed(RuntimeError):
+    """An attack could not produce a valid output.
+
+    Attacks raise this instead of returning the input text: a silent fallback
+    turns the attack into a no-op and inflates recovery. The caller records the
+    failure and retries the record later.
+    """
+
+
+# Transient errors worth retrying. The SDK already retries these a couple of
+# times internally; this outer loop rides out longer 429/503 bursts from
+# providers under load.
+_RETRYABLE = (
+    openai.RateLimitError,
+    openai.APITimeoutError,
+    openai.APIConnectionError,
+    openai.InternalServerError,
+)
+
+# Backoff jitter gets its own RNG: attacks seed the global `random` for
+# sentence selection, and a retry must not shift that sequence.
+_jitter = random.Random()
+
+
+def complete(
+    client,
+    parse: Callable[[str], str] | None = None,
+    retries: int = 5,
+    base_delay: float = 2.0,
+    **kwargs,
+) -> str:
+    """One chat completion with retry and exponential backoff.
+
+    ``parse`` post-processes the response and raises ``ValueError`` when the
+    output is unusable (e.g. a missing marker), which counts as a retryable
+    failure. Raises ``AttackFailed`` once every attempt has failed.
+    """
+    last_error = "no attempt made"
+    for attempt in range(retries):
+        if attempt:
+            time.sleep(base_delay * 2 ** (attempt - 1) * (1 + _jitter.random()))
+        try:
+            response = client.chat.completions.create(**kwargs)
+        except _RETRYABLE as e:
+            last_error = repr(e)
+            continue
+        content = (response.choices[0].message.content or "").strip()
+        if not content:
+            last_error = "empty completion"
+            continue
+        if parse is None:
+            return content
+        try:
+            return parse(content)
+        except ValueError as e:
+            last_error = repr(e)
+    raise AttackFailed(f"{retries} attempts failed; last error: {last_error}")
 
 
 # Academic / common abbreviations whose trailing period should NOT end a sentence.

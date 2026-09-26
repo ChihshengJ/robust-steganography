@@ -2,7 +2,7 @@ import random
 
 from openai import OpenAI
 
-from .attack import Attack, iter_sentences_with_gaps
+from .attack import Attack, complete, iter_sentences_with_gaps
 
 SYSTEM_PROMPT = """
 You are a language expert at {language_1} and {language_2}, and you will be assigned with translation tasks that either require you to translate a text from {language_1} to {language_2}.
@@ -54,26 +54,20 @@ class TranslationAttack(Attack):
             ("English", self.language) if direction else (self.language, "English")
         )
 
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": SYSTEM_PROMPT.format(
-                            language_1=lang_1, language_2=lang_2
-                        ),
-                    },
-                    {"role": "user", "content": text},
-                ],
-                temperature=self.temperature,
-            )
-            result = response.choices[0].message.content.strip()
-
-            return result
-        except Exception as e:
-            print(f"Global paraphrase attack failed: {e}")
-            return text
+        return complete(
+            self.client,
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT.format(
+                        language_1=lang_1, language_2=lang_2
+                    ),
+                },
+                {"role": "user", "content": text},
+            ],
+            temperature=self.temperature,
+        )
 
     def _global_attack(self, text: str) -> str:
         """Translate entire text at once."""
