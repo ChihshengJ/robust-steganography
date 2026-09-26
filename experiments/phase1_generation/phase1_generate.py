@@ -1,7 +1,7 @@
 """Phase 1: Generate stego (S), same-pipeline cover (C1), and second cover (C2)
 texts for all three systems.
 
-The C2 cover differs by system. For topicqa/litreview/baseline it is a prompted
+The C2 cover differs by system. For topicqa/litreview it is a prompted
 GPT-4.1 cover. For story it is the "Option B" cover: a Qwen-generated free-form
 outline synthesized into prose by GPT-4.1 — this holds the plot-origin model
 (Qwen) and prose model (GPT-4.1) constant with the stego pipeline so the cover
@@ -50,7 +50,6 @@ from experiments.utils.io import (
     make_record_id,
 )
 from experiments.utils.system_factory import (
-    make_baseline,
     make_clients,
     make_discop,
     make_litreview,
@@ -58,7 +57,6 @@ from experiments.utils.system_factory import (
     make_topicqa,
 )
 from experiments.utils.token_counter import count_tokens, count_words, round_words
-from systems import CORPORATE_MONOLOGUE
 from systems.config.story_prompts import STORY_SYNTHESIS_PROMPT
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -678,123 +676,6 @@ def generate_litreview(
 
 
 # ---------------------------------------------------------------------------
-# Baseline generation
-# ---------------------------------------------------------------------------
-
-
-def generate_baseline(
-    client,
-    prompts: list[dict],
-    messages: dict,
-    output_dir: Path,
-    stego_only: bool = False,
-):
-    """Generate Baseline (SentenceStegSystem) texts: 1 S + 1 C1 + 1 C2 per prompt."""
-    paths = _out_paths(output_dir, "baseline")
-    system = make_baseline(client)
-    completed, records_map = _load_checkpoint(paths)
-
-    stego_msgs = messages["stego_messages"]
-    c1_msgs = messages["c1_messages"]
-    n_prompts = len(prompts)
-
-    log.info(f"Baseline: {n_prompts} prompts, {len(completed)} records already done")
-
-    for p_idx, prompt_data in enumerate(prompts):
-        seed = prompt_data["seed"]
-        log.info(f"Baseline prompt {p_idx + 1}/{n_prompts}: {seed[:60]}...")
-
-        # --- Stego text (S) ---
-        s_rid = make_record_id("baseline", "stego", p_idx)
-        if s_rid in completed:
-            stego_record = records_map[s_rid]
-            log.info(f"  Skip {s_rid} (exists)")
-        else:
-            msg_bits = stego_msgs[p_idx]
-            text = system.hide_message(msg_bits, seed)
-            stego_record = _make_record(
-                record_id=s_rid,
-                system="baseline",
-                text_type="stego",
-                prompt_idx=p_idx,
-                prompt=seed,
-                text=text,
-                message_bits=msg_bits,
-                system_state={
-                    "seed": system._seed,
-                    "error_encoded_length": system._error_encoded_length,
-                },
-                metadata=system._last_metadata,
-            )
-            append_jsonl(paths["stego"], stego_record)
-            records_map[s_rid] = stego_record
-            completed.add(s_rid)
-            log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
-
-        if stego_only:
-            continue
-
-        # --- Same-pipeline cover (C1) ---
-        c1_rid = make_record_id("baseline", "cover_c1", p_idx)
-        if c1_rid not in completed:
-            c1_bits = c1_msgs[p_idx]
-            c1_text = system.hide_message(c1_bits, seed)
-            c1_record = _make_record(
-                record_id=c1_rid,
-                system="baseline",
-                text_type="cover_c1",
-                prompt_idx=p_idx,
-                prompt=seed,
-                text=c1_text,
-                message_bits=c1_bits,
-                system_state={
-                    "seed": system._seed,
-                    "error_encoded_length": system._error_encoded_length,
-                },
-                metadata=system._last_metadata,
-                paired_stego_id=s_rid,
-            )
-            append_jsonl(paths["cover_c1"], c1_record)
-            completed.add(c1_rid)
-            log.info(f"  Generated {c1_rid} ({c1_record['word_count']} words)")
-        else:
-            log.info(f"  Skip {c1_rid} (exists)")
-
-        # --- Prompted cover (C2); length target from stego ---
-        c2_rid = make_record_id("baseline", "cover_c2", p_idx)
-        if c2_rid not in completed:
-            target_words = round_words(stego_record["word_count"])
-            c2_prompt = (
-                f"Write a corporate email-style passage of approximately {target_words} words.\n\n"
-                f"Write the response as cohesive flowing prose. "
-                f"Do not use bullet points, numbered lists, section headers, or bold text.\n\n"
-                f"{CORPORATE_MONOLOGUE}\n\n"
-                f"Context / opening: {seed}"
-            )
-            c2_text = _direct_gpt_call(client, c2_prompt)
-            c2_record = _make_record(
-                record_id=c2_rid,
-                system="baseline",
-                text_type="cover_c2",
-                prompt_idx=p_idx,
-                prompt=seed,
-                text=c2_text,
-                message_bits=None,
-                system_state=None,
-                metadata=None,
-                length_target=target_words,
-                paired_stego_id=s_rid,
-            )
-            append_jsonl(paths["cover_c2"], c2_record)
-            completed.add(c2_rid)
-            log.info(
-                f"  Generated {c2_rid} ({c2_record['word_count']} words, target={target_words})"
-            )
-        else:
-            log.info(f"  Skip {c2_rid} (exists)")
-
-
-# ---------------------------------------------------------------------------
 # Token-level baseline (Discop) — in-house comparison system
 # ---------------------------------------------------------------------------
 
@@ -808,6 +689,7 @@ BASELINE_LM_TARGET_WORDS = 575
 # cache to MAX_CONTEXT_LENGTH and keep going, so stego texts run well past it.
 # Kept as documentation of where the attention window ends.
 GPT2_CONTEXT_LIMIT = 1024
+
 
 def _make_baseline_lm(
     system_name: str,
@@ -935,9 +817,7 @@ def calibrate_repetitions(
     pilot = prompts[:n_pilot]
     r = 1
     for round_idx in range(max_rounds):
-        system = _make_baseline_lm(
-            system_name, r, target_words, syncpool=syncpool
-        )
+        system = _make_baseline_lm(system_name, r, target_words, syncpool=syncpool)
         words = []
         degenerate = 0
         for p in pilot:
@@ -1169,7 +1049,6 @@ def main():
             "topicqa",
             "story",
             "litreview",
-            "baseline",
             "discop",
             "all",
         ],
@@ -1304,7 +1183,7 @@ def main():
     if args.capacity is not None:
         if args.system == "all":
             parser.error(
-                "--capacity requires --system to be one of topicqa/story/litreview/baseline (not 'all')."
+                "--capacity requires --system to be one of topicqa/story/litreview/discop (not 'all')."
             )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"
@@ -1433,19 +1312,6 @@ def main():
             client,
             indices,
             all_messages["litreview"],
-            output_dir,
-            stego_only=args.stego_only,
-        )
-
-    if args.system in ("baseline", "all"):
-        with open(prompts_dir / "baseline_prompts.json") as f:
-            prompts = json.load(f)["prompts"]
-        if args.limit is not None:
-            prompts = prompts[: args.limit]
-        generate_baseline(
-            client,
-            prompts,
-            all_messages["baseline"],
             output_dir,
             stego_only=args.stego_only,
         )

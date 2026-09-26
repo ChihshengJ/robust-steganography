@@ -119,7 +119,7 @@ ATTACK_CONFIGS: list[dict] = [
     },
 ]
 
-SYSTEMS = ("topicqa", "story", "litreview", "baseline")
+SYSTEMS = ("topicqa", "story", "litreview")
 # In-house token-level baselines: selectable explicitly but excluded from "all".
 BASELINE_LM_SYSTEMS = ("discop",)
 
@@ -557,7 +557,7 @@ def main():
     if args.capacity is not None:
         if args.system == "all":
             parser.error(
-                "--capacity requires --system to be one of topicqa/story/litreview/baseline (not 'all')."
+                "--capacity requires --system to be one of topicqa/story/litreview/discop (not 'all')."
             )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"

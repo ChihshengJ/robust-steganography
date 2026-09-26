@@ -10,6 +10,7 @@ from .config.system_prompts import (
     ONE_WAY_MONOLOGUE,
     TWO_WAY_DYNAMIC,
 )
+from .core.baselines import DiscopLM, DiscopSystem
 from .core.embeddings.embedding_steg_system import (
     EmbeddingStegSystem,
     OracleStegSystem,
@@ -45,7 +46,6 @@ from .core.hash_functions import (
     PCAHash,
     RandomProjectionHash,
 )
-from .core.baselines import DiscopLM, DiscopSystem
 from .core.litreview import LitReviewSystem
 from .core.steg_system import StegSystem
 from .core.story_gen import StorySystem

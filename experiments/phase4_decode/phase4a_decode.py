@@ -70,7 +70,6 @@ from experiments.utils.io import (
 )
 from experiments.utils.metrics import bit_error_rate
 from experiments.utils.system_factory import (
-    make_baseline,
     make_clients,
     make_discop,
     make_litreview,
@@ -85,7 +84,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-SYSTEMS = ("topicqa", "story", "litreview", "baseline")
+SYSTEMS = ("topicqa", "story", "litreview")
 # In-house token-level baselines: selectable explicitly but excluded from "all".
 BASELINE_LM_SYSTEMS = ("discop",)
 
@@ -120,8 +119,6 @@ def build_system(
         return make_story(client, local_client, n_slots=n_slots)
     if system == "litreview":
         return make_litreview(client)
-    if system == "baseline":
-        return make_baseline(client)
     if system == "discop":
         return make_discop(model_name=baseline_model)
     raise ValueError(f"Unknown system: {system}")
@@ -791,7 +788,7 @@ def main():
     if args.capacity is not None:
         if args.system == "all":
             parser.error(
-                "--capacity requires --system to be one of topicqa/story/litreview/baseline (not 'all')."
+                "--capacity requires --system to be one of topicqa/story/litreview/discop (not 'all')."
             )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"

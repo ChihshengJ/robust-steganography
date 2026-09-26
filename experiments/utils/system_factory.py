@@ -7,14 +7,11 @@ import os
 import openai
 
 from systems import (
-    CORPORATE_MONOLOGUE,
     BypassEncoder,
     DiscopLM,
     DiscopSystem,
     LitReviewSystem,
-    RandomProjectionHash,
     RepetitionCode,
-    SentenceStegSystem,
     StorySystem,
     TopicQASystem,
 )
@@ -201,19 +198,6 @@ def make_discop(
         key=key,
         max_length=max_length,
         syncpool=syncpool,
-    )
-
-
-def make_baseline(client: openai.OpenAI) -> SentenceStegSystem:
-    """Baseline sentence-level steg (Bauer et al.): random-projection hash,
-    1 bit/sentence, RepetitionCode(5), corporate-email generation prompt."""
-    hash_fn = RandomProjectionHash(seed=108)
-    return SentenceStegSystem(
-        client,
-        hash_function=hash_fn,
-        error_correction=RepetitionCode(5),
-        system_prompt=CORPORATE_MONOLOGUE,
-        encoder=BypassEncoder(),
     )
 
 

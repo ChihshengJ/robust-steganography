@@ -12,7 +12,7 @@ and writes the aggregated tables under
 
 The per-system capacity mapping is controlled by ``--capacities`` (see CLI
 help). It defaults to the original recovery_test capacities
-(topicqa=6, story=18, litreview=20, baseline=3), so the script keeps working
+(topicqa=6, story=18, litreview=20), so the script keeps working
 on the data that was migrated out of recovery_test/.
 
 Aggregation procedure (matches experiment.md lines 340-347):
@@ -35,7 +35,7 @@ Usage:
     # Override a few:
     python -m experiments.phase4_decode.phase4c_main_results \\
         --capacities story=14,litreview=16,topicqa=7 \\
-        --output-subdir main_t7_s14_l16_b3
+        --output-subdir main_t7_s14_l16
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-SYSTEMS = ("topicqa", "story", "litreview", "baseline")
+SYSTEMS = ("topicqa", "story", "litreview")
 
 # Columns shown in the headline main-results table.
 HEADLINE_ATTACKS = (
@@ -436,7 +436,6 @@ DEFAULT_CAPACITIES = {
     "topicqa": 6,
     "story": 18,
     "litreview": 20,
-    "baseline": 3,
 }
 
 
@@ -499,7 +498,7 @@ def main():
         help=(
             "Sub-directory under phase4_decode/ to write aggregated outputs "
             "(main_results*, attack_curves*). Defaults to a name derived from --capacities, "
-            "e.g. 'main_t6_s18_l20_b3'."
+            "e.g. 'main_t6_s18_l20'."
         ),
     )
     parser.add_argument(
@@ -526,7 +525,7 @@ def main():
     }
 
     if args.output_subdir is None:
-        # e.g. main_t6_s18_l20_b3 — short tag using initial letter of each system.
+        # e.g. main_t6_s18_l20 — short tag using initial letter of each system.
         tag = "_".join(f"{s[0]}{capacities[s]}" for s in SYSTEMS if s in capacities)
         args.output_subdir = f"main_{tag}"
         log.info("--output-subdir not set: defaulting to %r", args.output_subdir)

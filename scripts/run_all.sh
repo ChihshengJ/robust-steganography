@@ -9,8 +9,8 @@
 # Prerequisites:
 #   * .env with OPENAI_API_KEY (see .env.example).
 #   * For TopicQA/Story: the local llama.cpp server running in another terminal
-#     (scripts/serve_local_model.sh /path/to/model.gguf). LitReview/baseline
-#     don't need it.
+#     (scripts/serve_local_model.sh /path/to/model.gguf). LitReview doesn't
+#     need it.
 #
 # Tracks:
 #   detectability — full 300/class top-level dataset -> Phase 2 (Exp 2 & 5).
@@ -18,7 +18,7 @@
 #
 # Env knobs:
 #   DETECT_SYSTEMS  systems for the detectability track (default topicqa story litreview)
-#   ROBUST_SYSTEMS  "name:capacity" list (default native: topicqa:6 story:18 litreview:20 baseline:3)
+#   ROBUST_SYSTEMS  "name:capacity" list (default native: topicqa:6 story:18 litreview:20)
 #   OUTPUT_SUBDIR   phase4c output dir name (default main_native)
 #   DATA_DIR, PYTHON, MAX_WORKERS, and the per-phase knobs all pass through.
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
@@ -26,7 +26,7 @@ SCRIPTS="$REPO_ROOT/scripts"
 
 TRACK="${1:-all}"
 DETECT_SYSTEMS="${DETECT_SYSTEMS:-topicqa story litreview}"
-ROBUST_SYSTEMS="${ROBUST_SYSTEMS:-topicqa:6 story:18 litreview:20 baseline:3}"
+ROBUST_SYSTEMS="${ROBUST_SYSTEMS:-topicqa:6 story:18 litreview:20}"
 OUTPUT_SUBDIR="${OUTPUT_SUBDIR:-main_native}"
 
 run_detectability() {

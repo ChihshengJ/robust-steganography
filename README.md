@@ -114,7 +114,7 @@ scripts/serve_local_model.sh /path/to/Qwen3.5-4B-UD-Q8_K_XL.gguf
 ```
 
 Point elsewhere or swap the GGUF via `LOCAL_BASE_URL` / `LOCAL_MODEL` (see `.env.example`).
-LitReview and the baseline don't use it. You can verify a serve command reproduces a prior run with
+LitReview doesn't use it. You can verify a serve command reproduces a prior run with
 `python -m experiments.check_subtopic_repro`.
 
 ### Quick check first (free)
@@ -137,7 +137,7 @@ The pipeline has two data tracks; `run_all.sh` does both:
   native capacity in top-level `phase1_texts/`, scored by Phase 2.
 - **Robustness** (recovery under attack): the first 30 stegos per system in
   `{system}_cap{N}/`, attacked in Phase 3 and decoded in Phase 4. Native
-  capacities are TopicQA 6, Story 18, LitReview 20, baseline 3 bits.
+  capacities are TopicQA 6, Story 18, LitReview 20 bits.
 
 Running phases by hand (everything is checkpoint-resumable; re-running skips
 finished records):

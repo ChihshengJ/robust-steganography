@@ -33,7 +33,7 @@ from experiments.utils.perplexity import PerplexityScorer
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-SYSTEMS = ["topicqa", "story", "litreview", "baseline"]
+SYSTEMS = ["topicqa", "story", "litreview"]
 TEXT_TYPES = ["stego", "cover_c1", "cover_c2"]
 
 

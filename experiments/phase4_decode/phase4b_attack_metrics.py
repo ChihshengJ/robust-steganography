@@ -47,7 +47,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-SYSTEMS = ("topicqa", "story", "litreview", "baseline")
+SYSTEMS = ("topicqa", "story", "litreview")
 SBERT_DEFAULT = "all-mpnet-base-v2"
 BERTSCORE_LANG = "en"
 
@@ -377,7 +377,7 @@ def main():
 
     if args.capacity is not None:
         if args.system == "all":
-            parser.error("--capacity requires --system to be one of topicqa/story/litreview/baseline (not 'all').")
+            parser.error("--capacity requires --system to be one of topicqa/story/litreview (not 'all').")
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"
             log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")

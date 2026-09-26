@@ -29,7 +29,7 @@ Run from anywhere; they locate the repo root themselves.
 | ------------------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
 | `PYTHON`                        | `uv run python`*   | Interpreter. *Auto-detects uv; falls back to `python` if uv is absent. Override to pin.   |
 | `DATA_DIR`                      | `data/experiments` | Base dir for inputs/outputs.                                                              |
-| `SYSTEM`                        | `all`              | `topicqa` \| `story` \| `litreview` \| `baseline` \| `all`.                               |
+| `SYSTEM`                        | `all`              | `topicqa` \| `story` \| `litreview` \| `all`.                                              |
 | `CAPACITY`                      | —                  | Message bits; selects the `{system}_cap{N}/` robustness subdir. Requires `SYSTEM != all`. |
 | `SUBDIR`                        | module default     | Override the data subdir. Set `SUBDIR=''` for top-level (the detectability dataset).      |
 | `MAX_WORKERS`                   | `8`                | Phase 3 attack concurrency.                                                               |
