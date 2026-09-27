@@ -49,11 +49,10 @@ from experiments.utils.attackers import DEFAULT_ATTACKER, attacker_of
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-OURS = ("topicqa", "story", "litreview")
+OURS = ("story", "litreview")
 BASELINES = ("discop",)
 
 TASK_LABEL = {
-    "topicqa": r"\qa",
     "story": r"\sg",
     "litreview": r"\lr",
     "discop": "Discop",

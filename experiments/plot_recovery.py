@@ -64,8 +64,8 @@ COLORS = {
     "local_paraphrase": "#7296B8FF",
 }
 
-SYSTEM_LEVELS = ("topicqa", "story", "litreview", "discop")
-SYSTEM_LABELS = {"topicqa": "QA", "story": "SG", "litreview": "LR", "discop": "Discop"}
+SYSTEM_LEVELS = ("story", "litreview", "discop")
+SYSTEM_LABELS = {"story": "SG", "litreview": "LR", "discop": "Discop"}
 
 METRICS = (("bit-wise_accuracy", "bitwise"), ("perfect_stego_rate", "perfect"))
 

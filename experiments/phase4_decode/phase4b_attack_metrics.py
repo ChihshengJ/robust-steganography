@@ -22,7 +22,7 @@ A tqdm progress bar is shown per system.
 Usage:
     python -m experiments.phase4_decode.phase4b_attack_metrics --system all
     python -m experiments.phase4_decode.phase4b_attack_metrics \
-        --system topicqa --batch-size 16 --limit 20  # smoke test
+        --system story --batch-size 16 --limit 20  # smoke test
     python -m experiments.phase4_decode.phase4b_attack_metrics \
         --system all --summary-only                  # rebuild summary tables
 """
@@ -47,7 +47,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-SYSTEMS = ("topicqa", "story", "litreview")
+SYSTEMS = ("story", "litreview")
 SBERT_DEFAULT = "all-mpnet-base-v2"
 BERTSCORE_LANG = "en"
 
@@ -380,7 +380,7 @@ def main():
     if args.capacity is not None:
         if args.system == "all":
             parser.error(
-                "--capacity requires --system to be one of topicqa/story/litreview (not 'all')."
+                "--capacity requires --system to be one of story/litreview (not 'all')."
             )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"

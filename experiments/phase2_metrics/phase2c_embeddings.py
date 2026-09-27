@@ -7,19 +7,19 @@ trains 2-layer MLP classifiers with 5-fold stratified CV.
 Usage:
     # Full run (both models):
     python -m experiments.phase2_metrics.phase2c_embeddings \
-        --sub-experiment 2a --systems topicqa --models qwen3,google
+        --sub-experiment 2a --systems story --models qwen3,google
 
     # Only Qwen3 embeddings + classification:
     python -m experiments.phase2_metrics.phase2c_embeddings \
-        --sub-experiment 2a --systems topicqa --models qwen3
+        --sub-experiment 2a --systems story --models qwen3
 
     # Re-run MLP on existing embeddings (skip embedding step):
     python -m experiments.phase2_metrics.phase2c_embeddings \
-        --sub-experiment 2a --systems topicqa --skip-embed
+        --sub-experiment 2a --systems story --skip-embed
 
     # Only generate embeddings (skip classification):
     python -m experiments.phase2_metrics.phase2c_embeddings \
-        --sub-experiment 2a --systems topicqa --skip-classify
+        --sub-experiment 2a --systems story --skip-classify
 """
 
 from __future__ import annotations

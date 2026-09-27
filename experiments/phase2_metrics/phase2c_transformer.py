@@ -5,7 +5,7 @@ Reports accuracy, macro-F1, and AUC per fold plus aggregated mean/std.
 
 Usage:
     python -m experiments.phase2_metrics.phase2c_transformer \
-        --sub-experiment 2a --systems topicqa \
+        --sub-experiment 2a --systems story \
         --transformer distilbert-base-uncased --max-epochs 5
 """
 

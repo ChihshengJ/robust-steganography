@@ -35,7 +35,6 @@ log = logging.getLogger(__name__)
 
 # system -> (sub-experiment holding its cover text, display label)
 SYSTEM_COVER = {
-    "topicqa": ("2b", "QA"),
     "story": ("2c", "SG"),
     "litreview": ("2b", "LR"),
 }

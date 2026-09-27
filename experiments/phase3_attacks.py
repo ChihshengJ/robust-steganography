@@ -8,7 +8,7 @@ paraphrase, local/global back-translation) to the stegos, and a trimmed cover pl
 Output layout (matches experiment.md lines 52-55):
 
     data/experiments/phase3_attacks/
-        topicqa_attacked.jsonl
+        story_attacked.jsonl
         story_attacked.jsonl
         litreview_attacked.jsonl
 
@@ -37,9 +37,9 @@ in `derive_seed` is best-effort under concurrency. Set --max-workers 1 to
 restore strict deterministic seeding.
 
 Usage:
-    python -m experiments.phase3_attacks --system topicqa
+    python -m experiments.phase3_attacks --system story
     python -m experiments.phase3_attacks --system all --max-workers 16
-    python -m experiments.phase3_attacks --system topicqa --n-stegos 2 --skip-covers \
+    python -m experiments.phase3_attacks --system story --n-stegos 2 --skip-covers \
         --attack global_paraphrase            # smoke test
     python -m experiments.phase3_attacks --system all --dry-run
     python -m experiments.phase3_attacks --system story --capacity 16 \
@@ -118,7 +118,7 @@ ATTACK_CONFIGS: list[dict] = [
     },
 ]
 
-SYSTEMS = ("topicqa", "story", "litreview")
+SYSTEMS = ("story", "litreview")
 # In-house token-level baselines: selectable explicitly but excluded from "all".
 BASELINE_LM_SYSTEMS = ("discop",)
 
@@ -171,7 +171,7 @@ def build_record_id(
     run_idx: int,
     attacker: str | None = None,
 ) -> str:
-    """Composite id, e.g. topicqa_s_000_global_paraphrase_1.0_run0.
+    """Composite id, e.g. story_s_000_global_paraphrase_1.0_run0.
 
     A non-default attacker adds a suffix (..._run0_atk-deepseek-v4-flash); the
     default and non-LLM attacks keep the original ids, so existing files resume.
@@ -563,7 +563,7 @@ def main():
     if args.capacity is not None:
         if args.system == "all":
             parser.error(
-                "--capacity requires --system to be one of topicqa/story/litreview/discop (not 'all')."
+                "--capacity requires --system to be one of story/litreview/discop (not 'all')."
             )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"

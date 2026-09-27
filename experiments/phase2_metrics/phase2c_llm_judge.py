@@ -6,7 +6,7 @@ aggregated JSON with accuracy, confusion matrix, and confidence distribution.
 
 Usage:
     OPENROUTER_API_KEY=sk-or-... python -m experiments.phase2_metrics.phase2c_llm_judge \
-        --sub-experiment 2a --systems topicqa \
+        --sub-experiment 2a --systems story \
         --judge-model anthropic/claude-sonnet-4.5
 """
 
@@ -59,7 +59,7 @@ Your output should follow the style below exactly, NO markdown format:
 VERDICT: A or B
 CONFIDENCE: low / medium / high"""
 
-OPENROUTER_BASE_URL = "https://api.openai.com/v1"
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
 def _build_client():

@@ -7,7 +7,7 @@
 #
 # Reads the robustness dataset produced by `CAPACITY=N scripts/phase1_generate.sh`.
 # Pass the SAME CAPACITY so it reads/writes the matching {system}_cap{N}/ subdir:
-#     SYSTEM=topicqa CAPACITY=6  scripts/phase3_attacks.sh
+#     SYSTEM=story CAPACITY=16 scripts/phase3_attacks.sh
 #
 # Env knobs: SYSTEM (default all*), CAPACITY, SUBDIR, MAX_WORKERS (default 8),
 #            ATTACKER_MODEL (default gpt-4.1), ATTACKER_PROVIDER (openai|together),

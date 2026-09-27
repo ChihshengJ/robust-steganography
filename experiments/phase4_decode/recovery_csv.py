@@ -14,7 +14,7 @@ length-matched SyncPool baselines). ``--runs`` overrides the default selection.
 Usage:
     python -m experiments.phase4_decode.recovery_csv
     python -m experiments.phase4_decode.recovery_csv --out recovery_results.csv
-    python -m experiments.phase4_decode.recovery_csv --runs topicqa_cap6,discop_cap16_len575_sp
+    python -m experiments.phase4_decode.recovery_csv --runs story_cap16,discop_cap16_len575_sp
 """
 
 from __future__ import annotations
@@ -34,12 +34,9 @@ log = logging.getLogger(__name__)
 
 RUN_RE = re.compile(r"^(?P<system>[a-z0-9]+)_cap(?P<m>\d+)(?P<suffix>.*)$")
 
-# The runs the main recovery figure is built from: our three systems at their
+# The runs the main recovery figure is built from: our systems at their
 # swept message lengths, plus the length-matched SyncPool Discop baseline.
 DEFAULT_RUNS = (
-    "topicqa_cap6",
-    "topicqa_cap8",
-    "topicqa_cap10",
     "story_cap14",
     "story_cap16",
     "story_cap18",

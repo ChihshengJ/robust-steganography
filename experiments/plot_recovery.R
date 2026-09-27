@@ -15,6 +15,7 @@ if ("attacker_model" %in% names(df)) {
 attacks <- c("local_paraphrase", "synonym", "global_backtranslation", "global_paraphrase")
 
 filtered <- df %>%
+  filter(system %in% c("story", "litreview", "discop")) %>%
   filter(attack_label %in% attacks) %>%
   filter(capacity < 20) %>%
   filter(
@@ -43,8 +44,8 @@ long$attack_label <- factor(
 )
 
 long$system <- factor(long$system,
-                      levels = c("topicqa", "story", "litreview", "discop"),
-                      labels = c("QA", "SG", "LR", "Discop"))
+                      levels = c("story", "litreview", "discop"),
+                      labels = c("SG", "LR", "Discop"))
 
 attack_labels <- c(
   "local_paraphrase"       = "P (local, p=0.5)",

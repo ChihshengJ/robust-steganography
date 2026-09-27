@@ -16,15 +16,15 @@ from sklearn.preprocessing import StandardScaler
 
 from experiments.utils.io import read_jsonl
 
-SYSTEMS = ["topicqa", "story", "litreview"]
+SYSTEMS = ["story", "litreview"]
 # 2c is story-only: C2's construction is too strict for story generation, so
 # cover_c3 is what that system uses as its cover text. It was run ad hoc before
 # being registered here, which is why transformer/embedding/judge outputs for it
 # predate this entry.
 SUB_EXP_COVER = {"2a": "cover_c1", "2b": "cover_c2", "2c": "cover_c3"}
 SUB_EXP_SYSTEMS = {
-    "2a": ["topicqa", "story", "litreview"],
-    "2b": ["topicqa", "story", "litreview"],
+    "2a": ["story", "litreview"],
+    "2b": ["story", "litreview"],
     "2c": ["story"],
 }
 RANDOM_SEED = 42

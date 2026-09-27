@@ -3,7 +3,6 @@
 Brings the prompt/seed artifacts under `data/experiments/prompts/` to the sizes
 required by the Phase 1 plan in `experiment.md`:
 
-- TopicQA: 50 -> 300 questions (GPT-4.1 one-shot, style-anchored on existing 50)
 - Story:   20 -> 300 premises  (GPT-4.1 one-shot, style-anchored on existing 20)
 - LitReview: 50 -> 300 paper indices (seeded permutation over the 1200-paper pool,
   excluding the 50 already picked)
@@ -14,7 +13,6 @@ Existing prompt IDs are preserved; new entries are appended with contiguous IDs
 (50..299 / 20..299). Each regenerated file records provenance ("seed", "expansion").
 
 Usage:
-    python -m experiments.utils.expand_prompts --target topicqa
     python -m experiments.utils.expand_prompts --target story
     python -m experiments.utils.expand_prompts --target litreview
     python -m experiments.utils.expand_prompts --target messages
@@ -42,7 +40,6 @@ SEED = 42
 PROMPTS_DIR = Path("data/experiments/prompts")
 PAPERS_PATH = litreview_papers()
 
-TARGET_TOPICQA = 300
 TARGET_STORY = 300
 TARGET_LITREVIEW = 300
 TARGET_MESSAGES = 300
@@ -80,88 +77,6 @@ def _gpt_json_call(
             time.sleep(2**attempt)
 
     raise TimeoutError()
-
-
-# ---------------------------------------------------------------------------
-# TopicQA
-# ---------------------------------------------------------------------------
-
-
-def expand_topicqa(client) -> None:
-    path = PROMPTS_DIR / "topicqa_prompts.json"
-    data = json.loads(path.read_text())
-    existing = data["prompts"]
-    if len(existing) >= TARGET_TOPICQA:
-        log.info(f"topicqa already at {len(existing)}, skipping")
-        return
-
-    need = TARGET_TOPICQA - len(existing)
-    log.info(f"topicqa: {len(existing)} -> {TARGET_TOPICQA} (need {need} new)")
-
-    existing_questions = [p["question"] for p in existing]
-    seen = {q.strip().lower() for q in existing_questions}
-    new_questions: list[str] = []
-    rounds = 0
-
-    system_prompt = (
-        "You generate diverse, high-quality general-interest questions for a writing-task "
-        "corpus. Each question must be open-ended enough to answer in ~300 words, span broad "
-        "domains (policy, science, technology, society, culture, health, economics, ethics, "
-        "education, environment, history, psychology, international affairs), and avoid "
-        "duplicating any existing example in phrasing or topic."
-    )
-
-    while len(new_questions) < need and rounds < 5:
-        remaining = need - len(new_questions)
-        batch = min(remaining + 20, 260)  # overshoot to absorb dedup loss
-        examples_block = "\n".join(f"- {q}" for q in existing_questions[:50])
-        user_prompt = (
-            f"Here are {len(existing_questions[:50])} existing questions used as style anchors:\n\n"
-            f"{examples_block}\n\n"
-            f"Generate {batch} NEW questions in the same style. They must:\n"
-            f"- Be general-interest and answerable in roughly 300 words.\n"
-            f"- Cover a wide range of domains and avoid clustering on any single topic.\n"
-            f"- Not duplicate or closely paraphrase any of the examples above or each other.\n"
-            f"- Be a single sentence ending in a question mark.\n\n"
-            f'Return JSON of the form: {{"questions": ["...", "..."]}}'
-        )
-        log.info(f"topicqa GPT call round {rounds + 1}: asking for {batch}")
-        resp = _gpt_json_call(client, system_prompt, user_prompt)
-        got = resp.get("questions", [])
-        log.info(f"  received {len(got)}; deduping")
-        for q in got:
-            if not isinstance(q, str):
-                continue
-            q = q.strip()
-            key = q.lower()
-            if not q or key in seen:
-                continue
-            seen.add(key)
-            new_questions.append(q)
-            if len(new_questions) >= need:
-                break
-        rounds += 1
-
-    if len(new_questions) < need:
-        raise RuntimeError(
-            f"topicqa expansion fell short: got {len(new_questions)}/{need} after {rounds} rounds"
-        )
-
-    next_id = len(existing)
-    for q in new_questions[:need]:
-        existing.append({"id": next_id, "question": q})
-        next_id += 1
-
-    data["prompts"] = existing
-    data["expansion"] = {
-        "method": f"{GPT_MODEL} one-shot",
-        "temperature": GPT_TEMPERATURE,
-        "new_ids": [50, TARGET_TOPICQA - 1],
-        "rounds": rounds,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
-    log.info(f"topicqa: wrote {len(existing)} prompts to {path}")
 
 
 # ---------------------------------------------------------------------------
@@ -326,6 +241,8 @@ def expand_litreview() -> None:
 # ---------------------------------------------------------------------------
 
 
+# The retired TopicQA entry stays so the single rng sequence (and hence every
+# story/litreview message in the existing messages.json) is unchanged.
 MESSAGE_SPEC = [
     ("topicqa", 6),
     ("story", 18),
@@ -367,17 +284,15 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--target",
-        choices=["topicqa", "story", "litreview", "messages", "all"],
+        choices=["story", "litreview", "messages", "all"],
         default="all",
     )
     args = parser.parse_args()
 
     client = None
-    if args.target in ("topicqa", "story", "all"):
+    if args.target in ("story", "all"):
         client, _ = make_clients()
 
-    if args.target in ("topicqa", "all"):
-        expand_topicqa(client)
     if args.target in ("story", "all"):
         expand_story(client)
     if args.target in ("litreview", "all"):

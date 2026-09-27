@@ -8,11 +8,10 @@
 #
 #   * Steganalysis dataset (full 300/class at native capacity, top-level
 #     phase1_texts/ — this is what Phase 2 reads):
-#         SYSTEM=topicqa SUBDIR='' scripts/phase1_generate.sh
+#         SYSTEM=story SUBDIR='' scripts/phase1_generate.sh
 #
 #   * Robustness dataset (per-system native capacity in {system}_cap{N}/ —
 #     what Phase 3/4 read). Pass CAPACITY; the module auto-names the subdir:
-#         SYSTEM=topicqa CAPACITY=6  scripts/phase1_generate.sh
 #         SYSTEM=story   CAPACITY=18 scripts/phase1_generate.sh   # 20 slots, +2 convention
 #         SYSTEM=litreview CAPACITY=20 scripts/phase1_generate.sh
 #

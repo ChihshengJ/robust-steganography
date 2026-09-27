@@ -20,9 +20,9 @@ Decoded records carry that as ``g_matches_encode`` (None for other systems).
 Output schema:
 
     {
-      "id": "topicqa_s_000_global_paraphrase_1.0_run0",
-      "source_id": "topicqa_s_000",
-      "system": "topicqa",
+      "id": "story_s_000_global_paraphrase_1.0_run0",
+      "source_id": "story_s_000",
+      "system": "story",
       "attack_label": "global_paraphrase",
       "attack_type": "paraphrase",
       "attacker_model": "gpt-4.1",
@@ -42,11 +42,11 @@ Output schema:
 Resumable: ids already present in the output JSONL are skipped on resume.
 Usage:
     python -m experiments.phase4_decode.phase4a_decode --system all
-    python -m experiments.phase4_decode.phase4a_decode --system topicqa
+    python -m experiments.phase4_decode.phase4a_decode --system litreview
     python -m experiments.phase4_decode.phase4a_decode \
         --system story --attack global_paraphrase --limit 10  # smoke test
     python -m experiments.phase4_decode.phase4a_decode --system all --dry-run
-    python -m experiments.phase4_decode.phase4a_decode --system topicqa --no-baseline
+    python -m experiments.phase4_decode.phase4a_decode --system litreview --no-baseline
 """
 
 from __future__ import annotations
@@ -74,7 +74,6 @@ from experiments.utils.system_factory import (
     make_discop,
     make_litreview,
     make_story,
-    make_topicqa,
     restore_system_state,
 )
 from systems import StegSystem
@@ -84,7 +83,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-SYSTEMS = ("topicqa", "story", "litreview")
+SYSTEMS = ("story", "litreview")
 # In-house token-level baselines: selectable explicitly but excluded from "all".
 BASELINE_LM_SYSTEMS = ("discop",)
 
@@ -98,8 +97,6 @@ def build_system(
     system: str,
     client,
     generator_client,
-    n_subtopics: int = 12,
-    group_size: int = 2,
     n_slots: int = 20,
     baseline_model: str | None = None,
 ):
@@ -111,10 +108,6 @@ def build_system(
     bit would be chance. Callers pass the model recorded in Phase 1 metadata;
     None falls back to the factory default.
     """
-    if system == "topicqa":
-        return make_topicqa(
-            client, generator_client, n_subtopics=n_subtopics, group_size=group_size
-        )
     if system == "story":
         return make_story(client, generator_client, n_slots=n_slots)
     if system == "litreview":
@@ -334,7 +327,7 @@ def decode_one(
 _WORKER: dict = {}
 
 
-def _worker_init(system, baseline_model, n_subtopics, group_size, n_slots):
+def _worker_init(system, baseline_model, n_slots):
     import torch
 
     torch.set_num_threads(1)
@@ -344,8 +337,6 @@ def _worker_init(system, baseline_model, n_subtopics, group_size, n_slots):
         system,
         client,
         generator_client,
-        n_subtopics=n_subtopics,
-        group_size=group_size,
         n_slots=n_slots,
         baseline_model=baseline_model,
     )
@@ -427,8 +418,6 @@ def run_system(
     limit: int | None,
     include_baseline: bool,
     dry_run: bool,
-    n_subtopics: int = 12,
-    group_size: int = 2,
     n_slots: int = 20,
     max_workers: int = 1,
 ):
@@ -545,8 +534,6 @@ def run_system(
         system,
         client,
         generator_client,
-        n_subtopics=n_subtopics,
-        group_size=group_size,
         n_slots=n_slots,
         baseline_model=baseline_model,
     )
@@ -649,7 +636,7 @@ def run_system(
         with ProcessPoolExecutor(
             max_workers=max_workers,
             initializer=_worker_init,
-            initargs=(system, baseline_model, n_subtopics, group_size, n_slots),
+            initargs=(system, baseline_model, n_slots),
         ) as pool:
             futures = {pool.submit(_decode_task, t): t for t in tasks}
             for fut in as_completed(futures):
@@ -721,27 +708,14 @@ def main():
         help=(
             "Override message-bit count for the chosen system. Required to match the "
             "Phase 1 variant being decoded. Auto-sets --subdir to '{system}_cap{N}' "
-            "unless --subdir is given explicitly. For topicqa, also sets "
-            "n_subtopics = capacity * group_size (unless --n-subtopics is given)."
+            "unless --subdir is given explicitly."
         ),
-    )
-    parser.add_argument(
-        "--n-subtopics",
-        type=int,
-        default=None,
-        help="TopicQA only: must match Phase 1 (default: 12, or 2*capacity).",
     )
     parser.add_argument(
         "--n-slots",
         type=int,
         default=None,
         help="Story only: must match Phase 1 (default: 20).",
-    )
-    parser.add_argument(
-        "--group-size",
-        type=int,
-        default=2,
-        help="TopicQA only: must match Phase 1 (default: 2).",
     )
     parser.add_argument(
         "--attack",
@@ -788,22 +762,11 @@ def main():
     if args.capacity is not None:
         if args.system == "all":
             parser.error(
-                "--capacity requires --system to be one of topicqa/story/litreview/discop (not 'all')."
+                "--capacity requires --system to be one of story/litreview/discop (not 'all')."
             )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"
             log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")
-
-    # Resolve per-system capacity overrides for system reconstruction.
-    topicqa_n_subtopics = args.n_subtopics
-    if (
-        topicqa_n_subtopics is None
-        and args.capacity is not None
-        and args.system == "topicqa"
-    ):
-        topicqa_n_subtopics = args.capacity * args.group_size
-    if topicqa_n_subtopics is None:
-        topicqa_n_subtopics = 12
 
     story_n_slots = args.n_slots if args.n_slots is not None else 20
 
@@ -840,8 +803,6 @@ def main():
             limit=args.limit,
             include_baseline=include_baseline,
             dry_run=args.dry_run,
-            n_subtopics=topicqa_n_subtopics,
-            group_size=args.group_size,
             n_slots=story_n_slots,
             max_workers=args.max_workers,
         )

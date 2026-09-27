@@ -70,7 +70,7 @@ _TYPE_SHORT = {"stego": "s", "normal": "n", "cover_c1": "c1", "cover_c2": "c2"}
 def make_record_id(system: str, text_type: str, prompt_idx: int) -> str:
     """Create a deterministic composite ID matching the experiment.md schema.
 
-    Example: make_record_id("topicqa", "stego", 42) -> "topicqa_s_042"
+    Example: make_record_id("story", "stego", 42) -> "story_s_042"
     """
     short = _TYPE_SHORT.get(text_type, text_type)
     return f"{system}_{short}_{prompt_idx:03d}"

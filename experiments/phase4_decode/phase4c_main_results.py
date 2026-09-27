@@ -12,7 +12,7 @@ and writes the aggregated tables under
 
 The per-system capacity mapping is controlled by ``--capacities`` (see CLI
 help). It defaults to the original recovery_test capacities
-(topicqa=6, story=18, litreview=20), so the script keeps working
+(story=18, litreview=20), so the script keeps working
 on the data that was migrated out of recovery_test/.
 
 Aggregation procedure (matches experiment.md lines 340-347):
@@ -34,7 +34,7 @@ Usage:
 
     # Override a few:
     python -m experiments.phase4_decode.phase4c_main_results \\
-        --capacities story=14,litreview=16,topicqa=7 \\
+        --capacities story=14,litreview=16 \\
         --output-subdir main_t7_s14_l16
 """
 
@@ -59,7 +59,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-SYSTEMS = ("topicqa", "story", "litreview")
+SYSTEMS = ("story", "litreview")
 
 # Columns shown in the headline main-results table.
 HEADLINE_ATTACKS = (
@@ -113,7 +113,7 @@ def load_token_efficiency(
     """Return {system: {capacity, mean_token_count, bits_per_token}} for stego texts.
 
     ``system_subdirs`` maps each system to its phase1/phase2 subdir (e.g.
-    ``{"story": "story_cap18", "topicqa": "topicqa_cap6"}``). A shared subdir
+    ``{"story": "story_cap18", "litreview": "litreview_cap20"}``). A shared subdir
     or an empty string can be used to read from the top-level dirs.
     """
     out: dict[str, dict] = {}
@@ -431,14 +431,13 @@ def _serialize_aggregate(agg: dict) -> dict:
 
 
 DEFAULT_CAPACITIES = {
-    "topicqa": 6,
     "story": 18,
     "litreview": 20,
 }
 
 
 def _parse_capacities(raw: str | None) -> dict[str, int]:
-    """Parse 'story=14,litreview=16,topicqa=7' into {system: capacity}.
+    """Parse 'story=14,litreview=16' into {system: capacity}.
 
     None/empty returns DEFAULT_CAPACITIES (matches the original recovery_test data).
     Unknown systems are rejected so typos surface immediately.
@@ -483,7 +482,7 @@ def main():
         type=_parse_capacities,
         default=None,
         help=(
-            "Per-system capacity mapping, e.g. 'story=14,litreview=16,topicqa=7'. "
+            "Per-system capacity mapping, e.g. 'story=14,litreview=16'. "
             "Each system's inputs are read from '{system}_cap{N}/' subdirs of "
             "phase1_texts/, phase2_metrics/ and phase4_decode/. "
             "Missing systems fall back to the original recovery_test capacities: "

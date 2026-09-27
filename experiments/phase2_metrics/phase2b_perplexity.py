@@ -15,7 +15,7 @@ This matters because gpt2-large over ~2700 texts on CPU/MPS is slow.
 
 Usage:
     python -m experiments.phase2_metrics.phase2b_perplexity
-    python -m experiments.phase2_metrics.phase2b_perplexity --systems topicqa --limit 10
+    python -m experiments.phase2_metrics.phase2b_perplexity --systems story --limit 10
     python -m experiments.phase2_metrics.phase2b_perplexity --model gpt2  # smaller, faster
 """
 
@@ -33,7 +33,7 @@ from experiments.utils.perplexity import PerplexityScorer
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-SYSTEMS = ["topicqa", "story", "litreview"]
+SYSTEMS = ["story", "litreview"]
 TEXT_TYPES = ["stego", "cover_c1", "cover_c2"]
 
 

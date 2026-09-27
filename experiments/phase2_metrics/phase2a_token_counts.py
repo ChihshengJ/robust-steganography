@@ -16,7 +16,7 @@ the recomputed value wins and a warning is logged.
 
 Usage:
     python -m experiments.phase2_metrics.phase2a_token_counts
-    python -m experiments.phase2_metrics.phase2a_token_counts --systems topicqa,story
+    python -m experiments.phase2_metrics.phase2a_token_counts --systems story,litreview
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ from experiments.utils.token_counter import bits_per_token, count_tokens, count_
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-SYSTEMS = ["topicqa", "story", "litreview"]
+SYSTEMS = ["story", "litreview"]
 TEXT_TYPES = ["stego", "cover_c1", "cover_c2"]
 
 
@@ -139,7 +139,7 @@ def main() -> None:
         "--systems",
         type=lambda s: [x.strip() for x in s.split(",") if x.strip()],
         default=SYSTEMS,
-        help="Comma-separated subset of: topicqa,story,litreview",
+        help="Comma-separated subset of: story,litreview",
     )
     parser.add_argument(
         "--no-overwrite",

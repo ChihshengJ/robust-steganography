@@ -6,7 +6,7 @@ classifier using GPT-2 PPL from Phase 2b), and writes a unified summary JSON.
 
 Usage:
     python -m experiments.phase2_metrics.phase2c_summary \
-        --sub-experiment both --systems topicqa,story,litreview
+        --sub-experiment both --systems story,litreview
 """
 
 from __future__ import annotations

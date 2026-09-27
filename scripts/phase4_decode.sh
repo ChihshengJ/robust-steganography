@@ -3,14 +3,14 @@
 # Phase 4 — decode attacked stegos (BER) and score attack severity, then
 # aggregate the main results tables.
 #
-#   4a decode           : API + local llama.cpp server for TopicQA/Story decode
+#   4a decode           : API + local llama.cpp server for Story decode
 #   4b attack metrics    : BERTScore/cosine/BLEU/TER (gpu/mps/cpu, no API)
 #   4c main results      : aggregate into paper tables (no API)
 #
 # 4a/4b run per system against {system}_cap{N}/ (pass the SAME CAPACITY used in
 # Phases 1 and 3). 4c reads all systems at once via --capacities and is invoked
 # separately by run_all.sh / run_robustness.sh — not here.
-#     SYSTEM=topicqa CAPACITY=6 scripts/phase4_decode.sh
+#     SYSTEM=story CAPACITY=16 scripts/phase4_decode.sh
 #
 # Env knobs: SYSTEM (default all*), CAPACITY, SUBDIR, DATA_DIR, PYTHON.
 # Extra args are forwarded to phase4a_decode.

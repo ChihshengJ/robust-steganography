@@ -26,7 +26,6 @@ from .system_factory import (
     make_clients,
     make_litreview,
     make_story,
-    make_topicqa,
     restore_system_state,
 )
 from .token_counter import bits_per_token, count_tokens, count_words, round_words

@@ -22,6 +22,7 @@ experiments/measurements/figures/embedding_recovery_test/summaries/
 
 papers/
 data/experiments/phase*
+data/experiments/legacy/*/phase*
 
 # ACL Anthology full bib dump (downloaded from aclanthology.org, not authored content)
 paper/**/anthology-1.bib

@@ -13,14 +13,13 @@ from systems import (
     LitReviewSystem,
     RepetitionCode,
     StorySystem,
-    TopicQASystem,
 )
 from systems.core.litreview import load_corpus
 from systems.core.story_gen import LLAMACPP_NO_THINKING
 from systems.paths import litreview_references
 
-# Local (llama.cpp / OpenAI-compatible) server used for deterministic subtopic
-# and slot generation. Overridable from the environment so the same scripts run
+# Local (llama.cpp / OpenAI-compatible) server used for deterministic slot
+# generation. Overridable from the environment so the same scripts run
 # against a different host, port, or GGUF model without editing source. The
 # defaults match experiments/serve_local_model.sh (PORT=8080); LOCAL_MODEL must
 # equal the basename of the GGUF you serve (the alias llama-server reports on
@@ -92,32 +91,6 @@ def provider_for_base_url(base_url: str | None) -> str:
         if base_url.rstrip("/") == url.rstrip("/"):
             return provider
     raise ValueError(f"no provider serves {base_url!r}; known: {urls}")
-
-
-def make_topicqa(
-    client: openai.OpenAI,
-    generator_client: openai.OpenAI,
-    n_subtopics: int = 12,
-    group_size: int = 2,
-) -> TopicQASystem:
-    """Create a TopicQASystem with standard experiment parameters.
-
-    Capacity = n_subtopics // group_size * log2(group_size). For the default
-    group_size=2, that's n_subtopics // 2 bits.
-    """
-    return TopicQASystem(
-        client,
-        error_correction=RepetitionCode(1),
-        generator_client=generator_client,
-        generator_model=LOCAL_MODEL,
-        n_subtopics=n_subtopics,
-        group_size=group_size,
-        synth_model="gpt-4.1",
-        decoder_model="gpt-4.1",
-        key="default",
-        encoder=BypassEncoder(),
-        synth_temperature=0.7,
-    )
 
 
 def make_story(

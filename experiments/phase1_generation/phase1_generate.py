@@ -32,7 +32,6 @@ from experiments.utils.system_factory import (
     make_discop,
     make_litreview,
     make_story,
-    make_topicqa,
 )
 from experiments.utils.token_counter import count_tokens, count_words
 from systems.core.story_gen import LLAMACPP_NO_THINKING
@@ -152,61 +151,6 @@ def _check_resume_config(records_map: dict[str, dict], current: dict) -> None:
                 f"{rid} was generated under a different configuration "
                 f"(stored, requested): {diff}. Use a different --subdir."
             )
-
-
-# ---------------------------------------------------------------------------
-# TopicQA generation
-# ---------------------------------------------------------------------------
-
-
-def generate_topicqa(
-    client,
-    generator_client,
-    prompts: list[dict],
-    messages: dict,
-    output_dir: Path,
-    n_subtopics: int = 12,
-    group_size: int = 2,
-):
-    """Generate one TopicQA stegotext per prompt."""
-    stego_path = _stego_path(output_dir, "topicqa")
-    system = make_topicqa(
-        client, generator_client, n_subtopics=n_subtopics, group_size=group_size
-    )
-    records_map = load_records_map(stego_path)
-    completed = set(records_map)
-
-    stego_msgs = messages["stego_messages"]
-    n_prompts = len(prompts)
-
-    log.info(f"TopicQA: {n_prompts} prompts, {len(completed)} records already done")
-
-    for p_idx, prompt_data in enumerate(prompts):
-        question = prompt_data["question"]
-        log.info(f"TopicQA prompt {p_idx + 1}/{n_prompts}: {question[:60]}...")
-
-        s_rid = make_record_id("topicqa", "stego", p_idx)
-        if s_rid in completed:
-            log.info(f"  Skip {s_rid} (exists)")
-            continue
-        msg_bits = stego_msgs[p_idx]
-        text = system.hide_message(msg_bits, question)
-        stego_record = make_text_record(
-            record_id=s_rid,
-            system="topicqa",
-            text_type="stego",
-            prompt_idx=p_idx,
-            prompt=question,
-            text=text,
-            message_bits=msg_bits,
-            system_state={
-                "question": system._question,
-                "error_encoded_length": system._error_encoded_length,
-            },
-            metadata=system._last_metadata,
-        )
-        append_jsonl(stego_path, stego_record)
-        log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
 
 
 # ---------------------------------------------------------------------------
@@ -647,7 +591,6 @@ def main():
     parser.add_argument(
         "--system",
         choices=[
-            "topicqa",
             "story",
             "litreview",
             "discop",
@@ -689,19 +632,9 @@ def main():
         help=(
             "Override message-bit count for the chosen system. "
             "Requires --system != all. Auto-sets --subdir to '{system}_cap{N}' "
-            "unless --subdir is given explicitly. For topicqa, also sets "
-            "n_subtopics = capacity * group_size (unless --n-subtopics is given). "
+            "unless --subdir is given explicitly. "
             "Messages are regenerated inline via np.default_rng(42 + capacity) and "
             "written to {output_dir}/messages.json for traceability."
-        ),
-    )
-    parser.add_argument(
-        "--n-subtopics",
-        type=int,
-        default=None,
-        help=(
-            "TopicQA only: number of subtopics (capacity = n_subtopics // group_size). "
-            "Defaults to 12 (or 2*capacity when --capacity is set)."
         ),
     )
     parser.add_argument(
@@ -709,12 +642,6 @@ def main():
         type=int,
         default=None,
         help="Story only: number of plot slots (capacity = n_slots). Defaults to 20.",
-    )
-    parser.add_argument(
-        "--group-size",
-        type=int,
-        default=2,
-        help="TopicQA only: group size (power of 2). Bits per group = log2(group_size).",
     )
     parser.add_argument(
         "--length-matched",
@@ -847,7 +774,7 @@ def main():
     if args.capacity is not None:
         if args.system == "all":
             parser.error(
-                "--capacity requires --system to be one of topicqa/story/litreview/discop (not 'all')."
+                "--capacity requires --system to be one of story/litreview/discop (not 'all')."
             )
         if args.subdir == "recovery_test":
             args.subdir = f"{args.system}_cap{args.capacity}"
@@ -876,21 +803,6 @@ def main():
 
     # --- Messages: inline regen for capacity variant, else load shared messages.json ---
     if args.capacity is not None:
-        if args.system == "topicqa":
-            n_subtopics_use = (
-                args.n_subtopics
-                if args.n_subtopics is not None
-                else args.capacity * args.group_size
-            )
-            expected_bits = (n_subtopics_use // args.group_size) * int(
-                np.log2(args.group_size)
-            )
-            if expected_bits != args.capacity:
-                parser.error(
-                    f"topicqa capacity mismatch: n_subtopics={n_subtopics_use}, group_size={args.group_size} "
-                    f"=> {expected_bits} bits, but --capacity={args.capacity}."
-                )
-
         # Deterministic seed: same prompt set used across all variants, but
         # bits differ per capacity (different num_bits means different draws).
         rng = np.random.default_rng(42 + args.capacity)
@@ -930,30 +842,6 @@ def main():
         system_kwargs = config_system_kwargs(args.system, config, generator_extra_body)
         if args.system == "story":
             generator_client = make_client(config["generator_provider"])
-
-    if args.system in ("topicqa", "all"):
-        with open(prompts_dir / "topicqa_prompts.json") as f:
-            prompts = json.load(f)["prompts"]
-        if args.limit is not None:
-            prompts = prompts[: args.limit]
-        topicqa_n_subtopics = args.n_subtopics
-        if (
-            topicqa_n_subtopics is None
-            and args.capacity is not None
-            and args.system == "topicqa"
-        ):
-            topicqa_n_subtopics = args.capacity * args.group_size
-        if topicqa_n_subtopics is None:
-            topicqa_n_subtopics = 12
-        generate_topicqa(
-            client,
-            generator_client,
-            prompts,
-            all_messages["topicqa"],
-            output_dir,
-            n_subtopics=topicqa_n_subtopics,
-            group_size=args.group_size,
-        )
 
     if args.system in ("story", "all"):
         with open(prompts_dir / "story_prompts.json") as f:

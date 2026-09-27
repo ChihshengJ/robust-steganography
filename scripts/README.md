@@ -6,7 +6,7 @@ any extra flags straight to the underlying `python -m ...` module — so anythin
 the module accepts still works:
 
 ```bash
-SYSTEM=topicqa scripts/phase1_generate.sh --limit 5     # extra flags pass through
+SYSTEM=story scripts/phase1_generate.sh --limit 5     # extra flags pass through
 ```
 
 Run from anywhere; they locate the repo root themselves.
@@ -15,7 +15,7 @@ Run from anywhere; they locate the repo root themselves.
 
 | Script                 | What it runs                                                                                            |
 | ---------------------- | ------------------------------------------------------------------------------------------------------- |
-| `serve_local_model.sh` | Launch the pinned llama.cpp server (TopicQA/Story only). Pointer to `experiments/serve_local_model.sh`. |
+| `serve_local_model.sh` | Launch the pinned llama.cpp server (Story only). Pointer to `experiments/serve_local_model.sh`. |
 | `phase1_generate.sh`   | Phase 1 — generate stegotexts.                                                                          |
 | `phase1_normal.sh`     | Phase 1b — a length-matched normal generation per stegotext, by its own synthesizer.                    |
 | `phase2_metrics.sh`    | Phase 2 — token counts, perplexity, stegoanalysis classifier + summary.                                 |
@@ -30,11 +30,11 @@ Run from anywhere; they locate the repo root themselves.
 | ------------------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
 | `PYTHON`                        | `uv run python`*   | Interpreter. *Auto-detects uv; falls back to `python` if uv is absent. Override to pin.   |
 | `DATA_DIR`                      | `data/experiments` | Base dir for inputs/outputs.                                                              |
-| `SYSTEM`                        | `all`              | `topicqa` \| `story` \| `litreview` \| `all`.                                              |
+| `SYSTEM`                        | `all`              | `story` \| `litreview` \| `all`.                                                          |
 | `CAPACITY`                      | —                  | Message bits; selects the `{system}_cap{N}/` robustness subdir. Requires `SYSTEM != all`. |
 | `SUBDIR`                        | module default     | Override the data subdir. Set `SUBDIR=''` for top-level (the detectability dataset).      |
 | `MAX_WORKERS`                   | `8`                | Phase 3 attack concurrency.                                                               |
-| `LOCAL_BASE_URL`, `LOCAL_MODEL` | see `.env.example` | Local llama.cpp server for TopicQA/Story.                                                 |
+| `LOCAL_BASE_URL`, `LOCAL_MODEL` | see `.env.example` | Local llama.cpp server for Story.                                                         |
 
 ## Two data tracks
 
