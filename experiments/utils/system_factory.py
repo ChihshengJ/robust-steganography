@@ -75,6 +75,49 @@ def make_client(provider: str) -> openai.OpenAI:
     raise ValueError(f"unknown provider {provider!r}; choose from {PROVIDERS}")
 
 
+# OpenAI models that reason by default and take temperature/top_p only with
+# reasoning_effort="none".
+_OPENAI_REASONING_PREFIXES = ("gpt-5", "gpt-6", "o1", "o3", "o4")
+
+
+def no_reasoning_body(provider: str, model: str) -> dict | None:
+    """Request body that turns a hosted writer's reasoning off, or None.
+
+    Synthesizers (and the normal generations that share their configuration)
+    write without reasoning, as GPT-4.1 did: a reasoning model otherwise spends
+    its whole length cap thinking (DeepSeek V4.1 Flash writes no story in
+    3000 tokens), and OpenAI's refuse temperature/top_p unless reasoning is off.
+    """
+    if provider == "together":
+        return {"reasoning": {"enabled": False}}
+    if provider == "openai" and model.startswith(_OPENAI_REASONING_PREFIXES):
+        return {"reasoning_effort": "none"}
+    return None
+
+
+# Writers with a fixed reasoning setting (decided 09-27 after the SG F = 32
+# pilot: with reasoning, both keep all 32 details; without it DeepSeek drops
+# some). Any other writer runs with reasoning off (no_reasoning_body).
+WRITER_REASONING = {
+    "deepseek-ai/DeepSeek-V4.1-Flash": {"reasoning": {"enabled": True}},
+    "gpt-6-sol": {"reasoning_effort": "low"},
+}
+
+
+def writer_extra_body(provider: str, model: str) -> dict | None:
+    """Request body a synthesizer (and its normal generations) is sent."""
+    if model in WRITER_REASONING:
+        return WRITER_REASONING[model]
+    return no_reasoning_body(provider, model)
+
+
+def default_sampling_only(provider: str, model: str) -> bool:
+    """Whether the writer takes no temperature/top_p: an OpenAI reasoning
+    model with reasoning on accepts only its default sampling."""
+    body = writer_extra_body(provider, model) or {}
+    return provider == "openai" and body.get("reasoning_effort", "none") != "none"
+
+
 def provider_for_base_url(base_url: str | None) -> str:
     """The provider behind a base URL recorded in a generation config, so a
     stored config can be served again with ``make_client``. None is OpenAI:
@@ -98,35 +141,42 @@ def make_story(
     generator_client: openai.OpenAI,
     n_slots: int = 16,
     *,
+    slot_margin: int = 0,
     generator_model: str | None = None,
     generator_extra_body: dict | None = LLAMACPP_NO_THINKING,
     synth_client: openai.OpenAI | None = None,
     synth_model: str = "gpt-4.1",
-    synth_temperature: float = 0.7,
-    synth_top_p: float = 0.7,
+    synth_temperature: float | None = 0.7,
+    synth_top_p: float | None = 0.7,
+    synth_extra_body: dict | None = None,
+    decoder_client: openai.OpenAI | None = None,
+    decoder_model: str = "gpt-4.1",
 ) -> StorySystem:
     """Create a StorySystem with standard experiment parameters.
 
-    Capacity = n_slots bits (1 bit per slot ranking). The generator G runs on
+    Capacity = n_slots bits (1 bit per slot ranking); G is asked for
+    ``n_slots + slot_margin`` slots and the first ``n_slots`` are kept. The generator G runs on
     ``generator_client`` with ``generator_model`` (default LOCAL_MODEL). The
-    synthesizer defaults to ``client``.
-    ``client`` with GPT-4.1 always decodes. The defaults are the configuration
-    every existing result was generated with.
+    synthesizer defaults to ``client``, and the decoder to ``client`` with
+    GPT-4.1. The defaults are the configuration every existing result was
+    generated with.
     """
     return StorySystem(
-        client,
+        decoder_client or client,
         error_correction=RepetitionCode(1),
         generator_client=generator_client,
         generator_model=generator_model or LOCAL_MODEL,
         n_slots=n_slots,
+        slot_margin=slot_margin,
         synth_model=synth_model,
-        decoder_model="gpt-4.1",
+        decoder_model=decoder_model,
         key="default",
         encoder=BypassEncoder(),
         synth_temperature=synth_temperature,
-        synth_client=synth_client,
+        synth_client=synth_client or client,
         synth_top_p=synth_top_p,
         generator_extra_body=generator_extra_body,
+        synth_extra_body=synth_extra_body,
     )
 
 
@@ -135,27 +185,31 @@ def make_litreview(
     *,
     synth_client: openai.OpenAI | None = None,
     synth_model: str = "gpt-4.1",
-    synth_temperature: float = 0.0,
-    synth_top_p: float = 0.7,
+    synth_temperature: float | None = 0.0,
+    synth_top_p: float | None = 0.7,
+    synth_extra_body: dict | None = None,
+    decoder_client: openai.OpenAI | None = None,
+    decoder_model: str = "gpt-4.1",
 ) -> LitReviewSystem:
     """Create a LitReviewSystem with corpus loaded.
 
-    The synthesizer defaults to ``client``. ``client`` with GPT-4.1 always extracts
-    citations when decoding. The defaults are the configuration every existing
-    result was generated with.
+    The synthesizer defaults to ``client``, and the citation extractor
+    (decoder) to ``client`` with GPT-4.1. The defaults are the configuration
+    every existing result was generated with.
     """
     corpus = load_corpus(*litreview_references())
     return LitReviewSystem(
-        client,
+        decoder_client or client,
         error_correction=RepetitionCode(1),
         corpus=corpus,
-        model="gpt-4.1",
+        model=decoder_model,
         encoder=BypassEncoder(),
         key="default",
-        synth_client=synth_client,
+        synth_client=synth_client or client,
         synth_model=synth_model,
         synth_temperature=synth_temperature,
         synth_top_p=synth_top_p,
+        synth_extra_body=synth_extra_body,
     )
 
 

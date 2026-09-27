@@ -16,9 +16,9 @@ Example: [{{"slot": "Intel delivery method", "A": "a sealed envelope under the d
 
 Story premise: {premise}"""
 
-STORY_SYNTHESIS_PROMPT = """Write a short story based on the following premise.
-Incorporate each of the specific details listed below naturally into the narrative.
-Every detail MUST appear clearly and unambiguously in the story text.
+STORY_SYNTHESIS_PROMPT = """Write a story based on the following premise.
+Incorporate each of the specific details listed below naturally into the narrative, and take as much length as that needs.
+Every detail MUST appear clearly and unambiguously in the story text, as the concrete thing it names. Keep all {n} details: do not skip one, merge two, leave one implied, or replace one with something different or more general.
 Use flowing prose with natural pacing. Develop the story through concrete actions, physical detail, and brief dialogue only where it advances the plot. Vary paragraph length naturally.
 
 Premise: {premise}
@@ -110,7 +110,7 @@ Output only valid JSON, no preamble."""
 # Normal generation for steganalysis: STORY_SYNTHESIS_PROMPT without the
 # details to include (the steganographic scaffold), plus the length of the
 # stegotext it is compared with.
-STORY_NORMAL_PROMPT = """Write a short story of approximately {target_words} words based on the following premise.
+STORY_NORMAL_PROMPT = """Write a story of approximately {target_words} words based on the following premise.
 Use flowing prose with natural pacing. Develop the story through concrete actions, physical detail, and brief dialogue only where it advances the plot. Vary paragraph length naturally.
 
 Premise: {premise}"""

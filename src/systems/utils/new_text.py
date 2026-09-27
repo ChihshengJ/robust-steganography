@@ -29,6 +29,16 @@ REASONING_MODELS = {
 }
 
 
+def token_limit(client, n: int) -> dict:
+    """The completion-length cap under the name the endpoint takes. OpenAI's
+    reasoning-capable models reject ``max_tokens``; ``max_completion_tokens``
+    means the same for its other models. Other OpenAI-compatible servers
+    (Together, llama.cpp) take ``max_tokens``."""
+    if "api.openai.com" in (client_base_url(client) or ""):
+        return {"max_completion_tokens": n}
+    return {"max_tokens": n}
+
+
 def llm(
     client,
     model,
@@ -43,18 +53,29 @@ def llm(
         try:
             kwargs = dict(
                 model=model,
-                temperature=temperature,
-                top_p=top_p,
-                max_tokens=max_tokens,
+                **token_limit(client, max_tokens),
                 messages=[
                     {"role": "system", "content": system},
                     {"role": "user", "content": prompt},
                 ],
             )
+            # None leaves the provider default: OpenAI reasoning models reject
+            # temperature/top_p unless reasoning is off.
+            if temperature is not None:
+                kwargs["temperature"] = temperature
+            if top_p is not None:
+                kwargs["top_p"] = top_p
             if extra_body is not None:
                 kwargs["extra_body"] = extra_body
             r = client.chat.completions.create(**kwargs)
-            return r.choices[0].message.content.strip()
+            content = r.choices[0].message.content
+            if not content:
+                # e.g. a reasoning model spending the whole cap on reasoning
+                raise RuntimeError(
+                    f"empty completion from {model} "
+                    f"(finish_reason={r.choices[0].finish_reason})"
+                )
+            return content.strip()
         except Exception as e:
             if attempt == 2:
                 raise

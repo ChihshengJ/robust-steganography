@@ -10,10 +10,10 @@ import numpy as np
 
 from ..config.litreview_prompts import EXTRACT_CITATIONS, GENERATE_REVIEW
 from ..paths import litreview_references
+from ..utils.new_text import client_base_url, llm
 from .encoder import CharacterEncoder, Encoder
 from .error_correction import ErrorCorrection
 from .steg_system import StegSystem
-from ..utils.new_text import client_base_url, llm
 
 
 def ref_bit_hash(author_last_name: str, year: int) -> int:
@@ -89,7 +89,8 @@ def extract_citations(client, model, text: str) -> list[dict]:
         prompt=text,
         system=EXTRACT_CITATIONS,
         temperature=0,
-        max_tokens=2000,
+        # Room for a reasoning decoder's thinking before the list.
+        max_tokens=10000,
     )
 
     seen: set[str] = set()
@@ -185,18 +186,22 @@ class LitReviewSystem(StegSystem):
         key: str = "default",
         synth_client=None,
         synth_model: str | None = None,
-        synth_temperature: float = 0.0,
-        synth_top_p: float = 0.7,
+        synth_temperature: float | None = 0.0,
+        synth_top_p: float | None = 0.7,
+        synth_extra_body: dict | None = None,
     ):
         """``client``/``model`` extract the citations when decoding. The
         synthesizer writes the review with the ``synth_*`` settings when
-        encoding, and defaults to the same client and model."""
+        encoding, and defaults to the same client and model;
+        ``synth_extra_body`` is its provider-specific request body (e.g. one
+        that turns reasoning off)."""
         self.client = client
         self.model = model
         self.synth_client = synth_client or client
         self.synth_model = synth_model or model
         self.synth_temperature = synth_temperature
         self.synth_top_p = synth_top_p
+        self.synth_extra_body = synth_extra_body
         self.key = key
         self.hash_fn = None
         self.ecc = error_correction
@@ -315,6 +320,7 @@ class LitReviewSystem(StegSystem):
             "synth_base_url": client_base_url(self.synth_client),
             "synth_temperature": self.synth_temperature,
             "synth_top_p": self.synth_top_p,
+            "synth_extra_body": self.synth_extra_body,
             "decoder_model": self.model,
         }
 
@@ -334,5 +340,7 @@ class LitReviewSystem(StegSystem):
             ),
             temperature=self.synth_temperature,
             top_p=self.synth_top_p,
-            max_tokens=4000,
+            # Room for a reasoning writer's thinking before the review.
+            max_tokens=16000,
+            extra_body=self.synth_extra_body,
         )

@@ -98,9 +98,14 @@ def build_system(
     client,
     generator_client,
     n_slots: int = 20,
+    slot_margin: int = 0,
     baseline_model: str | None = None,
 ):
     """Build the decode-side system.
+
+    ``n_slots``/``slot_margin`` must be the StorySlot shape the records were
+    encoded with (run_system takes them from the Phase 1 config): they change
+    G's prompt, so any other shape regenerates different slots.
 
     ``baseline_model`` names the local LM for Discop. It must be the one
     that *encoded* the records, not whatever ``$BASELINE_MODEL`` currently says:
@@ -109,7 +114,9 @@ def build_system(
     None falls back to the factory default.
     """
     if system == "story":
-        return make_story(client, generator_client, n_slots=n_slots)
+        return make_story(
+            client, generator_client, n_slots=n_slots, slot_margin=slot_margin
+        )
     if system == "litreview":
         return make_litreview(client)
     if system == "discop":
@@ -192,9 +199,23 @@ def build_g_cache(
     disagree on the slots, and that source can fail with no attack at all.
 
     Entries already in ``cache_path`` are reused, so a resumed run keeps
-    decoding with the receiver output it started with.
+    decoding with the receiver output it started with. Each entry records the
+    slot shape it was generated with, and a cache built under another shape is
+    refused rather than reused.
     """
+    shape = {"n_slots": system_obj.n_slots, "slot_margin": system_obj.slot_margin}
     cache = {r["source_id"]: r for r in read_jsonl(cache_path)}
+    stale = sorted(
+        sid
+        for sid, e in cache.items()
+        if any(k in e and e[k] != v for k, v in shape.items())
+    )
+    if stale:
+        raise SystemExit(
+            f"[{system}] {cache_path} holds G outputs for another slot shape "
+            f"than {shape} ({len(stale)} sources, e.g. {stale[0]}). Move it "
+            "aside or decode into a different --subdir."
+        )
     n_reused = len(source_ids & cache.keys())
     for sid in sorted(source_ids - cache.keys()):
         stego_rec = stego_by_id[sid]
@@ -211,6 +232,7 @@ def build_g_cache(
         entry = {
             "source_id": sid,
             "premise": premise,
+            **shape,
             "slots": slots,
             "matches_encode": None if encode_slots is None else slots == encode_slots,
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -327,7 +349,7 @@ def decode_one(
 _WORKER: dict = {}
 
 
-def _worker_init(system, baseline_model, n_slots):
+def _worker_init(system, baseline_model, n_slots, slot_margin):
     import torch
 
     torch.set_num_threads(1)
@@ -338,6 +360,7 @@ def _worker_init(system, baseline_model, n_slots):
         client,
         generator_client,
         n_slots=n_slots,
+        slot_margin=slot_margin,
         baseline_model=baseline_model,
     )
 
@@ -419,6 +442,7 @@ def run_system(
     include_baseline: bool,
     dry_run: bool,
     n_slots: int = 20,
+    slot_margin: int = 0,
     max_workers: int = 1,
 ):
     attack_path = phase3_dir / f"{system}_attacked.jsonl"
@@ -530,11 +554,34 @@ def run_system(
                 system,
                 baseline_model,
             )
+    if system == "story":
+        # The slot shape changes G's prompt, so it has to be the encoder's.
+        # Records that predate storing it fall back to the CLI values.
+        shapes = {
+            (cfg["n_slots"], cfg.get("slot_margin", 0))
+            for r in stego_by_id.values()
+            if "n_slots" in (cfg := (r.get("metadata") or {}).get("config") or {})
+        }
+        if len(shapes) > 1:
+            raise ValueError(
+                f"{system}: Phase 1 records disagree about the slot shape "
+                f"(n_slots, slot_margin) {sorted(shapes)}. They cannot be decoded "
+                "in one pass."
+            )
+        if shapes:
+            n_slots, slot_margin = next(iter(shapes))
+            log.info(
+                "[%s] slot shape from Phase 1 records: n_slots=%d, slot_margin=%d",
+                system,
+                n_slots,
+                slot_margin,
+            )
     system_obj = build_system(
         system,
         client,
         generator_client,
         n_slots=n_slots,
+        slot_margin=slot_margin,
         baseline_model=baseline_model,
     )
 
@@ -636,7 +683,7 @@ def run_system(
         with ProcessPoolExecutor(
             max_workers=max_workers,
             initializer=_worker_init,
-            initargs=(system, baseline_model, n_slots),
+            initargs=(system, baseline_model, n_slots, slot_margin),
         ) as pool:
             futures = {pool.submit(_decode_task, t): t for t in tasks}
             for fut in as_completed(futures):
@@ -715,7 +762,10 @@ def main():
         "--n-slots",
         type=int,
         default=None,
-        help="Story only: must match Phase 1 (default: 20).",
+        help=(
+            "Story only: slot count for Phase 1 records that predate storing "
+            "their slot shape (default: 20). Records that store it always win."
+        ),
     )
     parser.add_argument(
         "--attack",

@@ -15,6 +15,26 @@ from .hash_functions import BitsPerGroupStub
 from .steg_system import StegSystem
 
 
+def _complete_objects(raw: str) -> list:
+    """The complete objects at the head of a truncated JSON array.
+
+    G sometimes keeps listing slots past the requested count until the length
+    cap cuts the array mid-object. Only the first n_slots are kept anyway, so
+    the complete prefix is enough. Deterministic, so sender and receiver
+    recover the same slots; output that parses whole never gets here.
+    """
+    decoder = json.JSONDecoder()
+    objects: list = []
+    i = raw.find("[") + 1
+    while (j := raw.find("{", i)) != -1:
+        try:
+            obj, i = decoder.raw_decode(raw, j)
+        except json.JSONDecodeError:
+            break
+        objects.append(obj)
+    return objects
+
+
 def _parse_slots(raw: str) -> list[dict]:
     raw = raw.strip()
     if raw.startswith("```"):
@@ -26,7 +46,7 @@ def _parse_slots(raw: str) -> list[dict]:
     try:
         slots = json.loads(raw)
     except json.JSONDecodeError:
-        return []
+        slots = _complete_objects(raw)
     valid = []
     for s in slots:
         if isinstance(s, dict) and "slot" in s and "A" in s and "B" in s:
@@ -55,29 +75,37 @@ class StorySystem(StegSystem):
         generator_client: Any,
         generator_model: str,
         n_slots: int = 12,
+        slot_margin: int = 0,
         synth_model: str = "gpt-4.1",
         decoder_model: str = "gpt-4.1",
         key: str = "default",
         encoder: Encoder | None = None,
-        synth_temperature: float = 0.7,
+        synth_temperature: float | None = 0.7,
         synth_client: Any | None = None,
-        synth_top_p: float = 0.7,
+        synth_top_p: float | None = 0.7,
         generator_extra_body: dict | None = LLAMACPP_NO_THINKING,
+        synth_extra_body: dict | None = None,
     ) -> None:
         """The generator G (slot pairs) runs on ``generator_client`` /
         ``generator_model``; ``generator_extra_body`` is sent with it and is
-        provider-specific (None sends nothing). The synthesizer writes the story
-        with the ``synth_*`` settings, on ``synth_client`` (default: ``client``).
-        ``client``/``decoder_model`` decode."""
+        provider-specific (None sends nothing). G is asked for ``n_slots +
+        slot_margin`` slots and the first ``n_slots`` are kept, since small
+        models miscount long lists; the cut is deterministic, so sender and
+        receiver keep the same slots. The synthesizer writes the story with the
+        ``synth_*`` settings, on ``synth_client`` (default: ``client``);
+        ``synth_extra_body`` is its provider-specific request body (e.g. one
+        that turns reasoning off). ``client``/``decoder_model`` decode."""
         stub = BitsPerGroupStub(1)
         super().__init__(client, stub, error_correction, encoder)
 
         self.synth_client = synth_client or client
         self.synth_top_p = synth_top_p
         self.generator_extra_body = generator_extra_body
+        self.synth_extra_body = synth_extra_body
         self.generator_client = generator_client
         self.generator_model = generator_model
         self.n_slots = n_slots
+        self.slot_margin = slot_margin
         self.synth_model = synth_model
         self.decoder_model = decoder_model
         self.key = key
@@ -102,9 +130,15 @@ class StorySystem(StegSystem):
         raw = llm(
             self.generator_client,
             self.generator_model,
-            SLOT_GENERATION_PROMPT.format(n=self.n_slots, premise=premise),
+            SLOT_GENERATION_PROMPT.format(
+                n=self.n_slots + self.slot_margin, premise=premise
+            ),
             temperature=0,
             top_p=1.0,
+            # ~40 tokens per slot; the 1000-token default truncates the JSON
+            # (parsed as zero slots) above ~24. A cap that is not reached does
+            # not change greedy output.
+            max_tokens=4000,
             extra_body=self.generator_extra_body,
         )
         slots = _parse_slots(raw)
@@ -122,10 +156,13 @@ class StorySystem(StegSystem):
         return {
             "generator_model": self.generator_model,
             "generator_base_url": client_base_url(self.generator_client),
+            "n_slots": self.n_slots,
+            "slot_margin": self.slot_margin,
             "synth_model": self.synth_model,
             "synth_base_url": client_base_url(self.synth_client),
             "synth_temperature": self.synth_temperature,
             "synth_top_p": self.synth_top_p,
+            "synth_extra_body": self.synth_extra_body,
             "decoder_model": self.decoder_model,
         }
 
@@ -184,6 +221,8 @@ class StorySystem(StegSystem):
                 self.decoder_model,
                 prompt,
                 temperature=0,
+                # Room for a reasoning decoder's thinking before the letter.
+                max_tokens=8000,
             )
             .strip()
             .upper()
@@ -223,6 +262,7 @@ class StorySystem(StegSystem):
         prompt = STORY_SYNTHESIS_PROMPT.format(
             premise=premise,
             events_str=events_str,
+            n=len(assigned),
         )
         return llm(
             self.synth_client,
@@ -230,7 +270,10 @@ class StorySystem(StegSystem):
             prompt,
             temperature=self.synth_temperature,
             top_p=self.synth_top_p,
-            max_tokens=3000,
+            # Story length grows with the number of details, and a reasoning
+            # writer thinks first; the cap only guards against runaway output.
+            max_tokens=16000,
+            extra_body=self.synth_extra_body,
         )
 
     def paraphrase(self, text: str, model: str | None = None) -> str:

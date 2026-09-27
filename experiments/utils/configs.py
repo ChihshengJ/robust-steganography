@@ -1,8 +1,8 @@
-"""Generation configurations: (generator G, synthesizer, sampling).
+"""Generation configurations: (generator G, synthesizer).
 
 Shared by phase 1 (which writes them) and the steganalysis code (which groups
-texts by them). Prompts are fixed; a configuration is only which models run
-and how they sample.
+texts by them). Prompts and sampling are fixed; a configuration is only which
+models run. The sampling is still recorded with each configuration.
 """
 
 from __future__ import annotations
@@ -27,11 +27,8 @@ def default_config(system: str) -> dict:
 
 def config_tag(system: str, config: dict) -> str:
     """Subdir suffix naming a configuration, e.g.
-    'syn-deepseek-v4-flash_t1_p0.95_gen-qwen3.5-9b'."""
-    tag = (
-        f"syn-{model_slug(config['synth_model'])}"
-        f"_t{config['synth_temperature']:g}_p{config['synth_top_p']:g}"
-    )
+    'syn-deepseek-v4.1-flash_gen-qwen3.5-9b'."""
+    tag = f"syn-{model_slug(config['synth_model'])}"
     if system == "story":
         tag += f"_gen-{model_slug(config['generator_model'])}"
     return tag

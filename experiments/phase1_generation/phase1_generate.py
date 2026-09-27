@@ -32,6 +32,8 @@ from experiments.utils.system_factory import (
     make_discop,
     make_litreview,
     make_story,
+    default_sampling_only,
+    writer_extra_body,
 )
 from experiments.utils.token_counter import count_tokens, count_words
 from systems.core.story_gen import LLAMACPP_NO_THINKING
@@ -88,8 +90,6 @@ def _stego_path(output_dir: Path, system: str) -> Path:
 CONFIG_FLAGS = (
     "synth_model",
     "synth_provider",
-    "synth_temperature",
-    "synth_top_p",
     "generator_model",
     "generator_provider",
 )
@@ -97,30 +97,43 @@ CONFIG_FLAGS = (
 # records. Endpoint URLs are left out: a moved server is the same configuration.
 _RESUME_KEYS = (
     "generator_model",
+    "n_slots",
+    "slot_margin",
     "synth_model",
     "synth_temperature",
     "synth_top_p",
+    "synth_extra_body",
     "decoder_model",
 )
 
 
 def resolve_config(system: str, args: argparse.Namespace) -> dict:
-    """The default configuration with every flag the caller set applied."""
+    """The default configuration with every flag the caller set applied.
+
+    Sampling is not a configuration axis: every writer runs at the default
+    temperature/top_p, except one that takes only its provider's default
+    sampling, which gets None for both."""
     config = default_config(system)
     for key in CONFIG_FLAGS:
         value = getattr(args, key)
         if value is not None:
             config[key] = value
+    if default_sampling_only(config["synth_provider"], config["synth_model"]):
+        config["synth_temperature"] = config["synth_top_p"] = None
     return config
 
 
 def config_system_kwargs(system: str, config: dict, generator_extra_body) -> dict:
-    """make_story / make_litreview keyword arguments for a configuration."""
+    """make_story / make_litreview keyword arguments for a configuration.
+    The writer's reasoning is fixed per model (see writer_extra_body)."""
     kwargs = {
         "synth_client": make_client(config["synth_provider"]),
         "synth_model": config["synth_model"],
         "synth_temperature": config["synth_temperature"],
         "synth_top_p": config["synth_top_p"],
+        "synth_extra_body": writer_extra_body(
+            config["synth_provider"], config["synth_model"]
+        ),
     }
     if system == "story":
         kwargs["generator_model"] = config["generator_model"]
@@ -133,7 +146,7 @@ def _check_resume_config(records_map: dict[str, dict], current: dict) -> None:
 
     Records written before configurations were recorded carry no config; they
     are the default configuration, and a non-default one never shares their
-    subdir (it gets a config_tag suffix).
+    subdir (it gets a config_tag suffix). A key a record predates is skipped.
     """
     for rid, record in records_map.items():
         if record.get("text_type") != "stego":
@@ -144,7 +157,7 @@ def _check_resume_config(records_map: dict[str, dict], current: dict) -> None:
         diff = {
             k: (stored.get(k), current.get(k))
             for k in _RESUME_KEYS
-            if stored.get(k) != current.get(k)
+            if k in stored and stored[k] != current.get(k)
         }
         if diff:
             raise SystemExit(
@@ -165,6 +178,7 @@ def generate_story(
     messages: dict,
     output_dir: Path,
     n_slots: int = 20,
+    slot_margin: int = 0,
     system_kwargs: dict | None = None,
 ):
     """Generate one StorySlot stegotext per prompt.
@@ -174,7 +188,11 @@ def generate_story(
     """
     stego_path = _stego_path(output_dir, "story")
     system = make_story(
-        client, generator_client, n_slots=n_slots, **(system_kwargs or {})
+        client,
+        generator_client,
+        n_slots=n_slots,
+        slot_margin=slot_margin,
+        **(system_kwargs or {}),
     )
     records_map = load_records_map(stego_path)
     completed = set(records_map)
@@ -182,6 +200,7 @@ def generate_story(
 
     stego_msgs = messages["stego_messages"]
     n_prompts = len(prompts)
+    failures_path = output_dir / "story_failures.jsonl"
 
     log.info(f"StorySlot: {n_prompts} prompts, {len(completed)} records already done")
 
@@ -194,7 +213,25 @@ def generate_story(
             log.info(f"  Skip {s_rid} (exists)")
             continue
         msg_bits = stego_msgs[p_idx]
-        text = system.hide_message(msg_bits, premise)
+        try:
+            text = system.hide_message(msg_bits, premise)
+        except ValueError as e:
+            # G returned fewer slots than the frame needs for this premise.
+            # Log and skip, as LitReview does, rather than end the run.
+            log.warning(f"  SKIP {s_rid} encode failure: {e}")
+            append_jsonl(
+                failures_path,
+                {
+                    "id": s_rid,
+                    "stage": "stego",
+                    "prompt_idx": p_idx,
+                    "premise": premise,
+                    "message_bits": msg_bits,
+                    "error": str(e),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+            )
+            continue
         stego_record = make_text_record(
             record_id=s_rid,
             system="story",
@@ -641,7 +678,19 @@ def main():
         "--n-slots",
         type=int,
         default=None,
-        help="Story only: number of plot slots (capacity = n_slots). Defaults to 20.",
+        help=(
+            "Story only: number of plot slots, each carrying one bit. Defaults to "
+            "--capacity (every slot carries a bit), or 20 without --capacity."
+        ),
+    )
+    parser.add_argument(
+        "--slot-margin",
+        type=int,
+        default=None,
+        help=(
+            "Story only: extra slots requested from G beyond --n-slots; the first "
+            "n_slots are kept. Defaults to 2 with --capacity, 0 without."
+        ),
     )
     parser.add_argument(
         "--length-matched",
@@ -692,9 +741,11 @@ def main():
     )
     config_group = parser.add_argument_group(
         "configuration (story/litreview only)",
-        "Generator, synthesizer and sampling. Unset flags keep the configuration "
+        "Generator and synthesizer. Unset flags keep the configuration "
         "every existing result was generated with (GPT-4.1 synthesizer via OpenAI, "
-        "top_p 0.7, T 0.7 for story / 0 for litreview; local LOCAL_MODEL generator). "
+        "local LOCAL_MODEL generator). Sampling is fixed: top_p 0.7, T 0.7 for "
+        "story / 0 for litreview, or the provider default for a writer that "
+        "accepts no other (gpt-6-sol). "
         "A non-default configuration writes to a subdir suffixed with its tag.",
     )
     config_group.add_argument("--synth-model", default=None, help="Synthesizer model.")
@@ -703,12 +754,6 @@ def main():
         choices=PROVIDERS,
         default=None,
         help="API serving --synth-model.",
-    )
-    config_group.add_argument(
-        "--synth-temperature", type=float, default=None, help="Synthesizer temperature."
-    )
-    config_group.add_argument(
-        "--synth-top-p", type=float, default=None, help="Synthesizer top_p."
     )
     config_group.add_argument(
         "--generator-model", default=None, help="Story only: generator (G) model."
@@ -848,7 +893,17 @@ def main():
             prompts = json.load(f)["prompts"]
         if args.limit is not None:
             prompts = prompts[: args.limit]
-        story_n_slots = args.n_slots if args.n_slots is not None else 20
+        # With --capacity every slot carries a bit (n_slots = F), and G is asked
+        # for F + 2 because it miscounts long lists. Without it: the original
+        # 20 slots requested as-is.
+        if args.n_slots is not None:
+            story_n_slots = args.n_slots
+        else:
+            story_n_slots = args.capacity if args.capacity is not None else 20
+        if args.slot_margin is not None:
+            story_slot_margin = args.slot_margin
+        else:
+            story_slot_margin = 2 if args.capacity is not None else 0
         generate_story(
             client,
             generator_client,
@@ -856,6 +911,7 @@ def main():
             all_messages["story"],
             output_dir,
             n_slots=story_n_slots,
+            slot_margin=story_slot_margin,
             system_kwargs=system_kwargs,
         )
 

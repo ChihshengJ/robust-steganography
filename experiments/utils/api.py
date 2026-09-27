@@ -8,6 +8,8 @@ import time
 
 import openai
 
+from systems.utils.new_text import token_limit
+
 # Transient errors worth retrying. The SDK already retries these a couple of
 # times internally; this outer loop rides out longer 429/503 bursts from
 # providers under load.
@@ -34,6 +36,8 @@ def chat(
     """One chat completion's text, retried with exponential backoff on
     transient errors and empty completions. Raises ``CompletionFailed`` once
     every attempt has failed."""
+    if "max_tokens" in kwargs:
+        kwargs |= token_limit(client, kwargs.pop("max_tokens"))
     last_error = "no attempt made"
     for attempt in range(retries):
         if attempt:

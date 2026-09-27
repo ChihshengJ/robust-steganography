@@ -51,7 +51,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 # The synthesizers' completion budgets (StorySystem / LitReviewSystem).
-MAX_TOKENS = {"story": 3000, "litreview": 4000}
+# Same caps as the stegotexts' writers, which never bind: normal texts are
+# length matched to stegotexts that can run past 2000 words at large F.
+# Room for a reasoning writer's thinking before the text.
+MAX_TOKENS = {"story": 16000, "litreview": 16000}
 
 
 def normal_path(directory: Path, system: str) -> Path:
@@ -139,6 +142,8 @@ def normal_jobs(system: str, stego_dir: Path, corpus) -> list[dict]:
                     "model": config["synth_model"],
                     "temperature": config["synth_temperature"],
                     "top_p": config["synth_top_p"],
+                    # The stegotext's own request body (its reasoning setting).
+                    "extra_body": config.get("synth_extra_body"),
                     "max_tokens": MAX_TOKENS[system],
                 },
             }
@@ -162,9 +167,10 @@ def generate(job: dict, client, tolerance: float, max_attempts: int) -> dict:
             client,
             writer["model"],
             normal_messages(job["system"], job["input"], requested),
-            temperature=writer["temperature"],
-            top_p=writer["top_p"],
+            # None: the writer's default sampling (it rejects the parameter).
+            **{k: writer[k] for k in ("temperature", "top_p") if writer[k] is not None},
             max_tokens=writer["max_tokens"],
+            **({"extra_body": writer["extra_body"]} if writer["extra_body"] else {}),
         )
         words = count_words(text)
         if best is None or abs(words - target) < abs(best["words"] - target):
@@ -184,6 +190,7 @@ def generate(job: dict, client, tolerance: float, max_attempts: int) -> dict:
         "writer_provider": writer["provider"],
         "temperature": writer["temperature"],
         "top_p": writer["top_p"],
+        "extra_body": writer["extra_body"],
         "m": job["m"],
         "requested_words": best["requested"],
         "attempts": attempt,
