@@ -51,7 +51,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 from experiments.utils.attackers import DEFAULT_ATTACKER, attacker_of
-from experiments.utils.io import read_jsonl
+from experiments.utils.io import read_jsonl, read_stego_records
 from experiments.utils.token_counter import bits_per_token
 
 logging.basicConfig(
@@ -165,7 +165,7 @@ def load_token_efficiency(
                 stego_path,
             )
             continue
-        records = read_jsonl(stego_path)
+        records = read_stego_records(phase1_dir, system)
         if not records:
             continue
         token_counts: list[int] = []

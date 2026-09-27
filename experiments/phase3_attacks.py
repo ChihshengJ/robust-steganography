@@ -65,7 +65,13 @@ from experiments.utils.attackers import (
     DEFAULT_ATTACKER,
     LLM_ATTACK_TYPES,
 )
-from experiments.utils.io import append_jsonl, model_slug, read_jsonl, stable_seed
+from experiments.utils.io import (
+    append_jsonl,
+    model_slug,
+    read_jsonl,
+    read_stego_records,
+    stable_seed,
+)
 from experiments.utils.system_factory import make_clients, make_together_client
 from experiments.utils.token_counter import count_tokens
 
@@ -194,7 +200,8 @@ def load_sources(
 ) -> list[tuple[dict, str]]:
     """Load (record, text_type) tuples for all sources to attack.
 
-    Stegos: first n_stegos *available* by prompt_idx from {system}_stego.jsonl.
+    Stegos: first n_stegos *available* by prompt_idx from {system}_stego.jsonl,
+    among the selected inputs when the dir has them (read_stego_records).
     Covers: first n_covers available by prompt_idx from {system}_cover_c1.jsonl
     (unless skipped).
 
@@ -206,9 +213,12 @@ def load_sources(
     """
     sources: list[tuple[dict, str]] = []
 
-    stego_path = phase1_dir / f"{system}_stego.jsonl"
     stego_records = sorted(
-        (r for r in read_jsonl(stego_path) if r.get("prompt_idx") is not None),
+        (
+            r
+            for r in read_stego_records(phase1_dir, system)
+            if r.get("prompt_idx") is not None
+        ),
         key=lambda r: r["prompt_idx"],
     )[:n_stegos]
     if len(stego_records) < n_stegos:

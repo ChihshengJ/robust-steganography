@@ -39,6 +39,7 @@ from experiments.utils.io import (
     load_completed_ids,
     make_record_id,
     read_jsonl,
+    read_stego_records,
 )
 from experiments.utils.system_factory import make_client
 from experiments.utils.token_counter import count_words, round_words
@@ -122,9 +123,10 @@ def find_stego_dirs(phase1_root: Path, system: str, patterns: list[str]) -> list
 
 
 def normal_jobs(system: str, stego_dir: Path, corpus) -> list[dict]:
-    """One job per stegotext in ``stego_dir``: its own synthesizer and sampling."""
+    """One job per stegotext in ``stego_dir`` (its selected inputs, if any):
+    its own synthesizer and sampling."""
     jobs = []
-    for stego in read_jsonl(stego_dir / f"{system}_stego.jsonl"):
+    for stego in read_stego_records(stego_dir, system):
         config = stego_config(stego)
         jobs.append(
             {

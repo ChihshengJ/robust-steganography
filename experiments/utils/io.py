@@ -37,6 +37,23 @@ def read_jsonl(path: str | Path) -> list[dict]:
     return records
 
 
+def inputs_path(phase1_dir: str | Path, system: str) -> Path:
+    """A Phase 1 dir's selected inputs, written by select_inputs."""
+    return Path(phase1_dir) / f"{system}_inputs.json"
+
+
+def read_stego_records(phase1_dir: str | Path, system: str) -> list[dict]:
+    """A Phase 1 dir's stego records, restricted to its selected inputs when
+    ``{system}_inputs.json`` exists (the payload grid's shared inputs, see
+    ``experiments.phase1_generation.select_inputs``); all of them otherwise."""
+    records = read_jsonl(Path(phase1_dir) / f"{system}_stego.jsonl")
+    path = inputs_path(phase1_dir, system)
+    if not path.exists():
+        return records
+    selected = set(json.loads(path.read_text())["prompt_idx"])
+    return [r for r in records if r.get("prompt_idx") in selected]
+
+
 def load_completed_ids(path: str | Path) -> set[str]:
     """Scan a JSONL file and return a set of record ids for checkpoint resumption."""
     path = Path(path)
