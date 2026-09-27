@@ -652,6 +652,15 @@ def main():
         help="Only generate texts for the first N prompts per system (default: all).",
     )
     parser.add_argument(
+        "--litreview-indices",
+        default="litreview_indices.json",
+        help=(
+            "LitReview input list under prompts/ (default: the camera-ready one, "
+            "papers with >= 60 usable references). The payload grid uses "
+            "litreview_indices_min80.json (see expand_prompts --min-refs)."
+        ),
+    )
+    parser.add_argument(
         "--subdir",
         default="recovery_test",
         help=(
@@ -916,7 +925,7 @@ def main():
         )
 
     if args.system in ("litreview", "all"):
-        with open(prompts_dir / "litreview_indices.json") as f:
+        with open(prompts_dir / args.litreview_indices) as f:
             indices_data = json.load(f)
         indices = indices_data["indices"]
         if args.limit is not None:

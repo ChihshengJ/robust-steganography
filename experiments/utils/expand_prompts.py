@@ -15,6 +15,7 @@ Existing prompt IDs are preserved; new entries are appended with contiguous IDs
 Usage:
     python -m experiments.utils.expand_prompts --target story
     python -m experiments.utils.expand_prompts --target litreview
+    python -m experiments.utils.expand_prompts --target litreview --min-refs 80
     python -m experiments.utils.expand_prompts --target messages
     python -m experiments.utils.expand_prompts --target all
 """
@@ -43,6 +44,7 @@ PAPERS_PATH = litreview_papers()
 TARGET_STORY = 300
 TARGET_LITREVIEW = 300
 TARGET_MESSAGES = 300
+DEFAULT_MIN_REFS = 60
 
 GPT_MODEL = "gpt-4.1"
 GPT_TEMPERATURE = 0.9
@@ -167,9 +169,17 @@ def expand_story(client) -> None:
 # ---------------------------------------------------------------------------
 
 
-def expand_litreview() -> None:
-    path = PROMPTS_DIR / "litreview_indices.json"
-    data = json.loads(path.read_text())
+def litreview_indices_name(min_refs: int) -> str:
+    """Index file for a minimum bibliography size. The default (60) is the
+    camera-ready file; a stricter minimum gets its own, so both stay usable."""
+    if min_refs == DEFAULT_MIN_REFS:
+        return "litreview_indices.json"
+    return f"litreview_indices_min{min_refs}.json"
+
+
+def expand_litreview(min_refs: int = DEFAULT_MIN_REFS) -> None:
+    path = PROMPTS_DIR / litreview_indices_name(min_refs)
+    data = json.loads(path.read_text()) if path.exists() else {}
 
     # Index space MUST match what phase1_generate uses: `system.corpus[corpus_idx]`
     # where `system.corpus = load_corpus(...)`. That list (1191 papers, in dict
@@ -183,9 +193,9 @@ def expand_litreview() -> None:
 
     # Filter on USABLE refs (post-`prepare_references`), not raw `referenceCount`.
     # `prepare_references` drops refs lacking author/year/title, with <5-word titles,
-    # or duplicate (author, year). A 20-bit greedy encoding needs comfortable
-    # headroom over 40 refs to handle adversarial bit patterns.
-    MIN_USABLE_REFS = 60
+    # or duplicate (author, year). The keyed-rank walk uses about 2 refs per
+    # bit: 60 suffices for the camera-ready 20 bits, F = 32 needs 80.
+    MIN_USABLE_REFS = min_refs
     eligible = [
         i
         for i, p in enumerate(corpus)
@@ -200,7 +210,7 @@ def expand_litreview() -> None:
     # Existing indices were sampled in the wrong index space and cannot be
     # preserved — discard them and re-pick the full 300 deterministically.
     pre_filter = len(data.get("indices", []))
-    if pre_filter > 0:
+    if pre_filter > 0 and min_refs == DEFAULT_MIN_REFS:
         log.warning(
             f"discarding {pre_filter} existing indices: previously sampled against "
             f"papers.jsonl (1200 entries) instead of load_corpus (1191 entries) — "
@@ -210,7 +220,10 @@ def expand_litreview() -> None:
     rng = np.random.default_rng(SEED)
     perm = rng.permutation(num_papers).tolist()
     new_pool = [int(i) for i in perm if int(i) in eligible_set]
-    if len(new_pool) < TARGET_LITREVIEW:
+    # The camera-ready file needs a full TARGET_LITREVIEW; a stricter minimum
+    # takes every eligible paper (in permutation order), since the payload
+    # grid needs only 30 inputs plus spares.
+    if min_refs == DEFAULT_MIN_REFS and len(new_pool) < TARGET_LITREVIEW:
         raise RuntimeError(
             f"not enough eligible indices: need {TARGET_LITREVIEW}, pool has {len(new_pool)}"
         )
@@ -228,8 +241,8 @@ def expand_litreview() -> None:
         "corpus_source": "load_corpus(corpus.jsonl, references.jsonl)",
         "pool_size": num_papers,
         "eligible_pool_size": len(eligible),
-        "new_count": TARGET_LITREVIEW,
-        "new_ids_range": [0, TARGET_LITREVIEW - 1],
+        "new_count": len(new_indices),
+        "new_ids_range": [0, len(new_indices) - 1],
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     path.write_text(json.dumps(data, indent=2))
@@ -287,6 +300,16 @@ def main() -> None:
         choices=["story", "litreview", "messages", "all"],
         default="all",
     )
+    parser.add_argument(
+        "--min-refs",
+        type=int,
+        default=DEFAULT_MIN_REFS,
+        help=(
+            "LitReview: minimum usable references per paper. The default writes "
+            "litreview_indices.json; any other value writes "
+            "litreview_indices_min{N}.json."
+        ),
+    )
     args = parser.parse_args()
 
     client = None
@@ -296,7 +319,7 @@ def main() -> None:
     if args.target in ("story", "all"):
         expand_story(client)
     if args.target in ("litreview", "all"):
-        expand_litreview()
+        expand_litreview(args.min_refs)
     if args.target in ("messages", "all"):
         regenerate_messages()
 
