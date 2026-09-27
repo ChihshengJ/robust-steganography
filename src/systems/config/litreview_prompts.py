@@ -95,6 +95,29 @@ After extraction, sort the claims by (year ascending, then author name initial a
 Output format: sorted claims separated by [sep]
 Example: Smith et al. (2018) proposed X for Y.[sep]Jones (2019) extended this by Z.[sep]Li et al. (2020) achieved W."""
 
+# Normal generation for steganalysis: GENERATE_REVIEW with the paper's whole
+# bibliography offered instead of the keyed selection (the steganographic
+# scaffold), the writer picking about as many references as the stegotext
+# cites, at the stegotext's length.
+GENERATE_REVIEW_NORMAL = """You are writing the Related Work section of an academic paper.
+
+Paper: "{seed_title}"
+Abstract: {seed_abstract}
+
+Write a Related Work section that contextualizes this paper within the broader 
+research landscape. Organize thematically, grouping related works by research 
+direction or methodology across multiple paragraphs.
+
+Where works are closely related, discuss them together in the same sentence or 
+passage rather than giving each its own isolated sentence. Include contextual 
+sentences that provide background or transitions without citing specific papers.
+Some works may warrant more discussion than others depending on their relevance.
+
+Cite as "LastName (YEAR)" or "LastName et al. (YEAR)".
+Select approximately {n_refs} of the provided references that best fit the section;
+you do not need to use all of them. Cite each selected reference exactly once.
+Length: approximately {target_words} words."""
+
 GENERATE_REVIEW_BY_SENTENCES = """You are writing a related work section for an academic paper. Generate exactly {k} sentences, one for each reference listed below, in the given order.
 
 Requirements:

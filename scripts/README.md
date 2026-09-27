@@ -16,7 +16,8 @@ Run from anywhere; they locate the repo root themselves.
 | Script                 | What it runs                                                                                            |
 | ---------------------- | ------------------------------------------------------------------------------------------------------- |
 | `serve_local_model.sh` | Launch the pinned llama.cpp server (TopicQA/Story only). Pointer to `experiments/serve_local_model.sh`. |
-| `phase1_generate.sh`   | Phase 1 — generate stego / cover texts.                                                                 |
+| `phase1_generate.sh`   | Phase 1 — generate stegotexts.                                                                          |
+| `phase1_normal.sh`     | Phase 1b — a length-matched normal generation per stegotext, by its own synthesizer.                    |
 | `phase2_metrics.sh`    | Phase 2 — token counts, perplexity, stegoanalysis classifier + summary.                                 |
 | `phase3_attacks.sh`    | Phase 3 — apply the 5 attacks to stegos + covers.                                                       |
 | `phase4_decode.sh`     | Phase 4 — decode attacked stegos (BER) + attack-severity metrics.                                       |

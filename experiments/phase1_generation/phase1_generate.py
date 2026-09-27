@@ -1,57 +1,31 @@
-"""Phase 1: Generate stego (S), same-pipeline cover (C1), and second cover (C2)
-texts for all three systems.
+"""Phase 1: Generate stegotexts.
 
-The C2 cover differs by system. For topicqa/litreview it is a prompted
-GPT-4.1 cover. For story it is the "Option B" cover: a Qwen-generated free-form
-outline synthesized into prose by GPT-4.1 — this holds the plot-origin model
-(Qwen) and prose model (GPT-4.1) constant with the stego pipeline so the cover
-differs only in slot-list vs free outline, not in model style.
-
-One S + one C1 + one C2 per prompt, per experiment.md lines 144-153:
-    300 prompts × 1 message × 3 text types = 900 texts per system.
-
-Output layout matches experiment.md lines 33-42 (separate files per text_type):
-
-    data/experiments/phase1_texts/
-        topicqa_stego.jsonl
-        topicqa_cover_c1.jsonl
-        topicqa_cover_c2.jsonl
-        story_stego.jsonl
-        story_cover_c1.jsonl
-        story_cover_c2.jsonl
-        litreview_stego.jsonl
-        litreview_cover_c1.jsonl
-        litreview_cover_c2.jsonl
+One stegotext per prompt, written to
+``data/experiments/phase1_texts/{subdir}/{system}_stego.jsonl``. The normal
+generations steganalysis compares them with come from
+``phase1_normal`` (length matched to these stegotexts), so they are not made
+here. The Type-1 covertext (same pipeline, random message) is retired: with a
+uniform message it has the stegotext's distribution by construction.
 
 Usage:
-    python -m experiments.phase1_generation.phase1_generate --system topicqa
     python -m experiments.phase1_generation.phase1_generate --system story
     python -m experiments.phase1_generation.phase1_generate --system litreview
-    python -m experiments.phase1_generation.phase1_generate --system all
 
-    # Native-capacity robustness variant (auto-subdir {system}_cap{N}):
-    python -m experiments.phase1_generation.phase1_generate --system topicqa --capacity 6
+    # Native-capacity variant (auto-subdir {system}_cap{N}):
+    python -m experiments.phase1_generation.phase1_generate --system story --capacity 8
 """
 
 import argparse
 import json
 import logging
-import re
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 
-from experiments.utils.io import (
-    append_jsonl,
-    load_completed_ids,
-    load_records_map,
-    make_record_id,
-    model_slug,
-)
+from experiments.utils.configs import CONFIG_SYSTEMS, config_tag, default_config
+from experiments.utils.io import append_jsonl, load_records_map, make_record_id
 from experiments.utils.system_factory import (
-    LOCAL_MODEL,
     PROVIDERS,
     make_client,
     make_clients,
@@ -60,8 +34,7 @@ from experiments.utils.system_factory import (
     make_story,
     make_topicqa,
 )
-from experiments.utils.token_counter import count_tokens, count_words, round_words
-from systems.config.story_prompts import STORY_SYNTHESIS_PROMPT
+from experiments.utils.token_counter import count_tokens, count_words
 from systems.core.story_gen import LLAMACPP_NO_THINKING
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -73,156 +46,7 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _direct_gpt_call(client, prompt: str, max_tokens: int = 4000) -> str:
-    """Direct GPT-4.1 call for C2 cover text generation (no steg pipeline)."""
-    for attempt in range(3):
-        try:
-            r = client.chat.completions.create(
-                model="gpt-4.1",
-                temperature=0.7,
-                max_completion_tokens=max_tokens,
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            return r.choices[0].message.content.strip()
-        except Exception as e:
-            if attempt == 2:
-                raise
-            log.warning(f"GPT call retry {attempt + 1}: {e}")
-            time.sleep(2**attempt)
-    raise TimeoutError()
-
-
-def _direct_generator_call(
-    generator_client,
-    model: str,
-    prompt: str,
-    max_tokens: int = 3000,
-    temperature: float = 0.7,
-) -> str:
-    """Direct local-model call for C2 cover text generation (no steg pipeline).
-
-    Used for the story system's C2 so the cover generator model matches the
-    stego pipeline's plot-determining model (Qwen3.5-4B) instead of GPT-4.1.
-    Without this, stego (Qwen3.5 plot scaffold) vs C2 (GPT-4.1 plot) confounds
-    the slot mechanism with a model-style difference.
-    Thinking is disabled to match the slot-generation call configuration.
-    """
-    for attempt in range(3):
-        try:
-            r = generator_client.chat.completions.create(
-                model=model,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                extra_body={"chat_template_kwargs": {"enable_thinking": False}},
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            return r.choices[0].message.content.strip()
-        except Exception as e:
-            if attempt == 2:
-                raise
-            log.warning(f"Local call retry {attempt + 1}: {e}")
-            time.sleep(2**attempt)
-    raise TimeoutError()
-
-
-# Story C2 cover: free-form outline analogue of SLOT_GENERATION_PROMPT (no A/B
-# structure). Constraints mirror the slot prompt so the only difference between
-# stego and this cover is slot-list vs free outline, not the constraint set.
-STORY_OUTLINE_PROMPT = """Given the following story premise, generate exactly {n} concrete story beats that together outline the story.
-Each beat is one narrative event or detail in the story.
-
-Requirements:
-- Each beat must be a clearly distinguishable concrete object, location, method, action, or event (not an abstract quality).
-- Beats must focus on plot or setting choices (objects, locations, methods, events, physical descriptions). DO NOT make any beat about a character's name, identity, role, or personal attributes.
-- Beats should follow a natural narrative order (setup -> rising action -> climax -> resolution).
-- Each beat should be a short phrase (3-10 words).
-
-Output ONLY a JSON array of short strings. No explanation. NO code block or markdown wrapping!!
-Example: ["a sealed envelope slipped under the door", "an encrypted flash drive found in a drawer", "a tense confrontation on a rain-soaked rooftop"]
-
-Story premise: {premise}"""
-
-
-def _parse_json_list(raw: str) -> list[str]:
-    """Parse a JSON array of strings into a flat list of beats.
-
-    Tolerates code-fence wrapping and the common local-model failure mode of
-    emitting one single-element array (or a bare quoted string) per line
-    instead of a single array spanning the whole output.
-    """
-    raw = raw.strip()
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-
-    def _flatten(obj) -> list[str]:
-        if isinstance(obj, str):
-            return [obj.strip()] if obj.strip() else []
-        if isinstance(obj, list):
-            out: list[str] = []
-            for x in obj:
-                out.extend(_flatten(x))
-            return out
-        return []
-
-    # 1. Whole output as one JSON array spanning the full text.
-    start, end = raw.find("["), raw.rfind("]")
-    if start != -1 and end > start:
-        try:
-            return _flatten(json.loads(raw[start : end + 1]))
-        except json.JSONDecodeError:
-            pass
-
-    # 2. Per-line fallback: one JSON value (array or bare string) per line.
-    items: list[str] = []
-    for line in raw.splitlines():
-        line = line.strip().rstrip(",").strip()
-        if not line:
-            continue
-        try:
-            items.extend(_flatten(json.loads(line)))
-        except json.JSONDecodeError:
-            continue
-    if items:
-        return items
-
-    # 3. Last resort: pull quoted strings directly out of the raw text.
-    return [m.strip() for m in re.findall(r'"([^"]{3,})"', raw) if m.strip()]
-
-
-def _generate_story_outline_cover(
-    client, generator_client, generator_model: str, premise: str, n_beats: int
-) -> tuple[str, list[str]]:
-    """Story C2 cover: Qwen generates a free-form outline, GPT-4.1 synthesizes.
-
-    Holds the plot-origin model (Qwen) and the prose model (GPT-4.1) constant
-    with the stego pipeline. The only difference vs stego is that the plot
-    enters synthesis as a free outline rather than an A/B slot list, which
-    isolates whether the slot-encoding mechanism itself leaves a trace.
-    Uses the same STORY_SYNTHESIS_PROMPT as the stego pipeline.
-    """
-    raw = _direct_generator_call(
-        generator_client,
-        generator_model,
-        STORY_OUTLINE_PROMPT.format(n=n_beats, premise=premise),
-        max_tokens=2000,
-        temperature=0,
-    )
-    beats = _parse_json_list(raw)
-    if len(beats) < n_beats:
-        log.warning(f"  outline returned {len(beats)} beats, expected {n_beats}")
-    events_str = "\n".join(f"- {b}" for b in beats)
-    synth_prompt = STORY_SYNTHESIS_PROMPT.format(premise=premise, events_str=events_str)
-    text = _direct_gpt_call(client, synth_prompt)
-    return text, beats
-
-
-def _make_record(
+def make_text_record(
     record_id: str,
     system: str,
     text_type: str,
@@ -254,29 +78,14 @@ def _make_record(
     }
 
 
-def _out_paths(output_dir: Path, system: str) -> dict[str, Path]:
-    return {
-        "stego": output_dir / f"{system}_stego.jsonl",
-        "cover_c1": output_dir / f"{system}_cover_c1.jsonl",
-        "cover_c2": output_dir / f"{system}_cover_c2.jsonl",
-    }
-
-
-def _load_checkpoint(paths: dict[str, Path]) -> tuple[set[str], dict[str, dict]]:
-    """Aggregate completed ids and records across all per-type files for resumption."""
-    completed: set[str] = set()
-    records_map: dict[str, dict] = {}
-    for p in paths.values():
-        completed |= load_completed_ids(p)
-        records_map.update(load_records_map(p))
-    return completed, records_map
+def _stego_path(output_dir: Path, system: str) -> Path:
+    return output_dir / f"{system}_stego.jsonl"
 
 
 # ---------------------------------------------------------------------------
 # Configuration: generator, synthesizer, sampling (StorySlot / LitReview)
 # ---------------------------------------------------------------------------
 
-CONFIG_SYSTEMS = ("story", "litreview")
 CONFIG_FLAGS = (
     "synth_model",
     "synth_provider",
@@ -296,18 +105,6 @@ _RESUME_KEYS = (
 )
 
 
-def default_config(system: str) -> dict:
-    """The configuration every existing result was generated with."""
-    return {
-        "synth_model": "gpt-4.1",
-        "synth_provider": "openai",
-        "synth_temperature": 0.7 if system == "story" else 0.0,
-        "synth_top_p": 0.7,
-        "generator_model": LOCAL_MODEL if system == "story" else None,
-        "generator_provider": "local" if system == "story" else None,
-    }
-
-
 def resolve_config(system: str, args: argparse.Namespace) -> dict:
     """The default configuration with every flag the caller set applied."""
     config = default_config(system)
@@ -316,18 +113,6 @@ def resolve_config(system: str, args: argparse.Namespace) -> dict:
         if value is not None:
             config[key] = value
     return config
-
-
-def config_tag(system: str, config: dict) -> str:
-    """Subdir suffix naming a configuration, e.g.
-    'syn-deepseek-v4-flash_t1_p0.95_gen-qwen3.5-9b'."""
-    tag = (
-        f"syn-{model_slug(config['synth_model'])}"
-        f"_t{config['synth_temperature']:g}_p{config['synth_top_p']:g}"
-    )
-    if system == "story":
-        tag += f"_gen-{model_slug(config['generator_model'])}"
-    return tag
 
 
 def config_system_kwargs(system: str, config: dict, generator_extra_body) -> dict:
@@ -380,19 +165,18 @@ def generate_topicqa(
     prompts: list[dict],
     messages: dict,
     output_dir: Path,
-    stego_only: bool = False,
     n_subtopics: int = 12,
     group_size: int = 2,
 ):
-    """Generate TopicQA texts: 1 S + 1 C1 + 1 C2 per prompt (experiment.md Phase 1)."""
-    paths = _out_paths(output_dir, "topicqa")
+    """Generate one TopicQA stegotext per prompt."""
+    stego_path = _stego_path(output_dir, "topicqa")
     system = make_topicqa(
         client, generator_client, n_subtopics=n_subtopics, group_size=group_size
     )
-    completed, records_map = _load_checkpoint(paths)
+    records_map = load_records_map(stego_path)
+    completed = set(records_map)
 
     stego_msgs = messages["stego_messages"]
-    c1_msgs = messages["c1_messages"]
     n_prompts = len(prompts)
 
     log.info(f"TopicQA: {n_prompts} prompts, {len(completed)} records already done")
@@ -401,93 +185,28 @@ def generate_topicqa(
         question = prompt_data["question"]
         log.info(f"TopicQA prompt {p_idx + 1}/{n_prompts}: {question[:60]}...")
 
-        # --- Stego text (S) ---
         s_rid = make_record_id("topicqa", "stego", p_idx)
         if s_rid in completed:
-            stego_record = records_map[s_rid]
             log.info(f"  Skip {s_rid} (exists)")
-        else:
-            msg_bits = stego_msgs[p_idx]
-            text = system.hide_message(msg_bits, question)
-            stego_record = _make_record(
-                record_id=s_rid,
-                system="topicqa",
-                text_type="stego",
-                prompt_idx=p_idx,
-                prompt=question,
-                text=text,
-                message_bits=msg_bits,
-                system_state={
-                    "question": system._question,
-                    "error_encoded_length": system._error_encoded_length,
-                },
-                metadata=system._last_metadata,
-            )
-            append_jsonl(paths["stego"], stego_record)
-            records_map[s_rid] = stego_record
-            completed.add(s_rid)
-            log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
-
-        if stego_only:
             continue
-
-        # --- Same-pipeline cover (C1) ---
-        c1_rid = make_record_id("topicqa", "cover_c1", p_idx)
-        if c1_rid not in completed:
-            c1_bits = c1_msgs[p_idx]
-            c1_text = system.hide_message(c1_bits, question)
-            c1_record = _make_record(
-                record_id=c1_rid,
-                system="topicqa",
-                text_type="cover_c1",
-                prompt_idx=p_idx,
-                prompt=question,
-                text=c1_text,
-                message_bits=c1_bits,
-                system_state={
-                    "question": system._question,
-                    "error_encoded_length": system._error_encoded_length,
-                },
-                metadata=system._last_metadata,
-                paired_stego_id=s_rid,
-            )
-            append_jsonl(paths["cover_c1"], c1_record)
-            completed.add(c1_rid)
-            log.info(f"  Generated {c1_rid} ({c1_record['word_count']} words)")
-        else:
-            log.info(f"  Skip {c1_rid} (exists)")
-
-        # --- Prompted cover (C2); length target from stego ---
-        c2_rid = make_record_id("topicqa", "cover_c2", p_idx)
-        if c2_rid not in completed:
-            target_words = round_words(stego_record["word_count"])
-            c2_prompt = (
-                f"Answer the following question in approximately {target_words} words.\n\n"
-                f"Write the response as cohesive flowing prose. "
-                f"Do not use bullet points, numbered lists, section headers, or bold text.\n\n"
-                f"Question: {question}"
-            )
-            c2_text = _direct_gpt_call(client, c2_prompt)
-            c2_record = _make_record(
-                record_id=c2_rid,
-                system="topicqa",
-                text_type="cover_c2",
-                prompt_idx=p_idx,
-                prompt=question,
-                text=c2_text,
-                message_bits=None,
-                system_state=None,
-                metadata=None,
-                length_target=target_words,
-                paired_stego_id=s_rid,
-            )
-            append_jsonl(paths["cover_c2"], c2_record)
-            completed.add(c2_rid)
-            log.info(
-                f"  Generated {c2_rid} ({c2_record['word_count']} words, target={target_words})"
-            )
-        else:
-            log.info(f"  Skip {c2_rid} (exists)")
+        msg_bits = stego_msgs[p_idx]
+        text = system.hide_message(msg_bits, question)
+        stego_record = make_text_record(
+            record_id=s_rid,
+            system="topicqa",
+            text_type="stego",
+            prompt_idx=p_idx,
+            prompt=question,
+            text=text,
+            message_bits=msg_bits,
+            system_state={
+                "question": system._question,
+                "error_encoded_length": system._error_encoded_length,
+            },
+            metadata=system._last_metadata,
+        )
+        append_jsonl(stego_path, stego_record)
+        log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
 
 
 # ---------------------------------------------------------------------------
@@ -501,24 +220,23 @@ def generate_story(
     prompts: list[dict],
     messages: dict,
     output_dir: Path,
-    stego_only: bool = False,
     n_slots: int = 20,
     system_kwargs: dict | None = None,
 ):
-    """Generate StorySlot texts: 1 S + 1 C1 + 1 C2 per prompt.
+    """Generate one StorySlot stegotext per prompt.
 
     ``system_kwargs`` (see config_system_kwargs) selects a non-default
     generator/synthesizer configuration.
     """
-    paths = _out_paths(output_dir, "story")
+    stego_path = _stego_path(output_dir, "story")
     system = make_story(
         client, generator_client, n_slots=n_slots, **(system_kwargs or {})
     )
-    completed, records_map = _load_checkpoint(paths)
+    records_map = load_records_map(stego_path)
+    completed = set(records_map)
     _check_resume_config(records_map, system.generation_config())
 
     stego_msgs = messages["stego_messages"]
-    c1_msgs = messages["c1_messages"]
     n_prompts = len(prompts)
 
     log.info(f"StorySlot: {n_prompts} prompts, {len(completed)} records already done")
@@ -527,93 +245,28 @@ def generate_story(
         premise = prompt_data["premise"]
         log.info(f"StorySlot prompt {p_idx + 1}/{n_prompts}: {premise[:60]}...")
 
-        # --- Stego text (S) ---
         s_rid = make_record_id("story", "stego", p_idx)
         if s_rid in completed:
-            stego_record = records_map[s_rid]
             log.info(f"  Skip {s_rid} (exists)")
-        else:
-            msg_bits = stego_msgs[p_idx]
-            text = system.hide_message(msg_bits, premise)
-            stego_record = _make_record(
-                record_id=s_rid,
-                system="story",
-                text_type="stego",
-                prompt_idx=p_idx,
-                prompt=premise,
-                text=text,
-                message_bits=msg_bits,
-                system_state={
-                    "premise": system._premise,
-                    "error_encoded_length": system._error_encoded_length,
-                },
-                metadata=system._last_metadata,
-            )
-            append_jsonl(paths["stego"], stego_record)
-            records_map[s_rid] = stego_record
-            completed.add(s_rid)
-            log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
-
-        if stego_only:
             continue
-
-        # --- Same-pipeline cover (C1) ---
-        c1_rid = make_record_id("story", "cover_c1", p_idx)
-        if c1_rid not in completed:
-            c1_bits = c1_msgs[p_idx]
-            c1_text = system.hide_message(c1_bits, premise)
-            c1_record = _make_record(
-                record_id=c1_rid,
-                system="story",
-                text_type="cover_c1",
-                prompt_idx=p_idx,
-                prompt=premise,
-                text=c1_text,
-                message_bits=c1_bits,
-                system_state={
-                    "premise": system._premise,
-                    "error_encoded_length": system._error_encoded_length,
-                },
-                metadata=system._last_metadata,
-                paired_stego_id=s_rid,
-            )
-            append_jsonl(paths["cover_c1"], c1_record)
-            completed.add(c1_rid)
-            log.info(f"  Generated {c1_rid} ({c1_record['word_count']} words)")
-        else:
-            log.info(f"  Skip {c1_rid} (exists)")
-
-        # --- Second cover (C2): Qwen outline + GPT-4.1 synthesis, no bit slots ---
-        c2_rid = make_record_id("story", "cover_c2", p_idx)
-        if c2_rid not in completed:
-            c2_text, c2_beats = _generate_story_outline_cover(
-                client,
-                generator_client,
-                system.generator_model,
-                premise,
-                system.n_slots,
-            )
-            c2_record = _make_record(
-                record_id=c2_rid,
-                system="story",
-                text_type="cover_c2",
-                prompt_idx=p_idx,
-                prompt=premise,
-                text=c2_text,
-                message_bits=None,
-                system_state=None,
-                metadata={
-                    "outline": c2_beats,
-                    "outline_generator": system.generator_model,
-                },
-                length_target=round_words(stego_record["word_count"]),
-                paired_stego_id=s_rid,
-            )
-            append_jsonl(paths["cover_c2"], c2_record)
-            completed.add(c2_rid)
-            log.info(f"  Generated {c2_rid} ({c2_record['word_count']} words)")
-        else:
-            log.info(f"  Skip {c2_rid} (exists)")
+        msg_bits = stego_msgs[p_idx]
+        text = system.hide_message(msg_bits, premise)
+        stego_record = make_text_record(
+            record_id=s_rid,
+            system="story",
+            text_type="stego",
+            prompt_idx=p_idx,
+            prompt=premise,
+            text=text,
+            message_bits=msg_bits,
+            system_state={
+                "premise": system._premise,
+                "error_encoded_length": system._error_encoded_length,
+            },
+            metadata=system._last_metadata,
+        )
+        append_jsonl(stego_path, stego_record)
+        log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
 
 
 # ---------------------------------------------------------------------------
@@ -626,26 +279,23 @@ def generate_litreview(
     corpus_indices: list[int],
     messages: dict,
     output_dir: Path,
-    stego_only: bool = False,
     system_kwargs: dict | None = None,
 ):
-    """Generate LitReview texts: 1 S + 1 C1 + 1 C2 per prompt.
+    """Generate one LitReview stegotext per prompt.
 
     ``system_kwargs`` (see config_system_kwargs) selects a non-default
     synthesizer configuration.
     """
-    paths = _out_paths(output_dir, "litreview")
+    stego_path = _stego_path(output_dir, "litreview")
     system = make_litreview(client, **(system_kwargs or {}))
-    completed, records_map = _load_checkpoint(paths)
+    records_map = load_records_map(stego_path)
+    completed = set(records_map)
     _check_resume_config(records_map, system.generation_config())
 
     stego_msgs = messages["stego_messages"]
-    c1_msgs = messages["c1_messages"]
     n_prompts = len(corpus_indices)
 
     log.info(f"LitReview: {n_prompts} prompts, {len(completed)} records already done")
-
-    from systems.core.litreview import prepare_references
 
     failures_path = output_dir / "litreview_failures.jsonl"
 
@@ -657,142 +307,47 @@ def generate_litreview(
             f"LitReview prompt {p_idx + 1}/{n_prompts}: [{corpus_idx}] {paper_title[:60]}..."
         )
 
-        # --- Stego text (S) ---
         s_rid = make_record_id("litreview", "stego", p_idx)
         if s_rid in completed:
-            stego_record = records_map[s_rid]
             log.info(f"  Skip {s_rid} (exists)")
-        else:
-            msg_bits = stego_msgs[p_idx]
-            try:
-                text = system.hide_message(msg_bits, corpus_idx)
-            except ValueError as e:
-                # Greedy ref-selection failure for this (paper, message) pair.
-                # Log and skip — we'll top up these slots in a follow-up pass.
-                log.warning(f"  SKIP {s_rid} encode failure: {e}")
-                append_jsonl(
-                    failures_path,
-                    {
-                        "id": s_rid,
-                        "stage": "stego",
-                        "prompt_idx": p_idx,
-                        "corpus_idx": corpus_idx,
-                        "paper_title": paper_title,
-                        "message_bits": msg_bits,
-                        "error": str(e),
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    },
-                )
-                continue
-            stego_record = _make_record(
-                record_id=s_rid,
-                system="litreview",
-                text_type="stego",
-                prompt_idx=p_idx,
-                prompt=paper_title,
-                text=text,
-                message_bits=msg_bits,
-                system_state={
-                    "error_encoded_length": system._error_encoded_length,
-                    "corpus_idx": corpus_idx,
-                },
-                metadata=system._last_metadata,
-            )
-            append_jsonl(paths["stego"], stego_record)
-            records_map[s_rid] = stego_record
-            completed.add(s_rid)
-            log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
-
-        if stego_only:
             continue
-
-        # --- Same-pipeline cover (C1) ---
-        c1_rid = make_record_id("litreview", "cover_c1", p_idx)
-        if c1_rid not in completed:
-            c1_bits = c1_msgs[p_idx]
-            try:
-                c1_text = system.hide_message(c1_bits, corpus_idx)
-            except ValueError as e:
-                log.warning(f"  SKIP {c1_rid} encode failure: {e}")
-                append_jsonl(
-                    failures_path,
-                    {
-                        "id": c1_rid,
-                        "stage": "cover_c1",
-                        "prompt_idx": p_idx,
-                        "corpus_idx": corpus_idx,
-                        "paper_title": paper_title,
-                        "message_bits": c1_bits,
-                        "error": str(e),
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    },
-                )
-                continue
-            c1_record = _make_record(
-                record_id=c1_rid,
-                system="litreview",
-                text_type="cover_c1",
-                prompt_idx=p_idx,
-                prompt=paper_title,
-                text=c1_text,
-                message_bits=c1_bits,
-                system_state={
-                    "error_encoded_length": system._error_encoded_length,
+        msg_bits = stego_msgs[p_idx]
+        try:
+            text = system.hide_message(msg_bits, corpus_idx)
+        except ValueError as e:
+            # Greedy ref-selection failure for this (paper, message) pair.
+            # Log and skip — we'll top up these slots in a follow-up pass.
+            log.warning(f"  SKIP {s_rid} encode failure: {e}")
+            append_jsonl(
+                failures_path,
+                {
+                    "id": s_rid,
+                    "stage": "stego",
+                    "prompt_idx": p_idx,
                     "corpus_idx": corpus_idx,
+                    "paper_title": paper_title,
+                    "message_bits": msg_bits,
+                    "error": str(e),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
-                metadata=system._last_metadata,
-                paired_stego_id=s_rid,
             )
-            append_jsonl(paths["cover_c1"], c1_record)
-            completed.add(c1_rid)
-            log.info(f"  Generated {c1_rid} ({c1_record['word_count']} words)")
-        else:
-            log.info(f"  Skip {c1_rid} (exists)")
-
-        # --- Prompted cover (C2) ---
-        c2_rid = make_record_id("litreview", "cover_c2", p_idx)
-        if c2_rid not in completed:
-            target_words = round_words(stego_record["word_count"])
-            n_refs_target = len(stego_record["metadata"]["selected_refs"])
-            all_refs = prepare_references(paper["references"])
-            ref_list = "\n".join(
-                f"- {r['author_text']} ({r['year']}). {r['ref_title']}"
-                for r in all_refs
-            )
-            seed_abstract = (paper.get("abstract") or "")[:600]
-            c2_prompt = (
-                f"You are writing the Related Work section of an academic paper.\n"
-                f"Paper: {paper_title}\n"
-                f"Abstract: {seed_abstract}\n"
-                f"Write a Related Work section that contextualizes this paper within the broader research landscape. Organize thematically, grouping related works by research direction or methodology across multiple paragraphs."
-                f"Where works are closely related, discuss them together in the same sentence or passage rather than giving each its own isolated sentence. Include contextual sentences that provide background or transitions without citing specific papers. Some works may warrant more discussion than others depending on their relevance.\n"
-                f"""Cite as "LastName (YEAR)" or "LastName et al. (YEAR)". Each cited reference should appear exactly once."""
-                f"Select approximately {n_refs_target} references from the list below that best fit the section — choose references that flow naturally together; you do NOT need to use all of them.\n"
-                f"Length: approximately {target_words} words.\n"
-                f"Available references:\n"
-                f"{ref_list}"
-            )
-            c2_text = _direct_gpt_call(client, c2_prompt, max_tokens=8000)
-            c2_record = _make_record(
-                record_id=c2_rid,
-                system="litreview",
-                text_type="cover_c2",
-                prompt_idx=p_idx,
-                prompt=paper_title,
-                text=c2_text,
-                message_bits=None,
-                system_state=None,
-                metadata=None,
-                length_target=target_words,
-                paired_stego_id=s_rid,
-            )
-            append_jsonl(paths["cover_c2"], c2_record)
-            completed.add(c2_rid)
-            log.info(
-                f"  Generated {c2_rid} ({c2_record['word_count']} words, target={target_words})"
-            )
-        else:
-            log.info(f"  Skip {c2_rid} (exists)")
+            continue
+        stego_record = make_text_record(
+            record_id=s_rid,
+            system="litreview",
+            text_type="stego",
+            prompt_idx=p_idx,
+            prompt=paper_title,
+            text=text,
+            message_bits=msg_bits,
+            system_state={
+                "error_encoded_length": system._error_encoded_length,
+                "corpus_idx": corpus_idx,
+            },
+            metadata=system._last_metadata,
+        )
+        append_jsonl(stego_path, stego_record)
+        log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
 
 
 # ---------------------------------------------------------------------------
@@ -985,23 +540,19 @@ def calibrate_repetitions(
 
 
 def generate_baseline_lm(
-    client,
     system_name: str,
     prompts: list[dict],
     messages: dict,
     output_dir: Path,
-    stego_only: bool = False,
     repetitions: int = 1,
     target_words: int = BASELINE_LM_TARGET_WORDS,
     syncpool: bool = True,
 ):
-    """Generate Discop texts: 1 S + 1 C1 + 1 C2 per prompt.
+    """Generate one Discop stegotext per prompt.
 
-    These token-level baselines encode over a local GPT-2 (no API call for
-    S/C1); the prompt ``seed`` doubles as the LM generation context and is saved
-    in ``system_state['context']`` so Phase 4 can re-run decoding. C2 is a
-    length-matched GPT-4.1 continuation of the same context (the prompted-cover
-    analog for a raw continuation channel).
+    The token-level baseline encodes over a local GPT-2 (no API call); the
+    prompt ``seed`` doubles as the LM generation context and is saved in
+    ``system_state['context']`` so Phase 4 can re-run decoding.
 
     ``repetitions`` is the repetition-code rate (see `calibrate_repetitions`). It
     is written to ``system_state`` because the decode-side system is built at the
@@ -1014,11 +565,11 @@ def generate_baseline_lm(
         syncpool=syncpool,
     )
 
-    paths = _out_paths(output_dir, system_name)
-    completed, records_map = _load_checkpoint(paths)
+    stego_path = _stego_path(output_dir, system_name)
+    records_map = load_records_map(stego_path)
+    completed = set(records_map)
 
     stego_msgs = messages["stego_messages"]
-    c1_msgs = messages["c1_messages"]
     n_prompts = len(prompts)
     degenerate_prompts: list[int] = []
 
@@ -1030,116 +581,46 @@ def generate_baseline_lm(
         seed = prompt_data["seed"]
         log.info(f"{system_name} prompt {p_idx + 1}/{n_prompts}: {seed[:60]}...")
 
-        # --- Stego text (S) ---
         s_rid = make_record_id(system_name, "stego", p_idx)
         if s_rid in completed:
-            stego_record = records_map[s_rid]
             log.info(f"  Skip {s_rid} (exists)")
-        else:
-            msg_bits = stego_msgs[p_idx]
-            try:
-                text = system.hide_message(msg_bits, seed)
-            except ValueError as exc:
-                # A degenerate trajectory (GPT-2 in a repetition loop, zero
-                # embedding rate) is a property of this prompt/payload draw, not
-                # of the run. Skipping costs one document; aborting costs the
-                # hours already spent. Counted and reported at the end so the
-                # shortfall is never silent.
-                degenerate_prompts.append(p_idx)
-                log.warning(f"  SKIP {s_rid}: {exc}")
-                continue
-            stego_record = _make_record(
-                record_id=s_rid,
-                system=system_name,
-                text_type="stego",
-                prompt_idx=p_idx,
-                prompt=seed,
-                text=text,
-                message_bits=msg_bits,
-                system_state={
-                    "context": system._context,
-                    "error_encoded_length": system._error_encoded_length,
-                    "repetitions": repetitions,
-                    "interleave": getattr(system.ecc, "interleave", False),
-                    # Decoding a SyncPool stream without SyncPool (or the
-                    # reverse) yields chance, so the setting has to travel with
-                    # the record just as the ECC layout does.
-                    "syncpool": getattr(system, "syncpool", False),
-                },
-                metadata=system._last_metadata,
-            )
-            append_jsonl(paths["stego"], stego_record)
-            records_map[s_rid] = stego_record
-            completed.add(s_rid)
-            _warn_if_truncated(s_rid, stego_record)
-            _warn_if_off_target(s_rid, stego_record, target_words)
-            log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
-
-        if stego_only:
             continue
-
-        # --- Same-pipeline cover (C1) ---
-        c1_rid = make_record_id(system_name, "cover_c1", p_idx)
-        if c1_rid not in completed:
-            c1_bits = c1_msgs[p_idx]
-            c1_text = system.hide_message(c1_bits, seed)
-            c1_record = _make_record(
-                record_id=c1_rid,
-                system=system_name,
-                text_type="cover_c1",
-                prompt_idx=p_idx,
-                prompt=seed,
-                text=c1_text,
-                message_bits=c1_bits,
-                system_state={
-                    "context": system._context,
-                    "error_encoded_length": system._error_encoded_length,
-                    "repetitions": repetitions,
-                    "interleave": getattr(system.ecc, "interleave", False),
-                    # Decoding a SyncPool stream without SyncPool (or the
-                    # reverse) yields chance, so the setting has to travel with
-                    # the record just as the ECC layout does.
-                    "syncpool": getattr(system, "syncpool", False),
-                },
-                metadata=system._last_metadata,
-                paired_stego_id=s_rid,
-            )
-            append_jsonl(paths["cover_c1"], c1_record)
-            completed.add(c1_rid)
-            log.info(f"  Generated {c1_rid} ({c1_record['word_count']} words)")
-        else:
-            log.info(f"  Skip {c1_rid} (exists)")
-
-        # --- Prompted cover (C2); length target from stego ---
-        c2_rid = make_record_id(system_name, "cover_c2", p_idx)
-        if c2_rid not in completed:
-            target_words = round_words(stego_record["word_count"])
-            c2_prompt = (
-                f"Continue the following text naturally as cohesive flowing prose "
-                f"for approximately {target_words} words. Do not use bullet points, "
-                f"numbered lists, or section headers.\n\n{seed}"
-            )
-            c2_text = _direct_gpt_call(client, c2_prompt)
-            c2_record = _make_record(
-                record_id=c2_rid,
-                system=system_name,
-                text_type="cover_c2",
-                prompt_idx=p_idx,
-                prompt=seed,
-                text=c2_text,
-                message_bits=None,
-                system_state=None,
-                metadata=None,
-                length_target=target_words,
-                paired_stego_id=s_rid,
-            )
-            append_jsonl(paths["cover_c2"], c2_record)
-            completed.add(c2_rid)
-            log.info(
-                f"  Generated {c2_rid} ({c2_record['word_count']} words, target={target_words})"
-            )
-        else:
-            log.info(f"  Skip {c2_rid} (exists)")
+        msg_bits = stego_msgs[p_idx]
+        try:
+            text = system.hide_message(msg_bits, seed)
+        except ValueError as exc:
+            # A degenerate trajectory (GPT-2 in a repetition loop, zero
+            # embedding rate) is a property of this prompt/payload draw, not
+            # of the run. Skipping costs one document; aborting costs the
+            # hours already spent. Counted and reported at the end so the
+            # shortfall is never silent.
+            degenerate_prompts.append(p_idx)
+            log.warning(f"  SKIP {s_rid}: {exc}")
+            continue
+        stego_record = make_text_record(
+            record_id=s_rid,
+            system=system_name,
+            text_type="stego",
+            prompt_idx=p_idx,
+            prompt=seed,
+            text=text,
+            message_bits=msg_bits,
+            system_state={
+                "context": system._context,
+                "error_encoded_length": system._error_encoded_length,
+                "repetitions": repetitions,
+                "interleave": getattr(system.ecc, "interleave", False),
+                # Decoding a SyncPool stream without SyncPool (or the
+                # reverse) yields chance, so the setting has to travel with
+                # the record just as the ECC layout does.
+                "syncpool": getattr(system, "syncpool", False),
+            },
+            metadata=system._last_metadata,
+        )
+        append_jsonl(stego_path, stego_record)
+        _warn_if_truncated(s_rid, stego_record)
+        _warn_if_off_target(s_rid, stego_record, target_words)
+        log.info(f"  Generated {s_rid} ({stego_record['word_count']} words)")
 
     if degenerate_prompts:
         log.warning(
@@ -1189,11 +670,6 @@ def main():
         type=int,
         default=None,
         help="Only generate texts for the first N prompts per system (default: all).",
-    )
-    parser.add_argument(
-        "--stego-only",
-        action="store_true",
-        help="Generate only stego (S) texts; skip all cover texts (C1/C2).",
     )
     parser.add_argument(
         "--subdir",
@@ -1292,8 +768,7 @@ def main():
         "Generator, synthesizer and sampling. Unset flags keep the configuration "
         "every existing result was generated with (GPT-4.1 synthesizer via OpenAI, "
         "top_p 0.7, T 0.7 for story / 0 for litreview; local LOCAL_MODEL generator). "
-        "A non-default configuration writes to a subdir suffixed with its tag and "
-        "requires --stego-only.",
+        "A non-default configuration writes to a subdir suffixed with its tag.",
     )
     config_group.add_argument("--synth-model", default=None, help="Synthesizer model.")
     config_group.add_argument(
@@ -1345,11 +820,6 @@ def main():
         config = resolve_config(args.system, args)
         if config == default_config(args.system):
             config = None
-        elif not args.stego_only:
-            parser.error(
-                "a non-default configuration needs --stego-only: covers for "
-                "configurations come with the normal-generation rework."
-            )
     hosted_generator = config is not None and config["generator_provider"] not in (
         None,
         "local",
@@ -1403,8 +873,6 @@ def main():
     log.info(f"Output directory: {output_dir}")
     if args.limit is not None:
         log.info(f"Limiting to first {args.limit} prompt(s) per system")
-    if args.stego_only:
-        log.info("Stego-only mode: cover texts (C1/C2) skipped")
 
     # --- Messages: inline regen for capacity variant, else load shared messages.json ---
     if args.capacity is not None:
@@ -1428,12 +896,10 @@ def main():
         rng = np.random.default_rng(42 + args.capacity)
         n_prompts_msg = 300  # matches expand_prompts.TARGET_MESSAGES
         stego = rng.integers(0, 2, size=(n_prompts_msg, args.capacity)).tolist()
-        c1 = rng.integers(0, 2, size=(n_prompts_msg, args.capacity)).tolist()
         all_messages = {
             args.system: {
                 "num_bits": args.capacity,
                 "stego_messages": stego,
-                "c1_messages": c1,
             }
         }
         # Persist for traceability + Phase 4 sanity checks.
@@ -1452,7 +918,7 @@ def main():
             )
         )
         log.info(
-            f"Wrote variant messages.json ({args.capacity} bits, {n_prompts_msg} per type) to {msgs_path}"
+            f"Wrote variant messages.json ({args.capacity} bits, {n_prompts_msg} prompts) to {msgs_path}"
         )
     else:
         with open(prompts_dir / "messages.json") as f:
@@ -1485,7 +951,6 @@ def main():
             prompts,
             all_messages["topicqa"],
             output_dir,
-            stego_only=args.stego_only,
             n_subtopics=topicqa_n_subtopics,
             group_size=args.group_size,
         )
@@ -1502,7 +967,6 @@ def main():
             prompts,
             all_messages["story"],
             output_dir,
-            stego_only=args.stego_only,
             n_slots=story_n_slots,
             system_kwargs=system_kwargs,
         )
@@ -1518,7 +982,6 @@ def main():
             indices,
             all_messages["litreview"],
             output_dir,
-            stego_only=args.stego_only,
             system_kwargs=system_kwargs,
         )
 
@@ -1558,12 +1021,10 @@ def main():
             )
 
         generate_baseline_lm(
-            client,
             args.system,
             prompts,
             all_messages[args.system],
             output_dir,
-            stego_only=args.stego_only,
             repetitions=repetitions,
             target_words=args.target_words,
             syncpool=args.syncpool,

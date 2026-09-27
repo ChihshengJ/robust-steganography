@@ -28,12 +28,7 @@
 #   DATA_DIR, PYTHON                         (see _common.sh)
 #
 # STEGO ONLY. This script produces the *recovery* curve, and only stego texts
-# carry bits. C1 (same-pipeline cover) and C2 (prompted GPT-4.1 cover) exist for
-# the steganalysis/detection experiment; here they are pure cost — C1 is a second
-# full GPT-2 encode per prompt and C2 is an API call — so Phase 1 runs
-# --stego-only and Phase 3 --skip-covers. That roughly halves Phase 1, removes
-# its API dependency entirely, and drops Phase 3 from 850 attacked records
-# to 810.
+# carry bits, so Phase 3 runs --skip-covers.
 #
 # Extra args are forwarded to Phase 1 only (e.g. --limit 2 for a smoke run).
 #
@@ -92,7 +87,7 @@ has_phase() { [[ " $PHASES " == *" $1 "* ]]; }
 if has_phase 1; then
     p1=( --system "$SYSTEM" --data-dir "$DATA_DIR" --capacity "$CAPACITY"
          --subdir "$SUBDIR" --syncpool --length-matched
-         --target-words "$TARGET_WORDS" --stego-only )
+         --target-words "$TARGET_WORDS" )
     [ -n "${REPETITIONS:-}" ] && p1+=( --repetitions "$REPETITIONS" )
     run_py experiments.phase1_generation.phase1_generate "${p1[@]}" "$@"
 fi

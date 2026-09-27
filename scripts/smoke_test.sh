@@ -16,6 +16,7 @@ run "${PYTHON[@]}" - <<'PY'
 import importlib
 mods = [
     "experiments.phase1_generation.phase1_generate",
+    "experiments.phase1_generation.phase1_normal",
     "experiments.phase2_metrics.phase2a_token_counts",
     "experiments.phase2_metrics.phase2b_perplexity",
     "experiments.phase2_metrics.phase2c_transformer",
@@ -40,7 +41,7 @@ run_py experiments.phase4_decode.phase4a_decode --data-dir "$DATA_DIR" --dry-run
 
 if [ "${RUN_API_SMOKE:-0}" = "1" ]; then
     log "API smoke: one LitReview stego (1 prompt, spends a little OpenAI credit)…"
-    SYSTEM=litreview SUBDIR='' "$REPO_ROOT/scripts/phase1_generate.sh" --limit 1 --stego-only
+    SYSTEM=litreview SUBDIR='' "$REPO_ROOT/scripts/phase1_generate.sh" --limit 1
 fi
 
 log "Smoke test complete."

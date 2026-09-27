@@ -105,3 +105,12 @@ Rules:
 
 Respond with a JSON object: {{"chunks": ["chunk1", "chunk2", ...]}}
 Output only valid JSON, no preamble."""
+
+
+# Normal generation for steganalysis: STORY_SYNTHESIS_PROMPT without the
+# details to include (the steganographic scaffold), plus the length of the
+# stegotext it is compared with.
+STORY_NORMAL_PROMPT = """Write a short story of approximately {target_words} words based on the following premise.
+Use flowing prose with natural pacing. Develop the story through concrete actions, physical detail, and brief dialogue only where it advances the plot. Vary paragraph length naturally.
+
+Premise: {premise}"""

@@ -76,6 +76,24 @@ def make_client(provider: str) -> openai.OpenAI:
     raise ValueError(f"unknown provider {provider!r}; choose from {PROVIDERS}")
 
 
+def provider_for_base_url(base_url: str | None) -> str:
+    """The provider behind a base URL recorded in a generation config, so a
+    stored config can be served again with ``make_client``. None is OpenAI:
+    records from before base URLs were recorded all used it."""
+    if base_url is None:
+        return "openai"
+    openai_url = os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1"
+    urls = {
+        "openai": openai_url,
+        "together": TOGETHER_BASE_URL,
+        "local": LOCAL_BASE_URL,
+    }
+    for provider, url in urls.items():
+        if base_url.rstrip("/") == url.rstrip("/"):
+            return provider
+    raise ValueError(f"no provider serves {base_url!r}; known: {urls}")
+
+
 def make_topicqa(
     client: openai.OpenAI,
     generator_client: openai.OpenAI,

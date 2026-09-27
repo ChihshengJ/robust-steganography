@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Phase 1 — generate stego (S), same-pipeline cover (C1) and prompted cover (C2)
-# texts. API-heavy. Long-form QA and StoryGen additionally need the local llama.cpp
+# Phase 1 — generate stegotexts. API-heavy. The normal generations steganalysis
+# compares them with come from scripts/phase1_normal.sh. Long-form QA and StoryGen additionally need the local llama.cpp
 # server up (scripts/serve_local_model.sh); LitReview does not.
 #
 # Two layouts, selected by how you call it:
@@ -19,9 +19,9 @@
 # Configuration (story/litreview; unset = the default configuration):
 #     SYNTH_MODEL, SYNTH_PROVIDER, SYNTH_TEMPERATURE, SYNTH_TOP_P,
 #     GENERATOR_MODEL, GENERATOR_PROVIDER, GENERATOR_EXTRA_BODY (story only).
-# A non-default configuration needs --stego-only and writes to a tagged subdir:
+# A non-default configuration writes to a tagged subdir:
 #     SYSTEM=litreview CAPACITY=16 SYNTH_PROVIDER=together \
-#         SYNTH_MODEL=deepseek-ai/DeepSeek-V4-Flash scripts/phase1_generate.sh --stego-only
+#         SYNTH_MODEL=deepseek-ai/DeepSeek-V4-Flash scripts/phase1_generate.sh
 #
 # Env knobs: SYSTEM (default all), CAPACITY, SUBDIR, DATA_DIR, PYTHON.
 # Anything else is forwarded, e.g.:  scripts/phase1_generate.sh --limit 5 --dry-run

@@ -64,7 +64,7 @@ def load_records_map(path: str | Path) -> dict[str, dict]:
     return {r["id"]: r for r in records if "id" in r}
 
 
-_TYPE_SHORT = {"stego": "s", "cover_c1": "c1", "cover_c2": "c2"}
+_TYPE_SHORT = {"stego": "s", "normal": "n", "cover_c1": "c1", "cover_c2": "c2"}
 
 
 def make_record_id(system: str, text_type: str, prompt_idx: int) -> str:
