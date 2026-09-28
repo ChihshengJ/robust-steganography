@@ -13,6 +13,11 @@ Usage:
 
     # Native-capacity variant (auto-subdir {system}_cap{N}):
     python -m experiments.phase1_generation.phase1_generate --system story --capacity 8
+
+    # A payload-grid cell (subdir recovery/story_cap16_syn-..._gen-...):
+    python -m experiments.phase1_generation.phase1_generate --system story \
+        --capacity 16 --track recovery --synth-provider together \
+        --synth-model deepseek-ai/DeepSeek-V4.1-Flash --generator-model ...
 """
 
 import argparse
@@ -24,7 +29,12 @@ from pathlib import Path
 import numpy as np
 
 from experiments.utils.configs import CONFIG_SYSTEMS, config_tag, default_config
-from experiments.utils.io import append_jsonl, load_records_map, make_record_id
+from experiments.utils.io import (
+    TRACKS,
+    append_jsonl,
+    load_records_map,
+    make_record_id,
+)
 from experiments.utils.system_factory import (
     PROVIDERS,
     make_client,
@@ -672,6 +682,16 @@ def main():
         ),
     )
     parser.add_argument(
+        "--track",
+        choices=TRACKS,
+        default=None,
+        help=(
+            "Write the cell under phase1_texts/{track}/: detection texts "
+            "(steganalysis, quality) and recovery texts (attacks, decoding) are "
+            "generated separately. Default: no track (the camera-ready layout)."
+        ),
+    )
+    parser.add_argument(
         "--capacity",
         type=int,
         default=None,
@@ -845,6 +865,9 @@ def main():
         tag = config_tag(args.system, config)
         args.subdir = f"{args.subdir}_{tag}" if args.subdir else tag
         log.info(f"Configuration {config}; subdir {args.subdir!r}")
+    if args.track is not None:
+        args.subdir = f"{args.track}/{args.subdir}" if args.subdir else args.track
+        log.info(f"Track {args.track}; subdir {args.subdir!r}")
 
     prompts_dir = args.data_dir / "prompts"
     output_dir = args.data_dir / "phase1_texts"

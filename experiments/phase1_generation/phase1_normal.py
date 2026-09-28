@@ -19,7 +19,7 @@ to ``{system}_normal_failures.jsonl`` and are retried on the next run.
 Usage:
     # A normal generation for every stegotext in the matching dirs:
     python -m experiments.phase1_generation.phase1_normal --system story \\
-        --dirs 'story_cap*'
+        --dirs 'detection/story_cap*'
 """
 
 from __future__ import annotations
@@ -313,7 +313,7 @@ def main() -> None:
     stego_dirs = find_stego_dirs(phase1_root, args.system, args.dirs)
     if not stego_dirs:
         parser.error(f"no {args.system}_stego.jsonl under {phase1_root}/{args.dirs}")
-    log.info(f"Stego dirs: {[d.name for d in stego_dirs]}")
+    log.info(f"Stego dirs: {[str(d.relative_to(phase1_root)) for d in stego_dirs]}")
 
     corpus = (
         load_corpus(*litreview_references()) if args.system == "litreview" else None

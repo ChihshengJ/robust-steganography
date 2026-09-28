@@ -28,7 +28,7 @@
 #   DATA_DIR, PYTHON                         (see _common.sh)
 #
 # STEGO ONLY. This script produces the *recovery* curve, and only stego texts
-# carry bits, so Phase 3 runs --skip-covers.
+# carry bits (Phase 3 attacks only stegotexts).
 #
 # Extra args are forwarded to Phase 1 only (e.g. --limit 2 for a smoke run).
 #
@@ -95,7 +95,7 @@ fi
 if has_phase 3; then
     run_py experiments.phase3_attacks \
         --system "$SYSTEM" --data-dir "$DATA_DIR" --subdir "$SUBDIR" \
-        --max-workers "$MAX_WORKERS" --skip-covers
+        --max-workers "$MAX_WORKERS"
 fi
 
 if has_phase 4; then

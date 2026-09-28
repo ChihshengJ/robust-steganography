@@ -40,7 +40,13 @@ import numpy as np
 from tqdm import tqdm
 
 from experiments.utils.attackers import attacker_of
-from experiments.utils.io import append_jsonl, load_completed_ids, read_jsonl
+from experiments.utils.io import (
+    TRACKS,
+    append_jsonl,
+    load_completed_ids,
+    read_jsonl,
+    resolve_subdir,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", force=True
@@ -354,6 +360,15 @@ def main():
         ),
     )
     parser.add_argument(
+        "--track",
+        choices=TRACKS,
+        default=None,
+        help=(
+            "Read and write the cell under {track}/ (see phase1_generate --track); "
+            "with --capacity, the track's one cell at that F."
+        ),
+    )
+    parser.add_argument(
         "--sbert-model",
         default=SBERT_DEFAULT,
         help=f"Sentence-transformer model for cosine sim (default: {SBERT_DEFAULT}).",
@@ -377,14 +392,18 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.capacity is not None:
-        if args.system == "all":
-            parser.error(
-                "--capacity requires --system to be one of story/litreview (not 'all')."
-            )
-        if args.subdir == "recovery_test":
-            args.subdir = f"{args.system}_cap{args.capacity}"
-            log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")
+    if args.capacity is not None and args.system == "all":
+        parser.error(
+            "--capacity requires --system to be one of story/litreview (not 'all')."
+        )
+    args.subdir = resolve_subdir(
+        args.data_dir / "phase1_texts",
+        args.system,
+        args.capacity,
+        args.subdir,
+        args.track,
+        default_subdir="recovery_test",
+    )
 
     phase3_dir = args.data_dir / "phase3_attacks"
     out_dir = args.data_dir / "phase4_decode"

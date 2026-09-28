@@ -15,6 +15,16 @@
 #         SYSTEM=story   CAPACITY=16 scripts/phase1_generate.sh   # 16 slots (G asked for 18)
 #         SYSTEM=litreview CAPACITY=20 scripts/phase1_generate.sh
 #
+#   * Payload-grid cells (ARR revision): TRACK=detection|recovery writes the
+#     cell under phase1_texts/{track}/, since detection and recovery texts are
+#     generated separately. LitReview's grid inputs are LITREVIEW_INDICES=
+#     litreview_indices_min80.json. Generate ~40 inputs (--limit 40), then pick
+#     the shared 30 with experiments.phase1_generation.select_inputs:
+#         SYSTEM=litreview CAPACITY=16 TRACK=recovery SYNTH_PROVIDER=together \
+#             SYNTH_MODEL=deepseek-ai/DeepSeek-V4.1-Flash \
+#             LITREVIEW_INDICES=litreview_indices_min80.json \
+#             scripts/phase1_generate.sh --limit 40
+#
 # Configuration (story/litreview; unset = the default configuration):
 #     SYNTH_MODEL, SYNTH_PROVIDER,
 #     GENERATOR_MODEL, GENERATOR_PROVIDER, GENERATOR_EXTRA_BODY (story only).
@@ -22,7 +32,8 @@
 #     SYSTEM=litreview CAPACITY=16 SYNTH_PROVIDER=together \
 #         SYNTH_MODEL=deepseek-ai/DeepSeek-V4.1-Flash scripts/phase1_generate.sh
 #
-# Env knobs: SYSTEM (default all), CAPACITY, SUBDIR, DATA_DIR, PYTHON.
+# Env knobs: SYSTEM (default all), CAPACITY, TRACK, SUBDIR, LITREVIEW_INDICES,
+# DATA_DIR, PYTHON.
 # Anything else is forwarded, e.g.:  scripts/phase1_generate.sh --limit 5 --dry-run
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 
@@ -30,6 +41,8 @@ SYSTEM="${SYSTEM:-all}"
 
 args=(--system "$SYSTEM" --data-dir "$DATA_DIR")
 [ -n "${CAPACITY:-}" ] && args+=(--capacity "$CAPACITY")
+[ -n "${TRACK:-}" ] && args+=(--track "$TRACK")
+[ -n "${LITREVIEW_INDICES:-}" ] && args+=(--litreview-indices "$LITREVIEW_INDICES")
 # SUBDIR is honoured even when set to the empty string (selects top-level).
 [ -n "${SUBDIR+x}" ] && args+=(--subdir "$SUBDIR")
 [ -n "${SYNTH_MODEL:-}" ] && args+=(--synth-model "$SYNTH_MODEL")

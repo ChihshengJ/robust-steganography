@@ -9,7 +9,13 @@ group by it so results from different attackers never pool into one cell.
 from __future__ import annotations
 
 # The attacker every LLM attack used before the attacker became configurable.
+# Records without an ``attacker_model`` field ran on it; ids of its records
+# carry no attacker suffix.
 DEFAULT_ATTACKER = "gpt-4.1"
+
+# The attacker for new runs: a family used for neither G nor the writers.
+ATTACKER_MODEL = "zai-org/GLM-5.3-Flash"
+ATTACKER_PROVIDER = "together"
 
 # Phase 3 attack_type values that call an LLM.
 LLM_ATTACK_TYPES = frozenset({"paraphrase", "translate"})

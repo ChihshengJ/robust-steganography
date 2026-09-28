@@ -11,8 +11,9 @@ Writes ``{system}_inputs.json`` into each cell dir; the readers of Phase 1
 records (normal generations, attacks, results) keep only those inputs.
 
 Usage:
+    # Every cell of the task, across both tracks:
     python -m experiments.phase1_generation.select_inputs --system story \\
-        --dirs 'grid_story_cap*'
+        --dirs 'detection/story_cap*' 'recovery/story_cap*'
 """
 
 from __future__ import annotations
@@ -76,7 +77,7 @@ def main() -> None:
     for d, present in per_dir.items():
         log.info(
             "%s: %d encoded, failed %s",
-            d.name,
+            d.relative_to(root),
             len(present),
             failed_inputs(d, args.system) or "none",
         )
@@ -100,7 +101,7 @@ def main() -> None:
         "prompt_idx": selected,
         "n": args.n,
         "dropped": dropped,
-        "cells": [d.name for d in dirs],
+        "cells": [str(d.relative_to(root)) for d in dirs],
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     for d in dirs:

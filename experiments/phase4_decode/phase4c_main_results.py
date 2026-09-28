@@ -50,8 +50,8 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from experiments.utils.attackers import DEFAULT_ATTACKER, attacker_of
-from experiments.utils.io import read_jsonl, read_stego_records
+from experiments.utils.attackers import ATTACKER_MODEL, DEFAULT_ATTACKER, attacker_of
+from experiments.utils.io import TRACKS, find_cell, read_jsonl, read_stego_records
 from experiments.utils.token_counter import bits_per_token
 
 logging.basicConfig(
@@ -72,7 +72,6 @@ HEADLINE_ATTACKS = (
 CURVE_ATTACKS = (
     "synonym",
     "local_paraphrase",
-    "local_backtranslation",
     "global_paraphrase",
     "global_backtranslation",
 )
@@ -490,6 +489,16 @@ def main():
         ),
     )
     parser.add_argument(
+        "--track",
+        choices=TRACKS,
+        default=None,
+        help=(
+            "Read each system's cell at its capacity from {track}/ (the track's one "
+            "cell at that F, see phase1_generate --track). Default: the "
+            "camera-ready '{system}_cap{N}/' layout."
+        ),
+    )
+    parser.add_argument(
         "--output-subdir",
         default=None,
         help=(
@@ -506,10 +515,11 @@ def main():
     )
     parser.add_argument(
         "--attacker",
-        default=DEFAULT_ATTACKER,
+        default=ATTACKER_MODEL,
         help=(
             "Attacker model whose LLM-attack results fill the main table "
-            f"(default {DEFAULT_ATTACKER}). attack_curves.* list every attacker."
+            f"(default {ATTACKER_MODEL}; the camera-ready used {DEFAULT_ATTACKER}). "
+            "attack_curves.* list every attacker."
         ),
     )
     args = parser.parse_args()
@@ -517,14 +527,23 @@ def main():
     capacities = (
         args.capacities if args.capacities is not None else dict(DEFAULT_CAPACITIES)
     )
-    system_subdirs = {
-        sys_name: f"{sys_name}_cap{cap}" for sys_name, cap in capacities.items()
-    }
+    if args.track is None:
+        system_subdirs = {
+            sys_name: f"{sys_name}_cap{cap}" for sys_name, cap in capacities.items()
+        }
+    else:
+        system_subdirs = {
+            sys_name: find_cell(args.data_dir / "phase1_texts", args.track, sys_name, cap)
+            for sys_name, cap in capacities.items()
+            if sys_name in args.systems
+        }
 
     if args.output_subdir is None:
         # e.g. main_t6_s18_l20 — short tag using initial letter of each system.
         tag = "_".join(f"{s[0]}{capacities[s]}" for s in SYSTEMS if s in capacities)
         args.output_subdir = f"main_{tag}"
+        if args.track is not None:
+            args.output_subdir = f"{args.track}/{args.output_subdir}"
         log.info("--output-subdir not set: defaulting to %r", args.output_subdir)
 
     out_dir = args.data_dir / "phase4_decode" / args.output_subdir

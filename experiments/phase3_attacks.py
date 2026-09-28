@@ -1,34 +1,30 @@
-"""Phase 3: Apply attacks to stego (S) and same-pipeline cover (C1) texts.
+"""Phase 3: Apply attacks to stegotexts for recovery evaluation.
 
-For each system, take the first 30 stego texts and the first 20 cover-C1 texts from
-Phase 1, apply the 5 attack configurations from experiment.md (synonym, local/global
-paraphrase, local/global back-translation) to the stegos, and a trimmed cover plan
-(local_paraphrase at tampering {0.5, 1.0}, 1 run each) to the covers.
+For each system, take the first 30 stegotexts of a Phase 1 cell (its selected
+inputs, see select_inputs) and apply the attack set (ATTACK_CONFIGS): synonym,
+local paraphrase at p in {0.5, 1.0}, global paraphrase, and global round-trip
+translation through Japanese.
 
-Output layout (matches experiment.md lines 52-55):
+Output layout:
 
-    data/experiments/phase3_attacks/
-        story_attacked.jsonl
-        story_attacked.jsonl
-        litreview_attacked.jsonl
+    data/experiments/phase3_attacks/{subdir}/{system}_attacked.jsonl
 
-LLM attacks run on --attacker-model (default gpt-4.1, via OpenAI; pass
---attacker-provider together for models hosted on Together AI). Each record
-stores it as `attacker_model` (None for synonym), and records from a non-default
-attacker get an `_atk-{slug}` id suffix, so several attackers can share one
-attacked file. Sentence-selection seeds don't depend on the attacker, so local
-attacks by different models touch the same sentences of a given text.
+LLM attacks run on --attacker-model (default zai-org/GLM-5.3-Flash on Together;
+--attacker-provider openai for OpenAI models). Each record
+stores it as `attacker_model` (None for synonym), and records from an attacker
+other than the camera-ready gpt-4.1 get an `_atk-{slug}` id suffix, so several
+attackers can share one attacked file. Sentence-selection seeds don't depend on
+the attacker, so local attacks by different models touch the same sentences of
+a given text.
 
 An attack that fails after its retries (API errors, unusable output) is
 written to {system}_attack_failures.jsonl instead, never to the attacked file,
 so Phase 4 cannot decode it as if it were an attacked text. Rerunning the same
 command retries every record that is not yet in the attacked file.
 
-Per-system record counts:
-    Stego:  30 src x (synonym 3 + local_paraphrase 9 + local_BT 9 + global_paraphrase 3 + global_BT 3)
-            = 30 x 27 = 810
-    Cover:  20 src x local_paraphrase at {0.5, 1.0} x 1 run = 20 x 2 = 40
-    Total per system: 850 attacked records.
+Per-cell record count (30 stegotexts):
+    30 x (synonym 3 + local_paraphrase 2 x 3 + global_paraphrase 3
+          + global_backtranslation 3) = 30 x 15 = 450
 
 Concurrency: API-bound attack calls are dispatched via a ThreadPoolExecutor
 (default 8 workers, override with --max-workers). The OpenAI client is
@@ -37,13 +33,10 @@ in `derive_seed` is best-effort under concurrency. Set --max-workers 1 to
 restore strict deterministic seeding.
 
 Usage:
-    python -m experiments.phase3_attacks --system story
-    python -m experiments.phase3_attacks --system all --max-workers 16
-    python -m experiments.phase3_attacks --system story --n-stegos 2 --skip-covers \
+    python -m experiments.phase3_attacks --system story --capacity 16 --track recovery
+    python -m experiments.phase3_attacks --system story --n-stegos 2 \
         --attack global_paraphrase            # smoke test
     python -m experiments.phase3_attacks --system all --dry-run
-    python -m experiments.phase3_attacks --system story --capacity 16 \
-        --attacker-provider together --attacker-model deepseek-ai/DeepSeek-V4-Flash
 """
 
 from __future__ import annotations
@@ -62,14 +55,18 @@ from attacks.paraphrase import ParaphraseAttack
 from attacks.synonym import SynonymAttack
 from attacks.translation import TranslationAttack
 from experiments.utils.attackers import (
+    ATTACKER_MODEL,
+    ATTACKER_PROVIDER,
     DEFAULT_ATTACKER,
     LLM_ATTACK_TYPES,
 )
 from experiments.utils.io import (
+    TRACKS,
     append_jsonl,
     model_slug,
     read_jsonl,
     read_stego_records,
+    resolve_subdir,
     stable_seed,
 )
 from experiments.utils.system_factory import make_clients, make_together_client
@@ -83,10 +80,13 @@ log.setLevel(logging.INFO)
 
 
 # ---------------------------------------------------------------------------
-# Attack configuration (verbatim from experiment.md lines 233-248)
+# Attack configuration (ARR October revision, REVISION_PLAN_ARR_OCT.md §1)
 # ---------------------------------------------------------------------------
 
 ATTACK_CONFIGS: list[dict] = [
+    # Synonym levels stay as in the camera-ready until the context-aware
+    # attack replaces the token-level one (p will then mean "fraction of
+    # eligible words").
     {
         "label": "synonym",
         "attack_type": "synonym",
@@ -94,18 +94,13 @@ ATTACK_CONFIGS: list[dict] = [
         "tampering_levels": [0.2, 0.5, 1.0],
         "runs_per_stego": 1,
     },
+    # local=True is passed to the attack, so p = 1.0 stays sentence by sentence
+    # rather than falling back to a global paraphrase.
     {
         "label": "local_paraphrase",
         "attack_type": "paraphrase",
         "local": True,
-        "tampering_levels": [0.2, 0.5, 1.0],
-        "runs_per_stego": 3,
-    },
-    {
-        "label": "local_backtranslation",
-        "attack_type": "translate",
-        "local": True,
-        "tampering_levels": [0.2, 0.5, 1.0],
+        "tampering_levels": [0.5, 1.0],
         "runs_per_stego": 3,
     },
     {
@@ -119,6 +114,7 @@ ATTACK_CONFIGS: list[dict] = [
         "label": "global_backtranslation",
         "attack_type": "translate",
         "local": False,
+        "language": "Japanese",
         "tampering_levels": [1.0],
         "runs_per_stego": 3,
     },
@@ -128,39 +124,30 @@ SYSTEMS = ("story", "litreview")
 # In-house token-level baselines: selectable explicitly but excluded from "all".
 BASELINE_LM_SYSTEMS = ("discop",)
 
-# Cover-attack plan: covers carry no bits, so they only feed Exp 1 attack-severity
-# baselines. local_paraphrase at medium and maximum tampering is enough to anchor
-# what a paraphrase-class attack does to non-stego text. (Reduced from the full
-# 5-attack grid to cut API cost — see experiment.md discussion.)
-COVER_ALLOWED: set[tuple[str, float]] = {
-    ("local_paraphrase", 0.5),
-    ("local_paraphrase", 1.0),
-}
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def build_attacks(client, model: str = DEFAULT_ATTACKER) -> dict[str, object]:
+def build_attacks(client, model: str = ATTACKER_MODEL) -> dict[str, object]:
     """Instantiate one attack object per attack_label; LLM attacks run on `model`.
 
     Translation temp is 0.7 (matches paraphrase) so the 3 runs sample real variance.
     """
+    pivot = {c["label"]: c.get("language") for c in ATTACK_CONFIGS}
     return {
         "synonym": SynonymAttack(method="wordnet"),
         "local_paraphrase": ParaphraseAttack(
-            client=client, model=model, temperature=0.7
-        ),
-        "local_backtranslation": TranslationAttack(
             client=client, model=model, temperature=0.7
         ),
         "global_paraphrase": ParaphraseAttack(
             client=client, model=model, temperature=0.7
         ),
         "global_backtranslation": TranslationAttack(
-            client=client, model=model, temperature=0.7
+            client=client,
+            model=model,
+            temperature=0.7,
+            language=pivot["global_backtranslation"],
         ),
     }
 
@@ -195,15 +182,10 @@ def derive_seed(
     return stable_seed(f"{source_id}|{attack_label}|{tampering}|{run_idx}")
 
 
-def load_sources(
-    phase1_dir: Path, system: str, n_stegos: int, n_covers: int, skip_covers: bool
-) -> list[tuple[dict, str]]:
-    """Load (record, text_type) tuples for all sources to attack.
-
-    Stegos: first n_stegos *available* by prompt_idx from {system}_stego.jsonl,
-    among the selected inputs when the dir has them (read_stego_records).
-    Covers: first n_covers available by prompt_idx from {system}_cover_c1.jsonl
-    (unless skipped).
+def load_sources(phase1_dir: Path, system: str, n_stegos: int) -> list[dict]:
+    """The stegotexts to attack: the first n_stegos *available* by prompt_idx
+    from {system}_stego.jsonl, among the selected inputs when the dir has them
+    (read_stego_records).
 
     "Available", not "prompt_idx < n": Phase 1 can legitimately produce no record
     for a prompt — the Discop baseline skips one whose generation degenerated
@@ -211,8 +193,6 @@ def load_sources(
     n-minus-the-gaps sources, quietly shrinking the sample. Taking the first n
     that exist is identical when there are no gaps.
     """
-    sources: list[tuple[dict, str]] = []
-
     stego_records = sorted(
         (
             r
@@ -229,42 +209,23 @@ def load_sources(
             len(stego_records),
             n_stegos,
         )
-    sources.extend((r, "stego") for r in stego_records)
-
-    if not skip_covers:
-        cover_path = phase1_dir / f"{system}_cover_c1.jsonl"
-        cover_records = sorted(
-            (r for r in read_jsonl(cover_path) if r.get("prompt_idx") is not None),
-            key=lambda r: r["prompt_idx"],
-        )[:n_covers]
-        sources.extend((r, "cover_c1") for r in cover_records)
-
-    return sources
+    return stego_records
 
 
 def plan_records(
-    sources: list[tuple[dict, str]],
+    sources: list[dict],
     attack_filter: set[str] | None,
 ) -> list[tuple[dict, str, dict, float, int]]:
-    """Build the full (source, source_text_type, attack_cfg, tampering, run_idx) plan.
-
-    Stego sources run the full ATTACK_CONFIGS grid. Cover sources are restricted
-    to COVER_ALLOWED (label, tampering) pairs with 1 run each.
-    """
+    """Build the full (source, source_text_type, attack_cfg, tampering, run_idx)
+    plan: every stegotext runs the full ATTACK_CONFIGS grid."""
     plan = []
-    for source, source_text_type in sources:
+    for source in sources:
         for cfg in ATTACK_CONFIGS:
             if attack_filter and cfg["label"] not in attack_filter:
                 continue
             for tampering in cfg["tampering_levels"]:
-                if source_text_type == "cover_c1":
-                    if (cfg["label"], tampering) not in COVER_ALLOWED:
-                        continue
-                    n_runs = 1
-                else:
-                    n_runs = cfg["runs_per_stego"]
-                for run_idx in range(n_runs):
-                    plan.append((source, source_text_type, cfg, tampering, run_idx))
+                for run_idx in range(cfg["runs_per_stego"]):
+                    plan.append((source, "stego", cfg, tampering, run_idx))
     return plan
 
 
@@ -307,6 +268,7 @@ def make_record(
         "attack_type": cfg["attack_type"],
         "attacker_model": attacker,
         "local": cfg["local"],
+        "pivot_language": cfg.get("language"),
         "tampering_level": tampering,
         "run_idx": run_idx,
         "original_text": original_text,
@@ -363,22 +325,18 @@ def run_system(
     phase1_dir: Path,
     output_dir: Path,
     n_stegos: int,
-    n_covers: int,
-    skip_covers: bool,
     attack_filter: set[str] | None,
     dry_run: bool,
     max_workers: int,
-    attacker_model: str = DEFAULT_ATTACKER,
+    attacker_model: str = ATTACKER_MODEL,
 ):
     out_path = output_dir / f"{system}_attacked.jsonl"
     failures_path = output_dir / f"{system}_attack_failures.jsonl"
-    sources = load_sources(phase1_dir, system, n_stegos, n_covers, skip_covers)
+    sources = load_sources(phase1_dir, system, n_stegos)
     plan = plan_records(sources, attack_filter)
 
-    n_stego_src = sum(1 for _, t in sources if t == "stego")
-    n_cover_src = sum(1 for _, t in sources if t == "cover_c1")
     log.info(
-        f"[{system}] sources: {n_stego_src} stegos + {n_cover_src} covers; "
+        f"[{system}] sources: {len(sources)} stegos; "
         f"planned records: {len(plan)}; output: {out_path}"
     )
 
@@ -513,8 +471,15 @@ def main():
         default=None,
         help=(
             "Convenience flag: when set with --system != all and --subdir at default, "
-            "auto-resolves --subdir to '{system}_cap{N}' so attacks read the right Phase 1 variant."
+            "auto-resolves --subdir to '{system}_cap{N}' so attacks read the right "
+            "Phase 1 variant (with --track: the track's one cell at that F)."
         ),
+    )
+    parser.add_argument(
+        "--track",
+        choices=TRACKS,
+        default=None,
+        help="Read and write the cell under {track}/ (see phase1_generate --track).",
     )
     parser.add_argument(
         "--n-stegos",
@@ -523,22 +488,11 @@ def main():
         help="Number of stego texts to attack per system (default 30)",
     )
     parser.add_argument(
-        "--n-covers",
-        type=int,
-        default=20,
-        help="Number of cover_c1 texts to attack per system (default 20)",
-    )
-    parser.add_argument(
-        "--skip-covers",
-        action="store_true",
-        help="Skip cover_c1 attacks (only attack stegos)",
-    )
-    parser.add_argument(
         "--attack",
         action="append",
         choices=[c["label"] for c in ATTACK_CONFIGS],
         default=None,
-        help="Filter to one or more attack_labels (repeatable). Default: all 5 attacks.",
+        help="Filter to one or more attack_labels (repeatable). Default: all attacks.",
     )
     parser.add_argument(
         "--max-workers",
@@ -551,17 +505,20 @@ def main():
     )
     parser.add_argument(
         "--attacker-model",
-        default=DEFAULT_ATTACKER,
+        default=ATTACKER_MODEL,
         help=(
             f"Model for the LLM attacks (paraphrase, back-translation); default "
-            f"{DEFAULT_ATTACKER}. Synonym uses no LLM and is unaffected."
+            f"{ATTACKER_MODEL}. Synonym uses no LLM and is unaffected."
         ),
     )
     parser.add_argument(
         "--attacker-provider",
         choices=("openai", "together"),
-        default="openai",
-        help="API serving --attacker-model (together needs TOGETHER_API_KEY).",
+        default=ATTACKER_PROVIDER,
+        help=(
+            f"API serving --attacker-model (default {ATTACKER_PROVIDER}; together "
+            "needs TOGETHER_API_KEY)."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -570,14 +527,18 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.capacity is not None:
-        if args.system == "all":
-            parser.error(
-                "--capacity requires --system to be one of story/litreview/discop (not 'all')."
-            )
-        if args.subdir == "recovery_test":
-            args.subdir = f"{args.system}_cap{args.capacity}"
-            log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")
+    if args.capacity is not None and args.system == "all":
+        parser.error(
+            "--capacity requires --system to be one of story/litreview/discop (not 'all')."
+        )
+    args.subdir = resolve_subdir(
+        args.data_dir / "phase1_texts",
+        args.system,
+        args.capacity,
+        args.subdir,
+        args.track,
+        default_subdir="recovery_test",
+    )
 
     phase1_dir = args.data_dir / "phase1_texts"
     output_dir = args.data_dir / "phase3_attacks"
@@ -606,8 +567,6 @@ def main():
             phase1_dir=phase1_dir,
             output_dir=output_dir,
             n_stegos=args.n_stegos,
-            n_covers=args.n_covers,
-            skip_covers=args.skip_covers,
             attack_filter=attack_filter,
             dry_run=args.dry_run,
             max_workers=max(1, args.max_workers),

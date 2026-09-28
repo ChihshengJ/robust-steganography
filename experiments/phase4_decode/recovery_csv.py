@@ -9,12 +9,15 @@ per-stego rate.
 
 Runs are discovered from ``data/experiments/phase4_decode/{run}/{system}_decoded.jsonl``
 where ``run`` is ``{system}_cap{m}`` plus an optional suffix (``_len575_sp`` for the
-length-matched SyncPool baselines). ``--runs`` overrides the default selection.
+length-matched SyncPool baselines, the configuration tag for payload-grid cells).
+``--runs`` overrides the default selection; ``--track recovery --runs all`` takes
+every cell of the payload grid.
 
 Usage:
     python -m experiments.phase4_decode.recovery_csv
     python -m experiments.phase4_decode.recovery_csv --out recovery_results.csv
     python -m experiments.phase4_decode.recovery_csv --runs story_cap16,discop_cap16_len575_sp
+    python -m experiments.phase4_decode.recovery_csv --track recovery --runs all
 """
 
 from __future__ import annotations
@@ -28,6 +31,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from experiments.utils.attackers import attacker_of
+from experiments.utils.io import TRACKS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -135,9 +139,17 @@ def main() -> None:
         default=",".join(DEFAULT_RUNS),
         help="comma list of phase4_decode subdir names, or 'all' to discover them",
     )
+    ap.add_argument(
+        "--track",
+        choices=TRACKS,
+        default=None,
+        help="read runs from phase4_decode/{track}/ (default: the top-level runs)",
+    )
     args = ap.parse_args()
 
     decode_dir = args.data_dir / "phase4_decode"
+    if args.track is not None:
+        decode_dir = decode_dir / args.track
     if args.runs == "all":
         runs = sorted(p.name for p in decode_dir.iterdir() if p.is_dir())
     else:

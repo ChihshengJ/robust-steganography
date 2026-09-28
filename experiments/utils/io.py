@@ -42,6 +42,58 @@ def inputs_path(phase1_dir: str | Path, system: str) -> Path:
     return Path(phase1_dir) / f"{system}_inputs.json"
 
 
+# Detection and recovery texts are generated separately, into
+# phase1_texts/{track}/{system}_cap{F}[_{config}]/ (and the same layout under
+# phase3_attacks/ and phase4_decode/). The two need distinct dirs: LitReview's
+# recovery configuration equals one of its detection configurations, so the
+# config-tagged cell names alone would collide.
+TRACKS = ("detection", "recovery")
+
+
+def find_cell(phase1_root: Path, track: str, system: str, capacity: int) -> str:
+    """The one Phase 1 cell of (system, F) under a track, as a subdir such as
+    'recovery/story_cap16_syn-deepseek-v4.1-flash_gen-qwen3.5-9b'.
+
+    The recovery track holds one configuration per (system, F); a track with
+    several (detection) needs the cell named with --subdir instead."""
+    track_dir = Path(phase1_root) / track
+    pattern = re.compile(rf"^{re.escape(system)}_cap{capacity}(_.+)?$")
+    matches = sorted(
+        d.name for d in track_dir.glob(f"{system}_cap{capacity}*") if d.is_dir()
+    )
+    matches = [m for m in matches if pattern.match(m)]
+    if len(matches) != 1:
+        raise SystemExit(
+            f"{track_dir}: {len(matches)} cells for {system} at F = {capacity} "
+            f"({matches or 'none'}); name one with --subdir."
+        )
+    return f"{track}/{matches[0]}"
+
+
+def resolve_subdir(
+    phase1_root: Path,
+    system: str,
+    capacity: int | None,
+    subdir: str,
+    track: str | None,
+    default_subdir: str,
+) -> str:
+    """The subdir a Phase 3/4 stage reads and writes.
+
+    Without a track: '{system}_cap{N}' when --capacity is set and --subdir is
+    left at its default, else --subdir as given. With a track: --subdir under
+    the track when given, else the track's one cell for --capacity."""
+    if track is None:
+        if capacity is not None and subdir == default_subdir:
+            return f"{system}_cap{capacity}"
+        return subdir
+    if subdir != default_subdir:
+        return f"{track}/{subdir}" if subdir else track
+    if capacity is None:
+        raise SystemExit("--track needs --capacity or --subdir to name the cell.")
+    return find_cell(phase1_root, track, system, capacity)
+
+
 def read_stego_records(phase1_dir: str | Path, system: str) -> list[dict]:
     """A Phase 1 dir's stego records, restricted to its selected inputs when
     ``{system}_inputs.json`` exists (the payload grid's shared inputs, see
@@ -52,6 +104,17 @@ def read_stego_records(phase1_dir: str | Path, system: str) -> list[dict]:
         return records
     selected = set(json.loads(path.read_text())["prompt_idx"])
     return [r for r in records if r.get("prompt_idx") in selected]
+
+
+def read_normal_records(phase1_dir: str | Path, system: str) -> list[dict]:
+    """A Phase 1 dir's normal generations whose stegotext is among its selected
+    inputs (see read_stego_records), in prompt_idx order."""
+    stego_ids = {r["id"] for r in read_stego_records(phase1_dir, system)}
+    records = read_jsonl(Path(phase1_dir) / f"{system}_normal.jsonl")
+    return sorted(
+        (r for r in records if r.get("paired_stego_id") in stego_ids),
+        key=lambda r: r["prompt_idx"],
+    )
 
 
 def load_completed_ids(path: str | Path) -> set[str]:

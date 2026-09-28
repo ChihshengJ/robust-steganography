@@ -5,15 +5,15 @@
 # One per stegotext, by its own synthesizer at its own sampling, written next
 # to it as {dir}/{system}_normal.jsonl.
 #
-#     SYSTEM=story DIRS='story_cap*' scripts/phase1_normal.sh
+#     SYSTEM=story DIRS='detection/story_cap*' scripts/phase1_normal.sh
 #
 # Env knobs: SYSTEM (story|litreview, required), DIRS (space-separated globs
-# under phase1_texts/, default '{SYSTEM}_cap*'), WORKERS (default 8), DATA_DIR,
+# under phase1_texts/, default 'detection/{SYSTEM}_cap*'), WORKERS (default 8), DATA_DIR,
 # PYTHON. Anything else is forwarded, e.g.:  scripts/phase1_normal.sh --dry-run
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 
 : "${SYSTEM:?set SYSTEM=story or SYSTEM=litreview}"
-DIRS="${DIRS:-${SYSTEM}_cap*}"
+DIRS="${DIRS:-detection/${SYSTEM}_cap*}"
 
 # shellcheck disable=SC2206  # DIRS is intentionally word-split, not globbed here
 set -f

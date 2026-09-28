@@ -44,7 +44,8 @@ from pathlib import Path
 
 import numpy as np
 
-from experiments.utils.attackers import DEFAULT_ATTACKER, attacker_of
+from experiments.utils.attackers import ATTACKER_MODEL, attacker_of
+from experiments.utils.io import TRACKS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -196,8 +197,18 @@ def main() -> None:
     )
     ap.add_argument("--n-boot", type=int, default=1000)
     ap.add_argument(
+        "--track",
+        choices=TRACKS,
+        default=None,
+        help=(
+            "read the cells under phase1_texts/{track}/ and phase4_decode/{track}/ "
+            "(every cell counts as a main condition: its suffix is its "
+            "configuration). Default: the camera-ready top-level layout."
+        ),
+    )
+    ap.add_argument(
         "--attacker",
-        default=DEFAULT_ATTACKER,
+        default=ATTACKER_MODEL,
         help="attacker model whose global-paraphrase goodput fills G_w in the tex table",
     )
     ap.add_argument(
@@ -221,6 +232,10 @@ def main() -> None:
     phase1 = args.data_dir / "phase1_texts"
     phase4 = args.data_dir / "phase4_decode"
     out_dir = args.out_dir or (args.data_dir / "phase2_metrics")
+    if args.track is not None:
+        phase1, phase4 = phase1 / args.track, phase4 / args.track
+        out_dir = args.out_dir or (args.data_dir / "phase2_metrics" / args.track)
+        args.include_variants = "all"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     count_tokens = None

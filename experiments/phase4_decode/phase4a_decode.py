@@ -63,10 +63,12 @@ from tqdm import tqdm
 
 from experiments.utils.attackers import attacker_of
 from experiments.utils.io import (
+    TRACKS,
     append_jsonl,
     load_completed_ids,
     load_records_map,
     read_jsonl,
+    resolve_subdir,
 )
 from experiments.utils.metrics import bit_error_rate
 from experiments.utils.system_factory import (
@@ -759,6 +761,15 @@ def main():
         ),
     )
     parser.add_argument(
+        "--track",
+        choices=TRACKS,
+        default=None,
+        help=(
+            "Read and write the cell under {track}/ (see phase1_generate --track); "
+            "with --capacity, the track's one cell at that F."
+        ),
+    )
+    parser.add_argument(
         "--n-slots",
         type=int,
         default=None,
@@ -809,14 +820,18 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.capacity is not None:
-        if args.system == "all":
-            parser.error(
-                "--capacity requires --system to be one of story/litreview/discop (not 'all')."
-            )
-        if args.subdir == "recovery_test":
-            args.subdir = f"{args.system}_cap{args.capacity}"
-            log.info(f"--capacity set: defaulting --subdir to {args.subdir!r}")
+    if args.capacity is not None and args.system == "all":
+        parser.error(
+            "--capacity requires --system to be one of story/litreview/discop (not 'all')."
+        )
+    args.subdir = resolve_subdir(
+        args.data_dir / "phase1_texts",
+        args.system,
+        args.capacity,
+        args.subdir,
+        args.track,
+        default_subdir="recovery_test",
+    )
 
     story_n_slots = args.n_slots if args.n_slots is not None else 20
 
