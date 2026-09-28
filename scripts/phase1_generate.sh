@@ -20,8 +20,8 @@
 #     generated separately. LitReview's grid inputs are LITREVIEW_INDICES=
 #     litreview_indices_min80.json. Generate ~40 inputs (--limit 40), then pick
 #     the shared 30 with experiments.phase1_generation.select_inputs:
-#         SYSTEM=litreview CAPACITY=16 TRACK=recovery SYNTH_PROVIDER=together \
-#             SYNTH_MODEL=deepseek-ai/DeepSeek-V4.1-Flash \
+#         SYSTEM=litreview CAPACITY=16 TRACK=recovery SYNTH_PROVIDER=openrouter \
+#             SYNTH_MODEL=deepseek/deepseek-v4.1-flash \
 #             LITREVIEW_INDICES=litreview_indices_min80.json \
 #             scripts/phase1_generate.sh --limit 40
 #
@@ -29,8 +29,8 @@
 #     SYNTH_MODEL, SYNTH_PROVIDER,
 #     GENERATOR_MODEL, GENERATOR_PROVIDER, GENERATOR_EXTRA_BODY (story only).
 # A non-default configuration writes to a tagged subdir:
-#     SYSTEM=litreview CAPACITY=16 SYNTH_PROVIDER=together \
-#         SYNTH_MODEL=deepseek-ai/DeepSeek-V4.1-Flash scripts/phase1_generate.sh
+#     SYSTEM=litreview CAPACITY=16 SYNTH_PROVIDER=openrouter \
+#         SYNTH_MODEL=deepseek/deepseek-v4.1-flash scripts/phase1_generate.sh
 #
 # Env knobs: SYSTEM (default all), CAPACITY, TRACK, SUBDIR, LITREVIEW_INDICES,
 # DATA_DIR, PYTHON.

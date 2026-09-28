@@ -47,29 +47,32 @@ def make_clients(
     return client, generator_client
 
 
-# Together AI, OpenAI-compatible. Hosts the attacker models from families other
-# than the GPT-4.1 decoder. Overridable like LOCAL_BASE_URL.
-TOGETHER_BASE_URL = os.environ.get("TOGETHER_BASE_URL", "https://api.together.xyz/v1")
+# OpenRouter, OpenAI-compatible: every hosted model other than OpenAI's (the
+# DeepSeek writer and decoder, the detection G models, the attacker, the
+# judges). Any model other than the pinned G is treated as a public endpoint,
+# so which upstream OpenRouter routes a call to is not pinned. Overridable like
+# LOCAL_BASE_URL.
+OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 
 
-def make_together_client() -> openai.OpenAI:
-    """Create an OpenAI-compatible client for Together AI (``TOGETHER_API_KEY``)."""
-    api_key = os.environ.get("TOGETHER_API_KEY")
+def make_openrouter_client() -> openai.OpenAI:
+    """Create an OpenAI-compatible client for OpenRouter (``OPENROUTER_API_KEY``)."""
+    api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
-        raise RuntimeError("TOGETHER_API_KEY is not set (add it to .env).")
-    return openai.OpenAI(base_url=TOGETHER_BASE_URL, api_key=api_key)
+        raise RuntimeError("OPENROUTER_API_KEY is not set (add it to .env).")
+    return openai.OpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key)
 
 
-PROVIDERS = ("openai", "together", "local")
+PROVIDERS = ("openai", "openrouter", "local")
 
 
 def make_client(provider: str) -> openai.OpenAI:
-    """Client for a provider: 'openai', 'together' (TOGETHER_API_KEY), or
-    'local' (the llama.cpp server at LOCAL_BASE_URL)."""
+    """Client for a provider: 'openai', 'openrouter' (OPENROUTER_API_KEY), or
+    'local' (the pinned llama.cpp server at LOCAL_BASE_URL)."""
     if provider == "openai":
         return openai.OpenAI()
-    if provider == "together":
-        return make_together_client()
+    if provider == "openrouter":
+        return make_openrouter_client()
     if provider == "local":
         return openai.OpenAI(base_url=LOCAL_BASE_URL, api_key="unused")
     raise ValueError(f"unknown provider {provider!r}; choose from {PROVIDERS}")
@@ -88,7 +91,7 @@ def no_reasoning_body(provider: str, model: str) -> dict | None:
     its whole length cap thinking (DeepSeek V4.1 Flash writes no story in
     3000 tokens), and OpenAI's refuse temperature/top_p unless reasoning is off.
     """
-    if provider == "together":
+    if provider == "openrouter":
         return {"reasoning": {"enabled": False}}
     if provider == "openai" and model.startswith(_OPENAI_REASONING_PREFIXES):
         return {"reasoning_effort": "none"}
@@ -99,7 +102,7 @@ def no_reasoning_body(provider: str, model: str) -> dict | None:
 # pilot: with reasoning, both keep all 32 details; without it DeepSeek drops
 # some). Any other writer runs with reasoning off (no_reasoning_body).
 WRITER_REASONING = {
-    "deepseek-ai/DeepSeek-V4.1-Flash": {"reasoning": {"enabled": True}},
+    "deepseek/deepseek-v4.1-flash": {"reasoning": {"enabled": True}},
     "gpt-6-sol": {"reasoning_effort": "low"},
 }
 
@@ -127,7 +130,7 @@ def provider_for_base_url(base_url: str | None) -> str:
     openai_url = os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1"
     urls = {
         "openai": openai_url,
-        "together": TOGETHER_BASE_URL,
+        "openrouter": OPENROUTER_BASE_URL,
         "local": LOCAL_BASE_URL,
     }
     for provider, url in urls.items():

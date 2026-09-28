@@ -53,14 +53,14 @@ from experiments.utils.stegoanalysis_common import (
     detection_metrics_dir,
     load_detection_set,
 )
-from experiments.utils.system_factory import make_together_client
+from experiments.utils.system_factory import make_openrouter_client
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 # Judges from families that wrote no text (writers: GPT-6, DeepSeek; G: Qwen3.5,
-# Gemma 4 — G proposes plot details but writes no text). All on Together.
-JUDGES = ("Qwen/Qwen3.7-Max", "moonshotai/Kimi-K3", "zai-org/GLM-5.3")
+# Gemma 4 — G proposes plot details but writes no text). All on OpenRouter.
+JUDGES = ("qwen/qwen3.7-max", "moonshotai/kimi-k3", "z-ai/glm-5.3")
 
 # Room for a judge's (hidden) reasoning before its JSON answer.
 MAX_TOKENS = 8000
@@ -383,7 +383,7 @@ def main() -> None:
         "--judges",
         type=lambda s: [x.strip() for x in s.split(",") if x.strip()],
         default=list(JUDGES),
-        help=f"Comma-separated Together model ids (default: {','.join(JUDGES)}).",
+        help=f"Comma-separated OpenRouter model ids (default: {','.join(JUDGES)}).",
     )
     parser.add_argument(
         "--max-pairs-per-cell",
@@ -402,7 +402,7 @@ def main() -> None:
 
     out_dir = detection_metrics_dir(args.data_dir) / "quality"
     out_dir.mkdir(parents=True, exist_ok=True)
-    client = None if (args.dry_run or args.summary_only) else make_together_client()
+    client = None if (args.dry_run or args.summary_only) else make_openrouter_client()
 
     for system in args.systems:
         pairs = load_pairs(args.data_dir, system, args.dirs, args.max_pairs_per_cell)

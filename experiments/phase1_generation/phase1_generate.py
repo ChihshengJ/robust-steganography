@@ -16,8 +16,9 @@ Usage:
 
     # A payload-grid cell (subdir recovery/story_cap16_syn-..._gen-...):
     python -m experiments.phase1_generation.phase1_generate --system story \
-        --capacity 16 --track recovery --synth-provider together \
-        --synth-model deepseek-ai/DeepSeek-V4.1-Flash --generator-model ...
+        --capacity 16 --track recovery --synth-provider openrouter \
+        --synth-model deepseek/deepseek-v4.1-flash --generator-provider local \
+        --generator-model "$LOCAL_MODEL"
 """
 
 import argparse
@@ -43,6 +44,7 @@ from experiments.utils.system_factory import (
     make_litreview,
     make_story,
     default_sampling_only,
+    no_reasoning_body,
     writer_extra_body,
 )
 from experiments.utils.token_counter import count_tokens, count_words
@@ -107,6 +109,7 @@ CONFIG_FLAGS = (
 # records. Endpoint URLs are left out: a moved server is the same configuration.
 _RESUME_KEYS = (
     "generator_model",
+    "generator_extra_body",
     "n_slots",
     "slot_margin",
     "synth_model",
@@ -798,9 +801,9 @@ def main():
         type=json.loads,
         default=None,
         help=(
-            "Story only: JSON request body sent with generator calls (provider-specific; "
-            "'null' sends none). Default: the llama.cpp no-thinking body for the local "
-            "provider, none otherwise."
+            "Story only: JSON request body sent with a hosted generator's calls "
+            "(provider-specific). Default: reasoning off (no_reasoning_body), as the "
+            "local server always runs G without thinking."
         ),
     )
     args = parser.parse_args()
@@ -830,9 +833,16 @@ def main():
             "--generator-extra-body is for a hosted --generator-provider; the local "
             "server always gets the llama.cpp no-thinking body."
         )
-    generator_extra_body = (
-        args.generator_extra_body if hosted_generator else LLAMACPP_NO_THINKING
-    )
+    if not hosted_generator:
+        generator_extra_body = LLAMACPP_NO_THINKING
+    elif args.generator_extra_body is not None:
+        generator_extra_body = args.generator_extra_body
+    else:
+        # G writes the slot list without thinking on every provider: a thinking
+        # Qwen3.5 spends its budget reasoning, and the pinned server never thinks.
+        generator_extra_body = no_reasoning_body(
+            config["generator_provider"], config["generator_model"]
+        )
 
     # Token-level baselines default to a native payload if none is given, so
     # their messages come from the inline-capacity path (they have no entry in

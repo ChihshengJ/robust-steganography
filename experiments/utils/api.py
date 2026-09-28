@@ -3,12 +3,11 @@ calls over threads (normal generation, the LLM judge)."""
 
 from __future__ import annotations
 
-import random
 import time
 
 import openai
 
-from systems.utils.new_text import token_limit
+from systems.utils.new_text import retry_wait, token_limit
 
 # Transient errors worth retrying. The SDK already retries these a couple of
 # times internally; this outer loop rides out longer 429/503 bursts from
@@ -29,28 +28,32 @@ def chat(
     client,
     model: str,
     messages: list[dict],
-    retries: int = 5,
+    retries: int = 8,
     base_delay: float = 2.0,
     **kwargs,
 ) -> str:
-    """One chat completion's text, retried with exponential backoff on
-    transient errors and empty completions. Raises ``CompletionFailed`` once
-    every attempt has failed."""
+    """One chat completion's text, retried on transient errors and empty
+    completions (a rate limit waits for its reset, see retry_wait). Raises
+    ``CompletionFailed`` once every attempt has failed."""
     if "max_tokens" in kwargs:
         kwargs |= token_limit(client, kwargs.pop("max_tokens"))
-    last_error = "no attempt made"
+    last_error, last_exc = "no attempt made", None
     for attempt in range(retries):
         if attempt:
-            time.sleep(base_delay * 2 ** (attempt - 1) * (1 + random.random()))
+            time.sleep(retry_wait(last_exc, attempt, base_delay))
         try:
             response = client.chat.completions.create(
                 model=model, messages=messages, **kwargs
             )
         except _RETRYABLE as e:
-            last_error = repr(e)
+            last_error, last_exc = repr(e), e
             continue
-        content = (response.choices[0].message.content or "").strip()
+        choice = response.choices[0]
+        if choice.finish_reason == "content_filter":
+            # The provider refused this input; asking again cannot help.
+            raise CompletionFailed(f"{model} filtered the request (content_filter)")
+        content = (choice.message.content or "").strip()
         if content:
             return content
-        last_error = "empty completion"
+        last_error, last_exc = "empty completion", None
     raise CompletionFailed(f"{retries} attempts failed; last error: {last_error}")

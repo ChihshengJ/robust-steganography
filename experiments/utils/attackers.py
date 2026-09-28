@@ -14,8 +14,8 @@ from __future__ import annotations
 DEFAULT_ATTACKER = "gpt-4.1"
 
 # The attacker for new runs: a family used for neither G nor the writers.
-ATTACKER_MODEL = "zai-org/GLM-5.3-Flash"
-ATTACKER_PROVIDER = "together"
+ATTACKER_MODEL = "z-ai/glm-5.3-flash"
+ATTACKER_PROVIDER = "openrouter"
 
 # Phase 3 attack_type values that call an LLM.
 LLM_ATTACK_TYPES = frozenset({"paraphrase", "translate"})

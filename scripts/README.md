@@ -19,6 +19,7 @@ Run from anywhere; they locate the repo root themselves.
 | `phase1_generate.sh`   | Phase 1 — generate stegotexts.                                                                          |
 | `phase1_normal.sh`     | Phase 1b — a length-matched normal generation per stegotext, by its own synthesizer.                    |
 | `phase2_metrics.sh`    | Phase 2 — token counts, perplexity, stegoanalysis classifier + summary.                                 |
+| `payload_grid.sh`      | ARR revision payload grid: all cells of both tracks, stage by stage (generate → analyze).               |
 | `phase3_attacks.sh`    | Phase 3 — apply the attack set to stegos.                                                               |
 | `phase4_decode.sh`     | Phase 4 — decode attacked stegos (BER) + attack-severity metrics.                                       |
 | `run_all.sh`           | End-to-end native-capacity run of both data tracks.                                                     |

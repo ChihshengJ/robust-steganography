@@ -1,10 +1,11 @@
-import random
 import time
 from functools import cache
 from typing import Callable, Iterator, Tuple
 
 import nltk
 import openai
+
+from systems.utils.new_text import retry_wait
 
 
 class AttackFailed(RuntimeError):
@@ -26,36 +27,35 @@ _RETRYABLE = (
     openai.InternalServerError,
 )
 
-# Backoff jitter gets its own RNG: attacks seed the global `random` for
-# sentence selection, and a retry must not shift that sequence.
-_jitter = random.Random()
-
-
 def complete(
     client,
     parse: Callable[[str], str] | None = None,
-    retries: int = 5,
+    retries: int = 8,
     base_delay: float = 2.0,
     **kwargs,
 ) -> str:
-    """One chat completion with retry and exponential backoff.
+    """One chat completion with retry: a rate limit waits for its reset,
+    anything else backs off exponentially (``retry_wait``).
 
     ``parse`` post-processes the response and raises ``ValueError`` when the
     output is unusable (e.g. a missing marker), which counts as a retryable
     failure. Raises ``AttackFailed`` once every attempt has failed.
     """
-    last_error = "no attempt made"
+    last_error, last_exc = "no attempt made", None
     for attempt in range(retries):
         if attempt:
-            time.sleep(base_delay * 2 ** (attempt - 1) * (1 + _jitter.random()))
+            time.sleep(retry_wait(last_exc, attempt, base_delay))
         try:
             response = client.chat.completions.create(**kwargs)
         except _RETRYABLE as e:
-            last_error = repr(e)
+            last_error, last_exc = repr(e), e
             continue
+        if response.choices[0].finish_reason == "content_filter":
+            # The provider refused this input; asking again cannot help.
+            raise AttackFailed("the attacker filtered the request (content_filter)")
         content = (response.choices[0].message.content or "").strip()
         if not content:
-            last_error = "empty completion"
+            last_error, last_exc = "empty completion", None
             continue
         if parse is None:
             return content

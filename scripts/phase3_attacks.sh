@@ -11,11 +11,11 @@
 #     SYSTEM=story CAPACITY=16 TRACK=recovery scripts/phase3_attacks.sh
 #
 # Env knobs: SYSTEM (default all*), CAPACITY, TRACK, SUBDIR, MAX_WORKERS (default 8),
-#            ATTACKER_MODEL (default zai-org/GLM-5.3-Flash),
-#            ATTACKER_PROVIDER (together|openai, default together),
+#            ATTACKER_MODEL (default z-ai/glm-5.3-flash),
+#            ATTACKER_PROVIDER (openrouter|openai, default openrouter),
 #            DATA_DIR, PYTHON. Extra args forwarded, e.g. --attack global_paraphrase.
 # Another attacker writes into the same attacked file under its own ids:
-#     SYSTEM=story CAPACITY=16 ATTACKER_PROVIDER=together \
+#     SYSTEM=story CAPACITY=16 ATTACKER_PROVIDER=openrouter \
 #         ATTACKER_MODEL=deepseek-ai/DeepSeek-V4-Flash scripts/phase3_attacks.sh
 # *CAPACITY requires SYSTEM != all; loop per system for the native-capacity run.
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"

@@ -9,7 +9,7 @@ Output layout:
 
     data/experiments/phase3_attacks/{subdir}/{system}_attacked.jsonl
 
-LLM attacks run on --attacker-model (default zai-org/GLM-5.3-Flash on Together;
+LLM attacks run on --attacker-model (default z-ai/glm-5.3-flash on OpenRouter;
 --attacker-provider openai for OpenAI models). Each record
 stores it as `attacker_model` (None for synonym), and records from an attacker
 other than the camera-ready gpt-4.1 get an `_atk-{slug}` id suffix, so several
@@ -69,7 +69,7 @@ from experiments.utils.io import (
     resolve_subdir,
     stable_seed,
 )
-from experiments.utils.system_factory import make_clients, make_together_client
+from experiments.utils.system_factory import make_client
 from experiments.utils.token_counter import count_tokens
 
 logging.basicConfig(
@@ -513,11 +513,11 @@ def main():
     )
     parser.add_argument(
         "--attacker-provider",
-        choices=("openai", "together"),
+        choices=("openai", "openrouter"),
         default=ATTACKER_PROVIDER,
         help=(
-            f"API serving --attacker-model (default {ATTACKER_PROVIDER}; together "
-            "needs TOGETHER_API_KEY)."
+            f"API serving --attacker-model (default {ATTACKER_PROVIDER}; openrouter "
+            "needs OPENROUTER_API_KEY)."
         ),
     )
     parser.add_argument(
@@ -552,12 +552,7 @@ def main():
     attack_filter = set(args.attack) if args.attack else None
 
     log.info("Attacker: %s via %s", args.attacker_model, args.attacker_provider)
-    if args.dry_run:
-        client = None
-    elif args.attacker_provider == "together":
-        client = make_together_client()
-    else:
-        client, _generator_client = make_clients()
+    client = None if args.dry_run else make_client(args.attacker_provider)
 
     targets = SYSTEMS if args.system == "all" else (args.system,)
     for system in targets:

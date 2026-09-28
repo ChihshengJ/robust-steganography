@@ -156,6 +156,7 @@ class StorySystem(StegSystem):
         return {
             "generator_model": self.generator_model,
             "generator_base_url": client_base_url(self.generator_client),
+            "generator_extra_body": self.generator_extra_body,
             "n_slots": self.n_slots,
             "slot_margin": self.slot_margin,
             "synth_model": self.synth_model,

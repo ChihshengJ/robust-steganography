@@ -15,7 +15,8 @@ Reports:
 - story length in words;
 - clean recovery of all F bits.
 
-G and decoder run on Together serverless, the synthesizer on
+G and decoder run on OpenRouter (the 09-27 pilot runs used Together serverless),
+the synthesizer on
 --synth-provider; the decoder reasons, the synthesizer reasons only with
 --synth-reasoning (an OpenAI reasoning writer then runs at its default
 sampling, since it rejects temperature/top_p). G's determinism
@@ -48,7 +49,7 @@ import openai
 from experiments.utils.system_factory import (
     make_client,
     make_story,
-    make_together_client,
+    make_openrouter_client,
     no_reasoning_body,
 )
 from systems.config.story_prompts import SLOT_GENERATION_PROMPT
@@ -108,7 +109,7 @@ def near_duplicates(slots: list[dict], embed, jac: float, cos: float) -> dict:
 
 
 def run_premise(p_idx, premise, bits, args, clients, embed, reused) -> dict:
-    together = clients["together"]
+    hosted = clients["openrouter"]
     if reused is not None:
         if reused["premise"] != premise:
             raise ValueError(f"premise {p_idx} differs from the reused run")
@@ -116,7 +117,7 @@ def run_premise(p_idx, premise, bits, args, clients, embed, reused) -> dict:
         parsed = reused.get("slots") or []
     else:
         raw = llm(
-            together,
+            hosted,
             args.generator_model,
             SLOT_GENERATION_PROMPT.format(n=args.frame + args.slot_margin, premise=premise),
             temperature=0,
@@ -140,8 +141,8 @@ def run_premise(p_idx, premise, bits, args, clients, embed, reused) -> dict:
     rec["duplicates"] = near_duplicates(slots, embed, args.jaccard, args.cosine)
 
     system = make_story(
-        together,
-        together,
+        hosted,
+        hosted,
         n_slots=args.frame,
         slot_margin=args.slot_margin,
         generator_model=args.generator_model,
@@ -149,7 +150,7 @@ def run_premise(p_idx, premise, bits, args, clients, embed, reused) -> dict:
         synth_model=args.synth_model,
         synth_extra_body=synth_body(args),
         **synth_sampling(args),
-        decoder_client=together,
+        decoder_client=hosted,
         decoder_model=args.decoder_model,
     )
     chunks = [[b] for b in bits]
@@ -175,7 +176,7 @@ def run_premise(p_idx, premise, bits, args, clients, embed, reused) -> dict:
 def synth_body(args) -> dict | None:
     if not args.synth_reasoning:
         return no_reasoning_body(args.synth_provider, args.synth_model)
-    if args.synth_provider == "together":
+    if args.synth_provider == "openrouter":
         return {"reasoning": {"enabled": True}}
     if args.synth_reasoning_effort:
         return {"reasoning_effort": args.synth_reasoning_effort}
@@ -220,13 +221,13 @@ def main() -> None:
     ap.add_argument("--frame", type=int, default=32, help="Frame size F (bits = slots).")
     ap.add_argument("--slot-margin", type=int, default=2)
     ap.add_argument("--n-premises", type=int, default=20)
-    ap.add_argument("--generator-model", default="Qwen/Qwen3.5-9B")
-    ap.add_argument("--synth-model", default="deepseek-ai/DeepSeek-V4.1-Flash")
-    ap.add_argument("--decoder-model", default="deepseek-ai/DeepSeek-V4.1-Flash")
+    ap.add_argument("--generator-model", default="qwen/qwen3.5-9b")
+    ap.add_argument("--synth-model", default="deepseek/deepseek-v4.1-flash")
+    ap.add_argument("--decoder-model", default="deepseek/deepseek-v4.1-flash")
     ap.add_argument("--embedding-model", default="text-embedding-3-large")
     ap.add_argument("--jaccard", type=float, default=0.6, help="Near-duplicate token overlap.")
     ap.add_argument("--cosine", type=float, default=0.85, help="Near-duplicate cosine.")
-    ap.add_argument("--synth-provider", default="together", choices=["together", "openai"])
+    ap.add_argument("--synth-provider", default="openrouter", choices=["openrouter", "openai"])
     ap.add_argument("--synth-reasoning", action="store_true",
                     help="Let the synthesizer reason (default: reasoning off).")
     ap.add_argument("--synth-reasoning-effort", default=None,
@@ -258,7 +259,7 @@ def main() -> None:
             by_idx[r["prompt_idx"]] = r
         reused = [by_idx[i] for i in range(len(premises))]
 
-    clients = {"together": make_together_client(), "synth": make_client(args.synth_provider)}
+    clients = {"openrouter": make_openrouter_client(), "synth": make_client(args.synth_provider)}
     oai = openai.OpenAI()
 
     def embed(texts: list[str]) -> np.ndarray:

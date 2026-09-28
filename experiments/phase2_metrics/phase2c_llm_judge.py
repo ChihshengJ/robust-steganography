@@ -24,13 +24,13 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from experiments.utils.api import chat
 from experiments.utils.io import append_jsonl, read_jsonl
+from experiments.utils.system_factory import make_openrouter_client
 from experiments.utils.stegoanalysis_common import (
     add_common_args,
     load_detection_set,
@@ -72,8 +72,6 @@ Your output should follow the style below exactly, NO markdown format:
 VERDICT: A or B
 CONFIDENCE: low / medium / high"""
 
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-
 # Verdict and confidence as P(stego)-like score: ordered from a confident B
 # to a confident A, so AUC ranks by the judge's stated certainty.
 SCORE = {
@@ -84,15 +82,6 @@ SCORE = {
     ("A", "medium"): 0.85,
     ("A", "high"): 1.0,
 }
-
-
-def _build_client():
-    import openai
-
-    api_key = os.environ.get("OPENROUTER_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENROUTER_API_KEY is not set (add it to .env).")
-    return openai.OpenAI(api_key=api_key, base_url=OPENROUTER_BASE_URL)
 
 
 def _parse_verdict(response: str) -> dict:
@@ -114,7 +103,7 @@ def judge_all(
     items: list[dict], model: str, raw_path: Path, workers: int
 ) -> list[dict]:
     """Judge every item not yet in raw_path; return all judgments."""
-    client = _build_client()
+    client = make_openrouter_client()
     done = {r["uid"] for r in read_jsonl(raw_path)}
     pending = [it for it in items if it["uid"] not in done]
     log.info("%d texts judged, %d pending (%d workers)", len(done), len(pending), workers)
