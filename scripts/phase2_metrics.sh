@@ -15,6 +15,8 @@
 # Optional extra stegoanalysis signals (off by default, need API keys):
 #   RUN_EMBEDDINGS=1  -> phase2c_embeddings (text-embedding-3-large, OPENAI_API_KEY)
 #   RUN_LLM_JUDGE=1   -> phase2c_llm_judge  (OPENROUTER_API_KEY)
+#   RUN_QUALITY=1     -> phase2f_quality_judge, pairwise text quality of each
+#                        stegotext vs its normal generation (TOGETHER_API_KEY)
 #
 # Env knobs: SYSTEMS (comma list, default all), PPL_MODEL (default gpt2-large),
 #            DATA_DIR, PYTHON.
@@ -38,3 +40,7 @@ if [ "${RUN_LLM_JUDGE:-0}" = "1" ]; then
 fi
 
 run_py experiments.phase2_metrics.phase2c_summary "${common[@]}" --ppl-model "$PPL_MODEL"
+
+if [ "${RUN_QUALITY:-0}" = "1" ]; then
+    run_py experiments.phase2_metrics.phase2f_quality_judge "${common[@]}"
+fi
