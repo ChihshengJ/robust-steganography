@@ -5,7 +5,7 @@
 # pinned for DETERMINISTIC decoding (needed by Story generation AND
 # decoding). Run it in its own terminal; it stays in the foreground.
 #
-#   scripts/serve_local_model.sh /path/to/Qwen3.5-4B-UD-Q8_K_XL.gguf
+#   scripts/serve_local_model.sh /path/to/Qwen3.5-9B-UD-Q8_K_XL.gguf
 #   PORT=8080 NGL=0 scripts/serve_local_model.sh /path/to/model.gguf
 #
 # The model basename you serve must match $LOCAL_MODEL (see .env.example).

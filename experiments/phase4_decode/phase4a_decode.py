@@ -16,6 +16,9 @@ StorySlot's receiver regenerates G(premise) once per stego, not once per
 decode, and keeps it in ``{system}_g_cache.jsonl`` next to the decoded file,
 each entry marked with whether it matches the sender's encode-time output.
 Decoded records carry that as ``g_matches_encode`` (None for other systems).
+``--g-cache-only`` builds that cache alone, from the Phase 1 records, before
+any attack exists (see run_g_cache); ``--g-cache-verify`` regenerates it in
+another server session and logs agreement to ``{system}_g_verify.jsonl``.
 
 The semantic systems decode with an LLM (``--decoder-model`` on
 ``--decoder-provider``, default DeepSeek V4.1 Flash on OpenRouter, reasoning
@@ -56,6 +59,8 @@ Usage:
     python -m experiments.phase4_decode.phase4a_decode --system litreview --no-baseline
     python -m experiments.phase4_decode.phase4a_decode --system story \
         --decoder-provider openai --decoder-model gpt-4.1
+    python -m experiments.phase4_decode.phase4a_decode --system story \
+        --subdir recovery/story_cap32_... --g-cache-only
 """
 
 from __future__ import annotations
@@ -74,9 +79,11 @@ from experiments.utils.attackers import attacker_of
 from experiments.utils.io import (
     TRACKS,
     append_jsonl,
+    inputs_path,
     load_completed_ids,
     load_records_map,
     read_jsonl,
+    read_stego_records,
     resolve_subdir,
 )
 from experiments.utils.metrics import bit_error_rate
@@ -293,6 +300,157 @@ def build_g_cache(
             ", ".join(mismatched),
         )
     return cache
+
+
+def story_slot_shape(
+    stego_by_id: dict[str, dict], n_slots: int, slot_margin: int
+) -> tuple[int, int]:
+    """The (n_slots, slot_margin) the Phase 1 records were encoded with.
+
+    The slot shape changes G's prompt, so it has to be the encoder's. Records
+    that predate storing it fall back to the given values."""
+    shapes = {
+        (cfg["n_slots"], cfg.get("slot_margin", 0))
+        for r in stego_by_id.values()
+        if "n_slots" in (cfg := (r.get("metadata") or {}).get("config") or {})
+    }
+    if len(shapes) > 1:
+        raise ValueError(
+            f"story: Phase 1 records disagree about the slot shape "
+            f"(n_slots, slot_margin) {sorted(shapes)}. They cannot be decoded "
+            "in one pass."
+        )
+    if shapes:
+        n_slots, slot_margin = next(iter(shapes))
+        log.info(
+            "[story] slot shape from Phase 1 records: n_slots=%d, slot_margin=%d",
+            n_slots,
+            slot_margin,
+        )
+    return n_slots, slot_margin
+
+
+def verify_g_cache(
+    system: str,
+    system_obj: StegSystem,
+    stego_by_id: dict[str, dict],
+    source_ids: set[str],
+    cache_path: Path,
+    verify_path: Path,
+) -> None:
+    """Regenerate G for every cached source and record whether it reproduces
+    the cache and the encode-time output, without touching the cache.
+
+    One run is one server session: run it on a freshly restarted server, so
+    together with encoding and the cache it gives G's reproduction rate across
+    independent sessions. Each run appends one entry per source to
+    ``verify_path``, all tagged with the run's start time (``verify_run``); a
+    rerun is a new run, not a resume."""
+    cache = {r["source_id"]: r for r in read_jsonl(cache_path)}
+    sids = sorted(source_ids & cache.keys())
+    if not sids:
+        raise SystemExit(
+            f"[{system}] no G cache entries in {cache_path} to verify; "
+            "run --g-cache-only first."
+        )
+    shape = {"n_slots": system_obj.n_slots, "slot_margin": system_obj.slot_margin}
+    run = datetime.now(timezone.utc).isoformat()
+    n_cache = n_encode = n_checked = 0
+    for sid in sids:
+        entry = cache[sid]
+        if any(entry.get(k) != v for k, v in shape.items()):
+            raise SystemExit(
+                f"[{system}] {sid} was cached under another slot shape than {shape}"
+            )
+        slots = system_obj.generate_slots(entry["premise"])
+        encode_slots = (stego_by_id[sid].get("metadata") or {}).get("slots")
+        rec = {
+            "source_id": sid,
+            "verify_run": run,
+            **shape,
+            "slots": slots,
+            "matches_cache": slots == entry["slots"],
+            "matches_encode": None if encode_slots is None else slots == encode_slots,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        append_jsonl(verify_path, rec)
+        n_cache += rec["matches_cache"]
+        if rec["matches_encode"] is not None:
+            n_checked += 1
+            n_encode += rec["matches_encode"]
+    log.info(
+        "[%s] G verify run %s: matches the cache on %d/%d sources, the "
+        "encode-time G on %d/%d checked",
+        system,
+        run,
+        n_cache,
+        len(sids),
+        n_encode,
+        n_checked,
+    )
+
+
+def run_g_cache(
+    system: str,
+    client,
+    generator_client,
+    phase1_dir: Path,
+    output_dir: Path,
+    dry_run: bool,
+    n_slots: int = 20,
+    decoder: tuple[str, str] = (DECODER_PROVIDER, DECODER_MODEL),
+    verify: bool = False,
+) -> None:
+    """Build the receiver's G cache alone, before any attack exists, or with
+    ``verify`` check it in another session (verify_g_cache).
+
+
+    It covers the cell's selected inputs (all of its stegotexts before
+    select_inputs has run), which include every source Phase 3 attacks, so the
+    later decode reuses it and never calls G. This lets the pinned G server run
+    once, for encoding and this cache, rather than again after the attacks. Run
+    it on a freshly restarted server, so the check against the encode-time
+    output is a real reproduction."""
+    if system not in G_SYSTEMS:
+        log.info("[%s] no receiver-side G; nothing to cache", system)
+        return
+    stego_path = phase1_dir / f"{system}_stego.jsonl"
+    if not stego_path.exists():
+        log.warning("[%s] no Phase 1 stegos at %s — skipping", system, stego_path)
+        return
+    stego_by_id = load_records_map(stego_path)
+    source_ids = {r["id"] for r in read_stego_records(phase1_dir, system)}
+    cache_path = output_dir / f"{system}_g_cache.jsonl"
+    log.info(
+        "[%s] G cache for %d sources (%s)",
+        system,
+        len(source_ids),
+        "selected inputs"
+        if inputs_path(phase1_dir, system).exists()
+        else "all stegotexts: no selection yet",
+    )
+    if dry_run:
+        return
+    n_slots, slot_margin = story_slot_shape(stego_by_id, n_slots, 0)
+    system_obj = build_system(
+        system,
+        client,
+        generator_client,
+        n_slots=n_slots,
+        slot_margin=slot_margin,
+        decoder=decoder,
+    )
+    if verify:
+        verify_g_cache(
+            system,
+            system_obj,
+            stego_by_id,
+            source_ids,
+            cache_path,
+            output_dir / f"{system}_g_verify.jsonl",
+        )
+    else:
+        build_g_cache(system, system_obj, stego_by_id, source_ids, cache_path)
 
 
 def check_resume_decoder(out_path: Path, decoder_model: str) -> None:
@@ -611,27 +769,7 @@ def run_system(
                 baseline_model,
             )
     if system == "story":
-        # The slot shape changes G's prompt, so it has to be the encoder's.
-        # Records that predate storing it fall back to the CLI values.
-        shapes = {
-            (cfg["n_slots"], cfg.get("slot_margin", 0))
-            for r in stego_by_id.values()
-            if "n_slots" in (cfg := (r.get("metadata") or {}).get("config") or {})
-        }
-        if len(shapes) > 1:
-            raise ValueError(
-                f"{system}: Phase 1 records disagree about the slot shape "
-                f"(n_slots, slot_margin) {sorted(shapes)}. They cannot be decoded "
-                "in one pass."
-            )
-        if shapes:
-            n_slots, slot_margin = next(iter(shapes))
-            log.info(
-                "[%s] slot shape from Phase 1 records: n_slots=%d, slot_margin=%d",
-                system,
-                n_slots,
-                slot_margin,
-            )
+        n_slots, slot_margin = story_slot_shape(stego_by_id, n_slots, slot_margin)
     system_obj = build_system(
         system,
         client,
@@ -882,6 +1020,24 @@ def main():
         help=f"Provider serving --decoder-model (default {DECODER_PROVIDER}).",
     )
     parser.add_argument(
+        "--g-cache-only",
+        action="store_true",
+        help=(
+            "Story only: build the receiver's G cache for the cell's selected "
+            "inputs and stop, without decoding. Needs no Phase 3 attacks; the "
+            "later decode reuses the cache and does not call G."
+        ),
+    )
+    parser.add_argument(
+        "--g-cache-verify",
+        action="store_true",
+        help=(
+            "Story only: regenerate G for every cached source in this server "
+            "session and log whether it reproduces the cache and the encode-time "
+            "output (to {system}_g_verify.jsonl), leaving the cache unchanged."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print planned counts without making API calls.",
@@ -924,6 +1080,26 @@ def main():
         client, generator_client = make_clients()
 
     targets = SYSTEMS if args.system == "all" else (args.system,)
+    if args.g_cache_only and args.g_cache_verify:
+        parser.error("--g-cache-only and --g-cache-verify are separate sessions.")
+    if args.g_cache_only or args.g_cache_verify:
+        for system in targets:
+            run_g_cache(
+                system=system,
+                client=client,
+                generator_client=generator_client,
+                phase1_dir=phase1_dir,
+                output_dir=output_dir,
+                dry_run=args.dry_run,
+                n_slots=story_n_slots,
+                decoder=(args.decoder_provider, args.decoder_model),
+                verify=args.g_cache_verify,
+            )
+        log.info(
+            "Phase 4a G cache %s complete.",
+            "verify" if args.g_cache_verify else "build",
+        )
+        return
     for system in targets:
         run_system(
             system=system,

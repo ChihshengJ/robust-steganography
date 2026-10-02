@@ -70,8 +70,14 @@ def main() -> None:
 
     root = args.data_dir / "phase1_texts"
     dirs = find_stego_dirs(root, args.system, args.dirs)
-    if not dirs:
-        sys.exit(f"no {args.system}_stego.jsonl under {root}/{args.dirs}")
+    # Every pattern must name at least one cell: one that matches nothing (a
+    # cell not generated yet, or a misnamed one) would otherwise drop out of
+    # the intersection and get no inputs file.
+    unmatched = [p for p in args.dirs if not find_stego_dirs(root, args.system, [p])]
+    if unmatched:
+        sys.exit(
+            f"no {args.system}_stego.jsonl under {root} for: " + ", ".join(unmatched)
+        )
 
     per_dir = {d: encoded_inputs(d, args.system) for d in dirs}
     for d, present in per_dir.items():

@@ -8,9 +8,14 @@ models run. The sampling is still recorded with each configuration.
 from __future__ import annotations
 
 from experiments.utils.io import model_slug
-from experiments.utils.system_factory import LOCAL_MODEL, provider_for_base_url
+from experiments.utils.system_factory import provider_for_base_url
 
 CONFIG_SYSTEMS = ("story", "litreview")
+
+# The local G of the camera-ready results. Fixed here rather than read from
+# LOCAL_MODEL, whose default is now the payload grid's pinned G: records without
+# a stored config must keep resolving to the model that wrote them.
+LEGACY_GENERATOR_MODEL = "Qwen3.5-4B-UD-Q8_K_XL.gguf"
 
 
 def default_config(system: str) -> dict:
@@ -20,7 +25,7 @@ def default_config(system: str) -> dict:
         "synth_provider": "openai",
         "synth_temperature": 0.7 if system == "story" else 0.0,
         "synth_top_p": 0.7,
-        "generator_model": LOCAL_MODEL if system == "story" else None,
+        "generator_model": LEGACY_GENERATOR_MODEL if system == "story" else None,
         "generator_provider": "local" if system == "story" else None,
     }
 

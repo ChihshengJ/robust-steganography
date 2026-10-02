@@ -7,7 +7,12 @@ import time
 
 import openai
 
-from systems.utils.new_text import retry_wait, token_limit
+from systems.utils.new_text import (
+    DeadlineExceeded,
+    create_completion,
+    retry_wait,
+    token_limit,
+)
 
 # Transient errors worth retrying. The SDK already retries these a couple of
 # times internally; this outer loop rides out longer 429/503 bursts from
@@ -17,6 +22,7 @@ _RETRYABLE = (
     openai.APITimeoutError,
     openai.APIConnectionError,
     openai.InternalServerError,
+    DeadlineExceeded,
 )
 
 
@@ -42,8 +48,8 @@ def chat(
         if attempt:
             time.sleep(retry_wait(last_exc, attempt, base_delay))
         try:
-            response = client.chat.completions.create(
-                model=model, messages=messages, **kwargs
+            response = create_completion(
+                client, model=model, messages=messages, **kwargs
             )
         except _RETRYABLE as e:
             last_error, last_exc = repr(e), e

@@ -23,13 +23,17 @@
 #                         non-determinism. Override with NGL=... if you need
 #                         speed, but then you MUST use the same NGL every time.
 #   -t (fixed)            fixed thread count => fixed reduction order.
+#   -c 8192               room for the prompt plus generate_slots' 4000-token
+#                         cap, so a long slot list ends at the same cap as on
+#                         a hosted G instead of being cut by the context
+#                         (34 slots at F = 32 is ~1.5k tokens; 1024 truncated).
 #   --temp 0 / --seed 0   greedy, fixed seed.
 #   --jinja               required: generate_subtopics() sends
 #                         chat_template_kwargs={"enable_thinking": false},
 #                         which llama-server only honors with --jinja.
 #
 # Usage:
-#   ./experiments/serve_local_model.sh /path/to/Qwen3.5-4B-UD-Q8_K_XL.gguf
+#   ./experiments/serve_local_model.sh /path/to/Qwen3.5-9B-UD-Q8_K_XL.gguf
 #   PORT=8080 NGL=0 THREADS=8 ./experiments/serve_local_model.sh /path/to/model.gguf
 #
 # Runs in the foreground -- launch it in its own terminal; Ctrl-C to stop.
@@ -61,7 +65,7 @@ MODEL_FILE="$(basename "$MODEL_PATH")"
 # ---------------------------------------------------------------------------
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8080}" # must match LOCAL_BASE_URL in experiments/utils/system_factory.py
-CTX="${CTX:-1024}"
+CTX="${CTX:-8192}"
 NGL="${NGL:-0}" # GPU layers offloaded. 0 = pure CPU (most deterministic).
 
 if [[ -z "${THREADS:-}" ]]; then
@@ -108,8 +112,8 @@ echo " threads    : $THREADS"
 echo " batching   : OFF (--parallel 1 --no-cont-batching, single-pass prefill)"
 echo "--------------------------------------------------------------"
 echo " Use this SAME script + SAME model for Phase 1 and Phase 4."
-echo " Gate before spending on attacks:"
-echo "   python -m experiments.check_subtopic_repro --base-url http://$HOST:$PORT/v1"
+echo " Reproduction is checked by the payload grid's gcache and gverify"
+echo " stages; restart this server before each."
 echo "=============================================================="
 echo "+ llama-server ${ARGS[*]}"
 echo

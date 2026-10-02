@@ -5,7 +5,7 @@ from typing import Callable, Iterator, Tuple
 import nltk
 import openai
 
-from systems.utils.new_text import retry_wait
+from systems.utils.new_text import DeadlineExceeded, create_completion, retry_wait
 
 
 class AttackFailed(RuntimeError):
@@ -25,6 +25,7 @@ _RETRYABLE = (
     openai.APITimeoutError,
     openai.APIConnectionError,
     openai.InternalServerError,
+    DeadlineExceeded,
 )
 
 def complete(
@@ -46,7 +47,7 @@ def complete(
         if attempt:
             time.sleep(retry_wait(last_exc, attempt, base_delay))
         try:
-            response = client.chat.completions.create(**kwargs)
+            response = create_completion(client, **kwargs)
         except _RETRYABLE as e:
             last_error, last_exc = repr(e), e
             continue

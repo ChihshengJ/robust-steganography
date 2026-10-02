@@ -24,9 +24,11 @@ from systems.paths import litreview_references
 # defaults match experiments/serve_local_model.sh (PORT=8080); LOCAL_MODEL must
 # equal the basename of the GGUF you serve (the alias llama-server reports on
 # /v1/models). `import systems` has already loaded .env by this point, so values
-# defined there are visible here.
+# defined there are visible here. The default is the pinned recovery G of the
+# payload grid; recovery SG folder names embed it, so a wrong default points
+# every grid stage at folders that do not exist.
 LOCAL_BASE_URL = os.environ.get("LOCAL_BASE_URL", "http://127.0.0.1:8080/v1")
-LOCAL_MODEL = os.environ.get("LOCAL_MODEL", "Qwen3.5-4B-UD-Q8_K_XL.gguf")
+LOCAL_MODEL = os.environ.get("LOCAL_MODEL", "Qwen3.5-9B-UD-Q8_K_XL.gguf")
 
 
 def make_clients(

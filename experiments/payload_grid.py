@@ -13,15 +13,23 @@ Stages, in order (each resumable; rerun a stage to retry what failed):
     generate  Phase 1 stegotexts on N_INPUTS inputs per cell      (API; recovery
               SG needs the pinned G server at LOCAL_BASE_URL, serving LOCAL_MODEL)
     select    the first 30 inputs that encoded in every cell of a task, both tracks
+    gcache    the receiver's G(x) per selected input, recovery SG  (pinned G server,
+              freshly restarted; checks it reproduces the encode-time G)
+    gverify   G regenerated once more, recovery SG; logs agreement with the cache
+              and the encode-time G, cache unchanged  (pinned G server, restarted)
     normal    length-matched normal generations, detection cells   (API)
     attack    Phase 3 on the recovery cells                        (API)
-    decode    Phase 4a/4b on the recovery cells                    (API; SG needs
-              the pinned G server)
+    decode    Phase 4a/4b on the recovery cells                    (API; reads the
+              gcache output, so SG needs the G server only without it)
     analyze   steganalysis + quality (detection), recovery CSV and capacity
               table (recovery)
 
 Cells of a stage run in parallel (--parallel), each logging to
 data/experiments/logs/payload_grid/{stage}/{cell}.log.
+
+The pinned G server is needed only from recovery SG's generate to gverify:
+restart it before gcache and before gverify, so the three are independent
+sessions, then shut it down; attacks and decoding follow without it.
 
 The Discop baseline runs from scripts/baselines_syncpool.sh on its own prompts.
 
@@ -36,7 +44,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
 import subprocess
 import sys
 import time
@@ -63,7 +70,7 @@ DETECTION_GENERATORS = ("openrouter:qwen/qwen3.5-9b", "openrouter:google/gemma-4
 RECOVERY_WRITER = "openrouter:deepseek/deepseek-v4.1-flash"
 RECOVERY_GENERATOR = "local"  # the pinned server: LOCAL_BASE_URL serving LOCAL_MODEL
 
-STAGES = ("generate", "select", "normal", "attack", "decode", "analyze")
+STAGES = ("generate", "select", "gcache", "gverify", "normal", "attack", "decode", "analyze")
 
 
 def _split(spec: str) -> tuple[str, str]:
@@ -169,6 +176,16 @@ def attack_cmd(cell: Cell, args) -> list[str]:
     ]  # fmt: skip
 
 
+def gcache_cmd(cell: Cell, args, flag: str = "--g-cache-only") -> list[str]:
+    return PY + [
+        "experiments.phase4_decode.phase4a_decode",
+        "--system", cell.system,
+        "--subdir", cell.subdir,
+        "--data-dir", str(args.data_dir),
+        flag,
+    ]  # fmt: skip
+
+
 def decode_cmds(cell: Cell, args) -> list[list[str]]:
     common = ["--system", cell.system, "--subdir", cell.subdir, "--data-dir", str(args.data_dir)]
     return [
@@ -252,27 +269,11 @@ def run_jobs(stage: str, jobs: list[tuple[str, list[list[str]]]], args) -> list[
     return failed
 
 
-def check_local_generator(cells: list[Cell], stage: str) -> None:
-    """Recovery SG encodes and decodes with the pinned G: LOCAL_MODEL must name
-    it rather than fall back to the factory default."""
-    if any(c.generator and c.generator[0] == "local" for c in cells) and not os.environ.get(
-        "LOCAL_MODEL"
-    ):
-        raise SystemExit(
-            f"{stage}: recovery SG cells use the pinned G, but LOCAL_MODEL is not set "
-            f"(the default would be {LOCAL_MODEL!r}). Set LOCAL_MODEL (and "
-            "LOCAL_BASE_URL) to the pinned Qwen3.5-9B server, or pass --track detection "
-            "or --systems litreview."
-        )
-
-
 def run_stage(stage: str, args) -> list[str]:
     cells = grid_cells(args)
     rec = [c for c in cells if c.track == "recovery"]
     det = [c for c in cells if c.track == "detection"]
     if stage == "generate":
-        if not args.dry_run:
-            check_local_generator(cells, stage)
         return run_jobs(stage, [(c.name, [generate_cmd(c, args)]) for c in cells], args)
     if stage == "select":
         # Every cell of a task, both tracks, whatever --track says: the inputs
@@ -283,6 +284,10 @@ def run_stage(stage: str, args) -> list[str]:
             sys_cells = [c for c in grid_cells(full) if c.system == system]
             jobs.append((system, [select_cmd(system, sys_cells, args)]))
         return run_jobs(stage, jobs, args)
+    if stage in ("gcache", "gverify"):
+        g_cells = [c for c in rec if c.generator and c.generator[0] == "local"]
+        flag = "--g-cache-only" if stage == "gcache" else "--g-cache-verify"
+        return run_jobs(stage, [(c.name, [gcache_cmd(c, args, flag)]) for c in g_cells], args)
     if stage == "normal":
         jobs = [
             (s, [normal_cmd(s, [c for c in det if c.system == s], args)])
@@ -293,8 +298,6 @@ def run_stage(stage: str, args) -> list[str]:
     if stage == "attack":
         return run_jobs(stage, [(c.name, [attack_cmd(c, args)]) for c in rec], args)
     if stage == "decode":
-        if not args.dry_run:
-            check_local_generator(rec, stage)
         return run_jobs(stage, [(c.name, decode_cmds(c, args)) for c in rec], args)
     if stage == "analyze":
         # One after another: the steps read each other's outputs.

@@ -2,6 +2,7 @@ import json
 import os
 import random
 import re
+import threading
 import time
 
 import openai
@@ -80,6 +81,45 @@ def retry_wait(error: Exception | None, attempt: int, base: float = 2.0) -> floa
 
 LLM_ATTEMPTS = 6
 
+# Wall-clock limit on one chat completion, in seconds. Normal calls, a
+# reasoning writer included, take well under 2 minutes.
+LLM_DEADLINE = 600.0
+
+
+class DeadlineExceeded(TimeoutError):
+    """A chat completion got no response within its wall-clock limit."""
+
+
+def create_completion(client, deadline: float = LLM_DEADLINE, **kwargs):
+    """``client.chat.completions.create(**kwargs)`` with a wall-clock limit;
+    raises ``DeadlineExceeded`` past ``deadline`` seconds, for the caller's
+    retry loop.
+
+    The SDK's timeout bounds each read, not the whole request, and OpenRouter
+    keeps a slow request alive with filler bytes, so a request whose upstream
+    provider stalled never times out (seen: 8-17 minutes, then a
+    whitespace-only reply). The call runs on a daemon thread; one that outlives
+    the deadline is abandoned, ends when the provider closes the connection,
+    and never holds up interpreter exit."""
+    result: dict = {}
+
+    def run() -> None:
+        try:
+            result["response"] = client.chat.completions.create(**kwargs)
+        except BaseException as e:
+            result["error"] = e
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    thread.join(deadline)
+    if thread.is_alive():
+        raise DeadlineExceeded(
+            f"no response from {kwargs.get('model')} within {deadline:.0f}s"
+        )
+    if "error" in result:
+        raise result["error"]
+    return result["response"]
+
 
 class ContentFiltered(RuntimeError):
     """The provider refused the request (finish_reason content_filter); a
@@ -114,12 +154,13 @@ def llm(
                 kwargs["top_p"] = top_p
             if extra_body is not None:
                 kwargs["extra_body"] = extra_body
-            r = client.chat.completions.create(**kwargs)
+            r = create_completion(client, **kwargs)
             if r.choices[0].finish_reason == "content_filter":
                 raise ContentFiltered(f"{model} filtered the request (content_filter)")
             content = r.choices[0].message.content
-            if not content:
-                # e.g. a reasoning model spending the whole cap on reasoning
+            if not content or not content.strip():
+                # e.g. a reasoning model spending the whole cap on reasoning,
+                # or a stalled OpenRouter call that ends in whitespace only
                 raise RuntimeError(
                     f"empty completion from {model} "
                     f"(finish_reason={r.choices[0].finish_reason})"
