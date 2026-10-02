@@ -114,6 +114,22 @@ def writer_extra_body(provider: str, model: str) -> dict | None:
     return no_reasoning_body(provider, model)
 
 
+# The decoder (REVISION_PLAN_ARR_OCT.md §1): one model for every task and
+# configuration, chosen at decode time (phase4a --decoder-model).
+DECODER_PROVIDER = "openrouter"
+DECODER_MODEL = "deepseek/deepseek-v4.1-flash"
+
+
+def decoder_extra_body(provider: str, model: str) -> dict | None:
+    """Request body the decoder is sent: reasoning on through OpenRouter, sent
+    explicitly although it is DeepSeek V4.1 Flash's default there (checked
+    09-29), so a change of default cannot switch it off. Elsewhere, the
+    provider default."""
+    if provider == "openrouter":
+        return {"reasoning": {"enabled": True}}
+    return None
+
+
 def default_sampling_only(provider: str, model: str) -> bool:
     """Whether the writer takes no temperature/top_p: an OpenAI reasoning
     model with reasoning on accepts only its default sampling."""
@@ -154,6 +170,7 @@ def make_story(
     synth_extra_body: dict | None = None,
     decoder_client: openai.OpenAI | None = None,
     decoder_model: str = "gpt-4.1",
+    decoder_extra_body: dict | None = None,
 ) -> StorySystem:
     """Create a StorySystem with standard experiment parameters.
 
@@ -180,6 +197,7 @@ def make_story(
         synth_top_p=synth_top_p,
         generator_extra_body=generator_extra_body,
         synth_extra_body=synth_extra_body,
+        decoder_extra_body=decoder_extra_body,
     )
 
 
@@ -193,6 +211,7 @@ def make_litreview(
     synth_extra_body: dict | None = None,
     decoder_client: openai.OpenAI | None = None,
     decoder_model: str = "gpt-4.1",
+    decoder_extra_body: dict | None = None,
 ) -> LitReviewSystem:
     """Create a LitReviewSystem with corpus loaded.
 
@@ -213,6 +232,7 @@ def make_litreview(
         synth_temperature=synth_temperature,
         synth_top_p=synth_top_p,
         synth_extra_body=synth_extra_body,
+        decoder_extra_body=decoder_extra_body,
     )
 
 

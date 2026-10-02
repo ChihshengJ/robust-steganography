@@ -85,6 +85,7 @@ class StorySystem(StegSystem):
         synth_top_p: float | None = 0.7,
         generator_extra_body: dict | None = LLAMACPP_NO_THINKING,
         synth_extra_body: dict | None = None,
+        decoder_extra_body: dict | None = None,
     ) -> None:
         """The generator G (slot pairs) runs on ``generator_client`` /
         ``generator_model``; ``generator_extra_body`` is sent with it and is
@@ -94,7 +95,8 @@ class StorySystem(StegSystem):
         receiver keep the same slots. The synthesizer writes the story with the
         ``synth_*`` settings, on ``synth_client`` (default: ``client``);
         ``synth_extra_body`` is its provider-specific request body (e.g. one
-        that turns reasoning off). ``client``/``decoder_model`` decode."""
+        that turns reasoning off). ``client``/``decoder_model`` decode, sending
+        ``decoder_extra_body``."""
         stub = BitsPerGroupStub(1)
         super().__init__(client, stub, error_correction, encoder)
 
@@ -108,6 +110,7 @@ class StorySystem(StegSystem):
         self.slot_margin = slot_margin
         self.synth_model = synth_model
         self.decoder_model = decoder_model
+        self.decoder_extra_body = decoder_extra_body
         self.key = key
         self.synth_temperature = synth_temperature
 
@@ -152,7 +155,8 @@ class StorySystem(StegSystem):
         return slots
 
     def generation_config(self) -> dict:
-        """The models and sampling that produced a stego text."""
+        """The models and sampling that produced a stego text. The decoder is
+        not among them: it is chosen when decoding."""
         return {
             "generator_model": self.generator_model,
             "generator_base_url": client_base_url(self.generator_client),
@@ -164,7 +168,6 @@ class StorySystem(StegSystem):
             "synth_temperature": self.synth_temperature,
             "synth_top_p": self.synth_top_p,
             "synth_extra_body": self.synth_extra_body,
-            "decoder_model": self.decoder_model,
         }
 
     def _key_permutation(self, n: int) -> list[int]:
@@ -224,6 +227,7 @@ class StorySystem(StegSystem):
                 temperature=0,
                 # Room for a reasoning decoder's thinking before the letter.
                 max_tokens=8000,
+                extra_body=self.decoder_extra_body,
             )
             .strip()
             .upper()

@@ -116,7 +116,6 @@ _RESUME_KEYS = (
     "synth_temperature",
     "synth_top_p",
     "synth_extra_body",
-    "decoder_model",
 )
 
 

@@ -17,6 +17,11 @@ decode, and keeps it in ``{system}_g_cache.jsonl`` next to the decoded file,
 each entry marked with whether it matches the sender's encode-time output.
 Decoded records carry that as ``g_matches_encode`` (None for other systems).
 
+The semantic systems decode with an LLM (``--decoder-model`` on
+``--decoder-provider``, default DeepSeek V4.1 Flash on OpenRouter, reasoning
+on); each record names it. A decoded file holds one decoder only: resuming it
+with another is refused.
+
 Output schema:
 
     {
@@ -36,7 +41,9 @@ Output schema:
       "perfect_recovery": false,
       "num_bit_errors": 1,
       "error": null,
-      "g_matches_encode": null
+      "g_matches_encode": null,
+      "decoder_model": "deepseek/deepseek-v4.1-flash",
+      "decoder_provider": "openrouter"
     }
 
 Resumable: ids already present in the output JSONL are skipped on resume.
@@ -47,6 +54,8 @@ Usage:
         --system story --attack global_paraphrase --limit 10  # smoke test
     python -m experiments.phase4_decode.phase4a_decode --system all --dry-run
     python -m experiments.phase4_decode.phase4a_decode --system litreview --no-baseline
+    python -m experiments.phase4_decode.phase4a_decode --system story \
+        --decoder-provider openai --decoder-model gpt-4.1
 """
 
 from __future__ import annotations
@@ -72,6 +81,11 @@ from experiments.utils.io import (
 )
 from experiments.utils.metrics import bit_error_rate
 from experiments.utils.system_factory import (
+    DECODER_MODEL,
+    DECODER_PROVIDER,
+    PROVIDERS,
+    decoder_extra_body,
+    make_client,
     make_clients,
     make_discop,
     make_litreview,
@@ -88,6 +102,9 @@ log = logging.getLogger(__name__)
 SYSTEMS = ("story", "litreview")
 # In-house token-level baselines: selectable explicitly but excluded from "all".
 BASELINE_LM_SYSTEMS = ("discop",)
+# Decoded records without a decoder_model predate --decoder-model; all of them
+# were decoded with GPT-4.1.
+LEGACY_DECODER = "gpt-4.1"
 
 
 # ---------------------------------------------------------------------------
@@ -102,8 +119,11 @@ def build_system(
     n_slots: int = 20,
     slot_margin: int = 0,
     baseline_model: str | None = None,
+    decoder: tuple[str, str] = (DECODER_PROVIDER, DECODER_MODEL),
 ):
     """Build the decode-side system.
+
+    ``decoder`` is the (provider, model) that decodes the semantic systems.
 
     ``n_slots``/``slot_margin`` must be the StorySlot shape the records were
     encoded with (run_system takes them from the Phase 1 config): they change
@@ -115,14 +135,24 @@ def build_system(
     bit would be chance. Callers pass the model recorded in Phase 1 metadata;
     None falls back to the factory default.
     """
-    if system == "story":
-        return make_story(
-            client, generator_client, n_slots=n_slots, slot_margin=slot_margin
-        )
-    if system == "litreview":
-        return make_litreview(client)
     if system == "discop":
         return make_discop(model_name=baseline_model)
+    provider, model = decoder
+    decoder_kwargs = {
+        "decoder_client": make_client(provider),
+        "decoder_model": model,
+        "decoder_extra_body": decoder_extra_body(provider, model),
+    }
+    if system == "story":
+        return make_story(
+            client,
+            generator_client,
+            n_slots=n_slots,
+            slot_margin=slot_margin,
+            **decoder_kwargs,
+        )
+    if system == "litreview":
+        return make_litreview(client, **decoder_kwargs)
     raise ValueError(f"Unknown system: {system}")
 
 
@@ -265,6 +295,18 @@ def build_g_cache(
     return cache
 
 
+def check_resume_decoder(out_path: Path, decoder_model: str) -> None:
+    """Refuse to resume a decoded file written by another decoder: Phase 4b
+    would pool its records with the new ones as one run."""
+    stored = {r.get("decoder_model", LEGACY_DECODER) for r in read_jsonl(out_path)}
+    other = sorted(stored - {decoder_model})
+    if other:
+        raise SystemExit(
+            f"{out_path} was decoded with {other}, not {decoder_model!r}. "
+            "Decode into a different --subdir or move the file aside."
+        )
+
+
 class DecoderUnavailable(RuntimeError):
     """The decoder's API failed after its retries; the record was not decoded.
 
@@ -351,7 +393,7 @@ def decode_one(
 _WORKER: dict = {}
 
 
-def _worker_init(system, baseline_model, n_slots, slot_margin):
+def _worker_init(system, baseline_model, n_slots, slot_margin, decoder):
     import torch
 
     torch.set_num_threads(1)
@@ -364,6 +406,7 @@ def _worker_init(system, baseline_model, n_slots, slot_margin):
         n_slots=n_slots,
         slot_margin=slot_margin,
         baseline_model=baseline_model,
+        decoder=decoder,
     )
 
 
@@ -422,6 +465,8 @@ def _decode(task: dict, system_obj: StegSystem) -> dict:
         "error": err,
         "decode_channel": "token" if task["token_ids"] else "text",
         "g_matches_encode": task["g_matches_encode"],
+        "decoder_model": task["decoder_model"],
+        "decoder_provider": task["decoder_provider"],
         "decode_stats": decode_stats or None,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
@@ -446,6 +491,7 @@ def run_system(
     n_slots: int = 20,
     slot_margin: int = 0,
     max_workers: int = 1,
+    decoder: tuple[str, str] = (DECODER_PROVIDER, DECODER_MODEL),
 ):
     attack_path = phase3_dir / f"{system}_attacked.jsonl"
     stego_path = phase1_dir / f"{system}_stego.jsonl"
@@ -511,6 +557,12 @@ def run_system(
         plan = plan[:limit]
 
     log.info("[%s] %d decode tasks planned (output: %s)", system, len(plan), out_path)
+    # The token-level baselines decode with their local LM, not an API model.
+    decoder_provider, decoder_model = (
+        (None, None) if system in BASELINE_LM_SYSTEMS else decoder
+    )
+    if decoder_model is not None:
+        log.info("[%s] decoder: %s on %s", system, decoder_model, decoder_provider)
 
     if dry_run:
         for rec in plan[:3]:
@@ -525,6 +577,8 @@ def run_system(
             log.info("  ... and %d more", len(plan) - 3)
         return
 
+    if decoder_model is not None:
+        check_resume_decoder(out_path, decoder_model)
     completed = load_completed_ids(out_path)
     log.info("[%s] %d records already done; resuming", system, len(completed))
 
@@ -585,6 +639,7 @@ def run_system(
         n_slots=n_slots,
         slot_margin=slot_margin,
         baseline_model=baseline_model,
+        decoder=decoder,
     )
 
     n_decoded = 0
@@ -624,6 +679,8 @@ def run_system(
                 "token_ids": rec.get("token_ids"),
                 "g_output": None,
                 "g_matches_encode": None,
+                "decoder_model": decoder_model,
+                "decoder_provider": decoder_provider,
             }
         )
 
@@ -685,7 +742,7 @@ def run_system(
         with ProcessPoolExecutor(
             max_workers=max_workers,
             initializer=_worker_init,
-            initargs=(system, baseline_model, n_slots, slot_margin),
+            initargs=(system, baseline_model, n_slots, slot_margin, decoder),
         ) as pool:
             futures = {pool.submit(_decode_task, t): t for t in tasks}
             for fut in as_completed(futures):
@@ -814,6 +871,17 @@ def main():
         ),
     )
     parser.add_argument(
+        "--decoder-model",
+        default=DECODER_MODEL,
+        help=f"LLM that decodes SG and LR (default {DECODER_MODEL}).",
+    )
+    parser.add_argument(
+        "--decoder-provider",
+        choices=PROVIDERS,
+        default=DECODER_PROVIDER,
+        help=f"Provider serving --decoder-model (default {DECODER_PROVIDER}).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print planned counts without making API calls.",
@@ -870,6 +938,7 @@ def main():
             dry_run=args.dry_run,
             n_slots=story_n_slots,
             max_workers=args.max_workers,
+            decoder=(args.decoder_provider, args.decoder_model),
         )
 
     log.info("Phase 4a decode complete.")

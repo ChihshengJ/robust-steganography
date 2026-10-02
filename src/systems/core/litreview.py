@@ -2,7 +2,6 @@ import hashlib
 import hmac
 import json
 import re
-import time
 from pathlib import Path
 from typing import Any
 
@@ -82,7 +81,9 @@ def prepare_references(raw_refs: list[dict], min_title_words: int = 5) -> list[d
     return refs
 
 
-def extract_citations(client, model, text: str) -> list[dict]:
+def extract_citations(
+    client, model, text: str, extra_body: dict | None = None
+) -> list[dict]:
     response = llm(
         client,
         model,
@@ -91,6 +92,7 @@ def extract_citations(client, model, text: str) -> list[dict]:
         temperature=0,
         # Room for a reasoning decoder's thinking before the list.
         max_tokens=10000,
+        extra_body=extra_body,
     )
 
     seen: set[str] = set()
@@ -189,8 +191,10 @@ class LitReviewSystem(StegSystem):
         synth_temperature: float | None = 0.0,
         synth_top_p: float | None = 0.7,
         synth_extra_body: dict | None = None,
+        decoder_extra_body: dict | None = None,
     ):
-        """``client``/``model`` extract the citations when decoding. The
+        """``client``/``model`` extract the citations when decoding, sending
+        ``decoder_extra_body``. The
         synthesizer writes the review with the ``synth_*`` settings when
         encoding, and defaults to the same client and model;
         ``synth_extra_body`` is its provider-specific request body (e.g. one
@@ -202,6 +206,7 @@ class LitReviewSystem(StegSystem):
         self.synth_temperature = synth_temperature
         self.synth_top_p = synth_top_p
         self.synth_extra_body = synth_extra_body
+        self.decoder_extra_body = decoder_extra_body
         self.key = key
         self.hash_fn = None
         self.ecc = error_correction
@@ -286,7 +291,9 @@ class LitReviewSystem(StegSystem):
             )
         expected_bits = self._error_encoded_length // self.hash_output_length
 
-        citations = extract_citations(self.client, self.model, stego_text)
+        citations = extract_citations(
+            self.client, self.model, stego_text, self.decoder_extra_body
+        )
         for c in citations:
             c["bit"], c["keyrank"] = ref_keyhash(
                 self.key, c["author_last_name"], c["year"]
@@ -313,7 +320,8 @@ class LitReviewSystem(StegSystem):
 
     def generation_config(self) -> dict:
         """The models and sampling that produced a stego text. LitReview has
-        no G model: its units come from the public bibliography."""
+        no G model: its units come from the public bibliography. The decoder
+        is not among them: it is chosen when decoding."""
         return {
             "generator_model": None,
             "synth_model": self.synth_model,
@@ -321,7 +329,6 @@ class LitReviewSystem(StegSystem):
             "synth_temperature": self.synth_temperature,
             "synth_top_p": self.synth_top_p,
             "synth_extra_body": self.synth_extra_body,
-            "decoder_model": self.model,
         }
 
     def _generate_review(self, paper: dict, selected_refs: list[dict]) -> str:
